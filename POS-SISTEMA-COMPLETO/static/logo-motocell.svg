@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <!-- Fondo negro -->
+  <rect width="400" height="500" fill="#000000"/>
+  
+  <!-- Teléfono (marco blanco) -->
+  <g>
+    <rect x="100" y="80" width="200" height="340" rx="30" fill="none" stroke="white" stroke-width="15"/>
+    <!-- Notch/Camera -->
+    <rect x="160" y="90" width="80" height="35" rx="15" fill="white" stroke="white" stroke-width="2"/>
+    <!-- Botón lateral -->
+    <rect x="315" y="180" width="8" height="60" fill="white" rx="4"/>
+  </g>
+  
+  <!-- Texto MOTOCELL -->
+  <text x="200" y="450" font-family="Arial, sans-serif" font-size="60" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="2">MOTOCELL</text>
+  
+  <!-- Subtext -->
+  <text x="200" y="485" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">Accesorios para Celular</text>
+</svg>

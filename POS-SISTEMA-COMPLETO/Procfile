@@ -1,0 +1,5 @@
+# Railway Procfile para Python/Flask
+# Define cómo ejecutar la aplicación en Railway
+
+web: gunicorn --config gunicorn_config.py app:app
+release: flask db upgrade

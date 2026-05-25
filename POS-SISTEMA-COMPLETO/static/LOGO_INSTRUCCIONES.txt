@@ -1,0 +1,24 @@
+📱 INSTRUCCIONES PARA CAMBIAR EL LOGO
+
+El sistema ahora usa: logo-motocell.svg (logo generado automáticamente)
+
+OPCIÓN 1: Usar tu imagen PNG
+1. Guarda tu imagen PNG de MOTOCELL en esta carpeta con el nombre: logo-motocell.png
+2. Edita index.html y cambia TODAS las referencias de:
+   /static/logo-motocell.svg
+   POR:
+   /static/logo-motocell.png
+3. Guarda y recarga la página en el navegador
+
+OPCIÓN 2: Usar conversión PNG a SVG
+1. Si quieres convertir tu PNG a SVG para mejor escalabilidad:
+   - Usa un conversor online: convertio.co o cloudconvert.com
+   - O usa ImageMagick: convert logo-motocell.png logo-motocell.svg
+
+Ubicación actual:
+- SVG (actual): /static/logo-motocell.svg
+- PNG (si deseas): /static/logo-motocell.png
+
+Aparece en:
+- Pantalla de login: 120px de alto
+- Navbar: 40px de alto

@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Sistema de Punto de Venta</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+
+        /* Componentes base */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 1rem;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+
+        .navbar-menu a, .navbar-menu button {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--gray-600);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+            border-radius: 0.375rem;
+        }
+
+        .navbar-menu a:hover, .navbar-menu button:hover {
+            background-color: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .navbar-menu a.active, .navbar-menu button.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 0.5rem;
+            border: 1px solid var(--gray-200);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 1rem;
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            color: var(--gray-900);
+        }
+
+        /* Botones */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #059669;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-secondary {
+            background-color: var(--gray-200);
+            color: var(--gray-900);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--gray-300);
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* Formularios */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Tablas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        table th {
+            background-color: var(--gray-100);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        table tr:hover {
+            background-color: var(--gray-50);
+        }
+
+        /* Alertas */
+        .alert {
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .alert-info {
+            background-color: #dbeafe;
+            color: #0c4a6e;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* Loading */
+        .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar-content {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .navbar-menu {
+                width: 100%;
+            }
+
+            table {
+                font-size: 0.875rem;
+            }
+
+            table th, table td {
+                padding: 0.5rem;
+            }
+
+            .btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.875rem;
+            }
+        }
+
+        /* Estilos de login */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+
+        .login-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-box h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .login-box p {
+            color: var(--gray-600);
+            margin-bottom: 2rem;
+        }
+
+        /* Dashboard grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .stat-card h3 {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-card .value {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: var(--gray-900);
+        }
+
+        /* POS Específico */
+        .cart-section {
+            position: sticky;
+            top: 80px;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+            gap: 1rem;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item-info {
+            flex: 1;
+        }
+
+        .cart-item-name {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .cart-item-price {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: var(--gray-100);
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+        }
+
+        .cart-item-qty button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .cart-item-qty input {
+            width: 50px;
+            border: none;
+            background: none;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .cart-summary {
+            border-top: 2px solid var(--gray-200);
+            padding-top: 1rem;
+            margin-top: 1rem;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-row.total {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Búsqueda */
+        .search-box {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem;
+            padding-left: 2.5rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-300);
+            border-top: none;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 10;
+            border-radius: 0 0 0.375rem 0.375rem;
+        }
+
+        .search-result-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .search-result-item:hover {
+            background-color: var(--gray-100);
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .search-result-code {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .search-result-price {
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 1rem;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-600);
+        }
+
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        /* ===== ESTILOS RESPONSIVOS PARA FILTROS ===== */
+        .filtros-container {
+            background-color: #f8f9fa !important;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control-fecha {
+            border: 2px solid #e9ecef;
+            border-radius: 0.5rem;
+            padding: 0.75rem 0.875rem;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background-color: white;
+        }
+
+        .form-control-fecha:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 2px 4px rgba(13, 110, 253, 0.1);
+        }
+
+        .form-control-fecha:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+            background-color: white;
+        }
+
+        /* Input de fecha - mejorar apariencia del picker */
+        input[type="date"].form-control-fecha {
+            cursor: pointer;
+            min-height: 42px;
+        }
+
+        input[type="date"].form-control-fecha::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            border-radius: 0.25rem;
+            margin-right: 0.25rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+
+        input[type="date"].form-control-fecha::-webkit-calendar-picker-indicator:hover {
+            opacity: 0.8;
+        }
+
+        /* Select personalizado */
+        .form-select.form-control-fecha {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.875rem center;
+            background-size: 16px 12px;
+            padding-right: 2.5rem;
+            min-height: 42px;
+        }
+
+        .form-select.form-control-fecha:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 2px 4px rgba(13, 110, 253, 0.1);
+        }
+
+        .form-select.form-control-fecha:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+
+        /* Labels mejorados */
+        .filtros-container .form-label {
+            margin-bottom: 0.5rem;
+            color: #6c757d;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        /* Botón responsivo */
+        .btn-primary {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ===== RESPONSIVE BREAKPOINTS ===== */
+        /* Mobile (< 576px) */
+        @media (max-width: 575.98px) {
+            .filtros-container {
+                padding: 1rem !important;
+            }
+
+            .filtros-container .form-label {
+                font-size: 0.8rem;
+            }
+
+            .form-control-fecha,
+            .form-select.form-control-fecha {
+                font-size: 16px; /* Evita zoom automático en iOS */
+                min-height: 44px;
+                padding: 0.625rem 0.75rem;
+            }
+
+            .btn-primary {
+                min-height: 44px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Tablet (576px - 768px) */
+        @media (min-width: 576px) and (max-width: 767.98px) {
+            .filtros-container {
+                padding: 1.25rem !important;
+            }
+
+            .form-control-fecha,
+            .form-select.form-control-fecha {
+                font-size: 0.95rem;
+            }
+        }
+
+        /* Desktop (>= 768px) */
+        @media (min-width: 768px) {
+            .filtros-container {
+                padding: 1.5rem !important;
+            }
+
+            .filtros-container .form-label {
+                font-size: 0.875rem;
+            }
+        }
+
+        /* Mejora general de accessibility */
+        .form-control-fecha:focus,
+        .form-select.form-control-fecha:focus,
+        .btn-primary:focus {
+            outline: none;
+        }
+
+        /* Estilos para Compatibilidad */
+        .compatibilidad-view {
+            padding: 2rem;
+        }
+
+        .compatibilidad-view h2 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+        }
+
+        .compatibility-item {
+            background-color: var(--light-gray);
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .compatibility-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .compatibility-item h5 {
+            color: var(--dark);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .compatibility-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .compatibility-alta {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .compatibility-media {
+            background-color: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .compatibility-baja {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .compatibilidad-view .card {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .compatibilidad-view .card h3 {
+            color: var(--dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .compatibilidad-view .card h4 {
+            color: var(--dark);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .compatibilidad-view input,
+        .compatibilidad-view textarea,
+        .compatibilidad-view select {
+            border: 1px solid var(--gray-300);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+
+        .compatibilidad-view input:focus,
+        .compatibilidad-view textarea:focus,
+        .compatibilidad-view select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .compatibilidad-view .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .compatibilidad-view .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .compatibilidad-view small {
+            display: block;
+            margin-top: 0.3rem;
+        }
+
+        .compatibilidad-view .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .compatibilidad-view .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .compatibilidad-view .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .compatibilidad-view .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .compatibilidad-view .btn-primary:hover:not(:disabled) {
+            background-color: darken(var(--primary), 10%);
+        }
+
+        .compatibilidad-view .btn-secondary {
+            background-color: var(--gray-300);
+            color: var(--dark);
+        }
+
+        .compatibilidad-view .btn-secondary:hover {
+            background-color: var(--gray-400);
+        }
+
+        .compatibilidad-view .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+
+        .compatibilidad-view .alert-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: var(--danger);
+            border-left-color: var(--danger);
+        }
+
+        .compatibilidad-view .alert-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            border-left-color: var(--warning);
+        }
+
+        @media (max-width: 768px) {
+            .compatibilidad-view {
+                padding: 1rem;
+            }
+
+            .compatibilidad-view .card {
+                padding: 1.5rem;
+            }
+
+            .compatibility-item {
+                padding: 1rem;
+            }
+
+            .compatibilidad-view .btn-group {
+                flex-direction: column;
+            }
+
+            .compatibilidad-view .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Pantalla de login -->
+        <div v-if="!isAuthenticated" class="login-container">
+            <div class="login-box">
+                <h1 style="text-align: center; font-size: 2.5rem; color: #2563EB; margin-bottom: 0.5rem; letter-spacing: 2px; font-weight: 900;">Motocell</h1>
+                <p style="text-align: center; color: #666; margin-bottom: 2rem; font-size: 0.95rem;">Accesorios para Celular</p>
+                <p>Ingresa tus credenciales para acceder</p>
+                
+                <div v-if="loginError" class="alert alert-danger">{{ loginError }}</div>
+                
+                <form @submit.prevent="login">
+                    <div class="form-group">
+                        <label>Usuario</label>
+                        <input v-model="loginForm.username" type="text" placeholder="Ej: admin" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Contraseña</label>
+                        <input v-model="loginForm.password" type="password" placeholder="Contraseña" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <span v-if="!loginLoading">Ingresar</span>
+                        <span v-else><span class="spinner"></span> Cargando...</span>
+                    </button>
+                </form>
+
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200); text-align: center;">
+                    <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Demo: usuario=admin, password=admin123</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aplicación principal -->
+        <template v-else>
+            <!-- Navbar -->
+            <nav class="navbar">
+                <div class="container">
+                    <div class="navbar-content">
+                        <a href="#" class="navbar-brand" style="font-size: 1.5rem; font-weight: 900; color: #2563EB; letter-spacing: 1px;">
+                            Motocell
+                        </a>
+                        
+                        <div class="navbar-menu">
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['dashboard', currentView === 'dashboard' ? 'active' : '']"
+                                @click.prevent="currentView = 'dashboard'"
+                                href="#"
+                            >Dashboard</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['products', currentView === 'productos' ? 'active' : '']"
+                                @click.prevent="currentView = 'productos'"
+                                href="#"
+                            >Productos</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['inventory', currentView === 'inventario' ? 'active' : '']"
+                                @click.prevent="currentView = 'inventario'"
+                                href="#"
+                            >Inventario</a>
+                            <a 
+                                :class="['sales', currentView === 'ventas' ? 'active' : '']"
+                                @click.prevent="currentView = 'ventas'"
+                                href="#"
+                            >Ventas</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['reports', currentView === 'reportes' ? 'active' : '']"
+                                @click.prevent="currentView = 'reportes'"
+                                href="#"
+                            >Reportes</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['users', currentView === 'usuarios' ? 'active' : '']"
+                                @click.prevent="currentView = 'usuarios'"
+                                href="#"
+                            >Usuarios</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['branches', currentView === 'sucursales' ? 'active' : '']"
+                                @click.prevent="currentView = 'sucursales'"
+                                href="#"
+                            >Sucursales</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['categories', currentView === 'categorias' ? 'active' : '']"
+                                @click.prevent="currentView = 'categorias'"
+                                href="#"
+                            >Categorías</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['subcategories', currentView === 'subcategorias' ? 'active' : '']"
+                                @click.prevent="currentView = 'subcategorias'"
+                                href="#"
+                            >Subcategorías</a>
+                            <a 
+                                v-if="userRole === 'employee'" 
+                                :class="['sales-day', currentView === 'ventas-del-dia' ? 'active' : '']"
+                                @click.prevent="currentView = 'ventas-del-dia'"
+                                href="#"
+                            >Ventas del Día</a>
+                            <a 
+                                v-if="userRole === 'employee'" 
+                                :class="['cash-close', currentView === 'cierre-caja' ? 'active' : '']"
+                                @click.prevent="currentView = 'cierre-caja'"
+                                href="#"
+                            >Cierre de Caja</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['reports', currentView === 'reportes-ventas' ? 'active' : '']"
+                                @click.prevent="currentView = 'reportes-ventas'"
+                                href="#"
+                            >Reportes Ventas</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['returns', currentView === 'devoluciones' ? 'active' : '']"
+                                @click.prevent="currentView = 'devoluciones'"
+                                href="#"
+                            >Devoluciones</a>
+                            <a 
+                                v-if="userRole === 'admin' || userRole === 'employee'" 
+                                :class="['compatibility', currentView === 'compatibilidad' ? 'active' : '']"
+                                @click.prevent="currentView = 'compatibilidad'"
+                                href="#"
+                            >🔍 Compatibilidad</a>
+                            <a 
+                                v-if="userRole === 'admin'" 
+                                :class="['stock-sales', currentView === 'ventas-sin-stock' ? 'active' : '']"
+                                @click.prevent="currentView = 'ventas-sin-stock'"
+                                href="#"
+                            >📦 Ventas Sin Stock</a>
+                        </div>
+                        
+                        <div class="navbar-user">
+                            <span>👤 {{ userName }}</span>
+                            <button @click="logout" class="btn btn-secondary btn-sm">Salir</button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Contenido principal -->
+            <div class="container" style="padding: 2rem 1rem;">
+                <!-- Dashboard (Admin) -->
+                <div v-if="currentView === 'dashboard' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Dashboard</h1>
+                    <dashboard-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></dashboard-view>
+                </div>
+
+                <!-- Productos (Admin) -->
+                <div v-if="currentView === 'productos' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Gestión de Productos</h1>
+                    <productos-view :apiUrl="apiUrl" :token="token"></productos-view>
+                </div>
+
+                <!-- Inventario (Admin) -->
+                <div v-if="currentView === 'inventario' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Gestión de Inventario</h1>
+                    <inventario-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></inventario-view>
+                </div>
+
+                <!-- Ventas (Todos) -->
+                <div v-show="currentView === 'ventas'">
+                    <h1 style="margin-bottom: 2rem;">Punto de Venta</h1>
+                    <ventas-view :apiUrl="apiUrl" :token="token" :userSucursal="userSucursal" :userRole="userRole"></ventas-view>
+                </div>
+
+                <!-- Reportes (Admin) -->
+                <div v-if="currentView === 'reportes' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Reportes y Estadísticas</h1>
+                    <reportes-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reportes-view>
+                </div>
+
+                <!-- Usuarios (Admin) -->
+                <div v-if="currentView === 'usuarios' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Gestión de Usuarios</h1>
+                    <usuarios-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></usuarios-view>
+                </div>
+
+                <!-- Sucursales (Admin) -->
+                <div v-if="currentView === 'sucursales' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Gestión de Sucursales</h1>
+                    <sucursales-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></sucursales-view>
+                </div>
+
+                <!-- Categorías (Admin) -->
+                <div v-if="currentView === 'categorias' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Gestión de Categorías</h1>
+                    <categorias-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></categorias-view>
+                </div>
+
+                <!-- Subcategorías (Admin) -->
+                <div v-if="currentView === 'subcategorias' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Gestión de Subcategorías</h1>
+                    <subcategorias-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></subcategorias-view>
+                </div>
+
+                <!-- Ventas del Día (Empleado) -->
+                <div v-if="currentView === 'ventas-del-dia' && userRole === 'employee'">
+                    <h1 style="margin-bottom: 2rem;">Mis Ventas del Día</h1>
+                    <ventas-del-dia-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ventas-del-dia-view>
+                </div>
+
+                <!-- Cierre de Caja (Empleado) -->
+                <div v-if="currentView === 'cierre-caja' && userRole === 'employee'">
+                    <h1 style="margin-bottom: 2rem;">Cierre de Caja</h1>
+                    <cierre-caja-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></cierre-caja-view>
+                </div>
+
+                <!-- Reportes de Ventas (Admin) -->
+                <div v-if="currentView === 'reportes-ventas' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Reportes de Ventas</h1>
+                    <reportes-ventas-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reportes-ventas-view>
+                </div>
+
+                <!-- Devoluciones (Admin) -->
+                <div v-if="currentView === 'devoluciones' && userRole === 'admin'">
+                    <devoluciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></devoluciones-view>
+                </div>
+
+                <!-- Compatibilidad (Admin y Empleados) -->
+                <div v-if="currentView === 'compatibilidad' && (userRole === 'admin' || userRole === 'employee')">
+                    <compatibilidad-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></compatibilidad-view>
+                </div>
+
+                <!-- Ventas sin Stock (Admin) -->
+                <div v-if="currentView === 'ventas-sin-stock' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">📦 Ventas Sin Stock</h1>
+                    <ventas-sin-stock-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ventas-sin-stock-view>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Scripts de componentes -->
+    <script src="/static/components.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
