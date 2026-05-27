@@ -1,0 +1,9 @@
+codigo,nombre,categoria,subcategoria,precio,stock,sucursal_id
+MICA-CENTRO-001,Mica Samsung A10,Protección,Protección Pantalla,150.00,50,
+MICA-CENTRO-002,Mica Samsung A20,Protección,Protección Pantalla,150.00,45,
+MICA-CENTRO-003,Mica Samsung A30,Protección,Protección Pantalla,180.00,40,
+FUNDA-CENTRO-001,Funda Negra Samsung A10,Accesorios,Fundas,120.00,60,
+FUNDA-CENTRO-002,Funda Azul Samsung A20,Accesorios,Fundas,120.00,50,
+PROTECTOR-CENTRO-001,Protector de Cámara iPhone 12,Protección,Protección Cámara,80.00,100,
+CABLE-CENTRO-001,Cable USB-C 2 metros,Accesorios,Cables,60.00,80,
+CARGADOR-CENTRO-001,Cargador Rápido 30W,Accesorios,Cargadores,350.00,20,

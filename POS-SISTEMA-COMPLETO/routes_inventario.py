@@ -1,9 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Producto, Stock, EntradaInventario, Sucursal
+from models import db, User, Producto, Stock, EntradaInventario, Sucursal, Subcategoria, Categoria
 from datetime import datetime
 import uuid
 from config import get_cdmx_now
+import csv
+import io
 
 inventario_bp = Blueprint('inventario', __name__, url_prefix='/api/inventario')
 
@@ -38,7 +40,7 @@ def get_stock_sucursal(sucursal_id):
             return jsonify({'error': 'Sucursal no encontrada'}), 404
         
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
+        per_page = request.args.get('per_page', 5000, type=int)
         
         # Obtener stocks con información del producto
         stocks = Stock.query.join(Producto).filter(
@@ -145,7 +147,7 @@ def get_entradas_inventario():
         user = User.query.get(user_id)
         
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
+        per_page = request.args.get('per_page', 5000, type=int)
         sucursal_id = request.args.get('sucursal_id')
         
         query = EntradaInventario.query
@@ -230,6 +232,81 @@ def get_bajo_stock(sucursal_id):
             result.append(data)
         
         return jsonify(result), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@inventario_bp.route('/exportar', methods=['GET'])
+@jwt_required()
+def exportar_inventario():
+    """Exportar todo el inventario a CSV con formato horizontal (sucursales como columnas)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        # Solo admin puede exportar
+        if user.role != 'admin':
+            return jsonify({'error': 'Acceso denegado'}), 403
+        
+        # Crear CSV en memoria
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Obtener todas las sucursales activas ordenadas por nombre
+        sucursales = Sucursal.query.filter_by(is_active=True).order_by(Sucursal.nombre).all()
+        
+        # Encabezados
+        headers = ['REF', 'Nombre', 'Description', 'Categoria', 'Subcategoria', 'Precio', 'IVA(%)', 'Código_Barras']
+        headers.extend([suc.nombre for suc in sucursales])
+        writer.writerow(headers)
+        
+        # Obtener todos los productos activos con sus stocks
+        productos = Producto.query.filter_by(is_active=True).order_by(Producto.codigo).all()
+        
+        for producto in productos:
+            # Obtener categoría y subcategoría
+            subcategoria = Subcategoria.query.get(producto.subcategoria_id)
+            categoria = None
+            if subcategoria:
+                categoria = Categoria.query.get(subcategoria.categoria_id)
+            
+            categoria_nombre = categoria.nombre if categoria else 'General'
+            subcategoria_nombre = subcategoria.nombre if subcategoria else 'General'
+            
+            # Fila base con datos del producto
+            row = [
+                producto.codigo,  # REF
+                producto.nombre,
+                producto.descripcion if producto.descripcion else '',
+                categoria_nombre,
+                subcategoria_nombre,
+                producto.precio if producto.precio else '',
+                producto.impuesto if producto.impuesto else '',
+                producto.codigo_barras if producto.codigo_barras else ''
+            ]
+            
+            # Agregar stock por sucursal
+            for sucursal in sucursales:
+                stock = Stock.query.filter_by(
+                    producto_id=producto.id,
+                    sucursal_id=sucursal.id
+                ).first()
+                
+                cantidad = stock.cantidad if stock else 0
+                row.append(cantidad)
+            
+            writer.writerow(row)
+        
+        # Convertir a bytes
+        output.seek(0)
+        csv_bytes = io.BytesIO(output.getvalue().encode('utf-8-sig'))  # UTF-8 with BOM para Excel
+        
+        return send_file(
+            csv_bytes,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'inventario_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        ), 200
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500

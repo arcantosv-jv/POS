@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Venta, DetalleVenta, EntradaInventario, Sucursal, Stock
+from models import db, User, Venta, DetalleVenta, EntradaInventario, Sucursal, Stock, Producto
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -352,22 +352,28 @@ def reporte_consolidado():
 @reportes_bp.route('/productos-bajo-stock', methods=['GET'])
 @jwt_required()
 def reportes_productos_bajo_stock():
-    """Contar productos con stock bajo (cantidad < cantidad_minima)"""
+    """Contar PRODUCTOS ACTIVOS ÚNICOS con stock bajo (cantidad < cantidad_minima)"""
     try:
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        query = Stock.query
+        # JOIN entre Stock y Producto para filtrar por activos
+        query = db.session.query(Stock).join(Producto, Stock.producto_id == Producto.id)
+        query = query.filter(Producto.is_active == True)
         
         # Si es empleado, filtrar por su sucursal
         if user.role == 'employee' and user.sucursal_id:
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+            query = query.filter(Stock.sucursal_id == user.sucursal_id)
         
-        # Contar stocks donde cantidad < cantidad_minima
-        bajo_stock = query.filter(Stock.cantidad < Stock.cantidad_minima).count()
+        # Contar PRODUCTOS ACTIVOS ÚNICOS donde cantidad < cantidad_minima
+        bajo_stock = query.filter(Stock.cantidad < Stock.cantidad_minima).distinct(Stock.producto_id).count()
+        
+        # Contar también items totales en bajo stock (para referencia)
+        items_bajo_stock = query.filter(Stock.cantidad < Stock.cantidad_minima).count()
         
         return jsonify({
-            'cantidad_bajo_stock': bajo_stock
+            'cantidad_bajo_stock': bajo_stock,
+            'items_bajo_stock': items_bajo_stock
         }), 200
     
     except Exception as e:
@@ -379,10 +385,17 @@ def reportes_productos_bajo_stock():
 def reportes_total_productos():
     """Contar total de productos activos"""
     try:
-        from models import Producto
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
         
         # Contar productos activos
-        total = Producto.query.filter_by(is_active=True).count()
+        query = Producto.query.filter_by(is_active=True)
+        
+        # Si es empleado, contar solo productos que tienen stock en su sucursal
+        if user.role == 'employee' and user.sucursal_id:
+            query = query.join(Stock).filter(Stock.sucursal_id == user.sucursal_id).distinct()
+        
+        total = query.count()
         
         return jsonify({
             'total_productos': total

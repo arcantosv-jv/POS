@@ -12,13 +12,23 @@ const VentasView = {
                     </div>
                     
                     <div class="search-box" style="position: relative;">
-                        <input 
-                            v-model="searchQuery"
-                            type="text"
-                            placeholder="Escribe nombre, código o barras... (mín. 1 caracter)"
-                            @input="buscarProductos"
-                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
-                        >
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <input 
+                                v-model="searchQuery"
+                                type="text"
+                                placeholder="Escribe nombre, código o barras... (mín. 1 caracter)"
+                                @input="buscarProductos"
+                                @keyup.enter="buscarProductos"
+                                style="flex: 1; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
+                            >
+                            <button 
+                                @click="buscarProductos" 
+                                class="btn btn-primary" 
+                                style="padding: 0.75rem 1rem; white-space: nowrap;"
+                            >
+                                🔍
+                            </button>
+                        </div>
                         
                         <div v-if="searchResults.length > 0" class="search-results">
                             <div 
@@ -26,11 +36,12 @@ const VentasView = {
                                 :key="producto.id"
                                 class="search-result-item"
                                 @click="agregarAlCarrito(producto)"
+                                style="cursor: pointer;"
                             >
                                 <div class="search-result-name">{{ producto.nombre }}</div>
                                 <div class="search-result-code">Código: {{ producto.codigo }}</div>
                                 <div class="search-result-price">
-                                    <span v-if="producto.precio">💵 \${{ producto.precio }}</span>
+                                    <span v-if="producto.precio && producto.precio > 0">💵 \${{ producto.precio }}</span>
                                     <span v-else style="color: var(--warning);">⚠ Precio flexible</span>
                                 </div>
                             </div>
@@ -51,9 +62,9 @@ const VentasView = {
                         No hay productos disponibles
                     </div>
                     
-                    <div v-else style="max-height: 600px; overflow-y: auto;">
+                    <div v-else style="max-height: auto; overflow-y: auto;">
                         <div 
-                            v-for="producto in productos.slice(0, 20)" 
+                            v-for="producto in productos.slice(0, 2)" 
                             :key="producto.id"
                             style="padding: 0.75rem; border-bottom: 1px solid var(--gray-200); cursor: pointer; transition: background-color 0.2s;"
                             @click="agregarAlCarrito(producto)"
@@ -63,7 +74,7 @@ const VentasView = {
                             <div style="font-weight: 600; margin-bottom: 0.25rem;">{{ producto.nombre }}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-600);">{{ producto.codigo }}</div>
                             <div style="font-weight: 500; color: var(--primary);">
-                                <span v-if="producto.precio">💵 \${{ producto.precio }}</span>
+                                <span v-if="producto.precio && producto.precio > 0">💵 \${{ producto.precio }}</span>
                                 <span v-else style="color: var(--warning);">⚠ Precio flexible</span>
                             </div>
                         </div>
@@ -116,7 +127,7 @@ const VentasView = {
 
                         <div class="form-group" style="margin-top: 1rem;">
                             <label for="forma-pago">Forma de Pago</label>
-                            <select v-model="formaPago" id="forma-pago" name="forma_pago" style="width: 100%; padding: 0.5rem;">
+                            <select v-model="formaPago" @change="manejarCambioFormaPago" id="forma-pago" name="forma_pago" style="width: 100%; padding: 0.5rem;">
                                 <option value="efectivo">💵 Efectivo</option>
                                 <option value="tarjeta">💳 Tarjeta</option>
                                 <option value="transferencia">🏦 Transferencia</option>
@@ -146,6 +157,56 @@ const VentasView = {
 
                 <div v-if="error" class="alert alert-danger" style="margin-top: 1rem;">
                     {{ error }}
+                </div>
+            </div>
+
+            <!-- Modal de pago mixto -->
+            <div v-if="mostrarModalPagoMixto" class="modal-overlay" style="z-index: 1001;">
+                <div class="modal" style="max-width: 500px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0;">💰 Pago Mixto</h3>
+                        <button @click="cerrarModalPagoMixto" class="modal-close">✕</button>
+                    </div>
+
+                    <div style="background-color: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Total a cobrar:</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">\${{ total.toFixed(2) }}</div>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">💵 Efectivo</label>
+                            <input v-model.number="pagosMixtos.efectivo" type="number" step="0.01" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">💳 Tarjeta</label>
+                            <input v-model.number="pagosMixtos.tarjeta" type="number" step="0.01" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">🏦 Transferencia</label>
+                            <input v-model.number="pagosMixtos.transferencia" type="number" step="0.01" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                        </div>
+                    </div>
+
+                    <div style="background-color: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span>Total ingresado:</span>
+                            <span style="font-weight: 700;">\${{ totalPagosMixtos.toFixed(2) }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Diferencia:</span>
+                            <span :style="{fontWeight: '700', color: Math.abs(diferenciaPagosMixtos) < 0.01 ? 'var(--success)' : 'var(--warning)'}">
+                                \${{ diferenciaPagosMixtos.toFixed(2) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button @click="cerrarModalPagoMixto" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+                        <button @click="guardarPagoMixto" class="btn btn-success" style="flex: 1;" :disabled="Math.abs(diferenciaPagosMixtos) >= 0.01">
+                            ✓ Confirmar
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -198,7 +259,13 @@ const VentasView = {
             mostrarModalPrecioFlexible: false,
             productoSinPrecio: null,
             precioFlexible: 0,
-            productosConStockInsuficiente: {} // Rastrear avisos de stock por ID de producto
+            productosConStockInsuficiente: {}, // Rastrear avisos de stock por ID de producto
+            mostrarModalPagoMixto: false,
+            pagosMixtos: {
+                efectivo: 0,
+                tarjeta: 0,
+                transferencia: 0
+            }
         };
     },
     computed: {
@@ -213,13 +280,22 @@ const VentasView = {
         },
         total() {
             return this.subtotal + this.totalImpuestos;
+        },
+        totalPagosMixtos() {
+            const efe = Number(this.pagosMixtos.efectivo) || 0;
+            const tarj = Number(this.pagosMixtos.tarjeta) || 0;
+            const trans = Number(this.pagosMixtos.transferencia) || 0;
+            return efe + tarj + trans;
+        },
+        diferenciaPagosMixtos() {
+            return this.totalPagosMixtos - this.total;
         }
     },
     methods: {
         async cargarProductos() {
             try {
                 const response = await axios.get(
-                    `${window.location.origin}/api/productos`,
+                    `${window.location.origin}/api/productos?per_page=9999`,
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
                 this.productos = response.data.productos || [];
@@ -254,7 +330,7 @@ const VentasView = {
         },
         agregarAlCarrito(producto) {
             // Si el producto no tiene precio, mostrar modal para ingresarlo
-            if (!producto.precio && producto.precio !== 0) {
+            if (producto.precio == null || producto.precio === 0) {
                 this.productoSinPrecio = producto;
                 this.precioFlexible = 0;
                 this.mostrarModalPrecioFlexible = true;
@@ -309,8 +385,8 @@ const VentasView = {
             }
         },
         agregarProductoFlexibleAlCarrito() {
-            if (this.precioFlexible <= 0) {
-                this.error = 'Ingresa un precio válido (mayor a 0)';
+            if (this.precioFlexible < 0) {
+                this.error = 'Ingresa un precio válido (mayor o igual a 0)';
                 return;
             }
             
@@ -335,6 +411,7 @@ const VentasView = {
             this.searchResults = [];
             this.error = '';
         },
+
         removerDelCarrito(index) {
             this.carrito.splice(index, 1);
         },
@@ -377,8 +454,40 @@ const VentasView = {
             this.error = '';
             this.ventaExitosa = '';
         },
+        manejarCambioFormaPago() {
+            if (this.formaPago === 'mixto') {
+                // Reiniciar los pagos
+                this.pagosMixtos = {
+                    efectivo: 0,
+                    tarjeta: 0,
+                    transferencia: 0
+                };
+                this.mostrarModalPagoMixto = true;
+            }
+        },
+        guardarPagoMixto() {
+            if (Math.abs(this.diferenciaPagosMixtos) < 0.01) {
+                this.mostrarModalPagoMixto = false;
+                this.error = '';
+            } else {
+                this.error = `El total de pagos ($${this.totalPagosMixtos.toFixed(2)}) no coincide con el total de la venta ($${this.total.toFixed(2)})`;
+            }
+        },
+        cerrarModalPagoMixto() {
+            this.mostrarModalPagoMixto = false;
+            this.formaPago = 'efectivo';
+            this.pagosMixtos = { efectivo: 0, tarjeta: 0, transferencia: 0 };
+        },
         async registrarVenta() {
             if (this.carrito.length === 0) return;
+            
+            // Validar pago mixto si es aplicable
+            if (this.formaPago === 'mixto') {
+                if (Math.abs(this.diferenciaPagosMixtos) >= 0.01) {
+                    this.error = `El total de pagos ($${this.totalPagosMixtos.toFixed(2)}) no coincide con el total de la venta ($${this.total.toFixed(2)})`;
+                    return;
+                }
+            }
             
             this.procesandoVenta = true;
             this.error = '';
@@ -390,12 +499,19 @@ const VentasView = {
                     precio: item.precio  // Enviar precio (puede ser personalizado)
                 }));
 
+                const ventaData = {
+                    detalles,
+                    forma_pago: this.formaPago
+                };
+
+                // Si es pago mixto, agregar los detalles de los pagos
+                if (this.formaPago === 'mixto') {
+                    ventaData.pagos_mixtos = this.pagosMixtos;
+                }
+
                 const response = await axios.post(
                     `${window.location.origin}/api/ventas`,
-                    {
-                        detalles,
-                        forma_pago: this.formaPago
-                    },
+                    ventaData,
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
 
@@ -403,6 +519,7 @@ const VentasView = {
                 this.ventaExitosa = response.data.venta.numero_venta;
                 this.carrito = [];
                 this.formaPago = 'efectivo';
+                this.pagosMixtos = { efectivo: 0, tarjeta: 0, transferencia: 0 };
             } catch (err) {
                 this.error = err.response?.data?.error || 'Error registrando venta';
             } finally {
@@ -558,33 +675,46 @@ const ProductosView = {
 
                 <!-- Importación de CSV/Excel -->
                 <div v-if="mostrarImportacion" style="background-color: var(--gray-50); padding: 1.5rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
-                    <h4 style="margin-bottom: 1rem;">Importar Productos desde CSV/Excel</h4>
+                    <h4 style="margin-bottom: 1rem;">Importar Productos desde CSV</h4>
                     <p style="margin-bottom: 1rem; color: var(--gray-600);">
-                        Carga un archivo CSV con las siguientes columnas: Handle, REF, Nombre, Categoria, Precio [Sucursal], En inventario [Sucursal]
+                        📋 Carga un archivo CSV (.csv) con las siguientes columnas: 
+                        <code style="background: var(--gray-100); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">REF, Nombre, Categoria, Precio, En inventario</code>
                     </p>
                     <div class="form-group">
-                        <label for="archivo-importacion">Archivo CSV/Excel</label>
+                        <label for="archivo-importacion">Archivo CSV</label>
                         <input 
                             id="archivo-importacion"
                             name="archivo_importacion"
                             type="file" 
-                            accept=".csv,.xlsx"
+                            accept=".csv"
                             @change="manejarCargaArchivo"
                             style="width: 100%; padding: 0.5rem; border: 2px dashed var(--primary); border-radius: 0.375rem;"
                         >
+                        <small style="display: block; margin-top: 0.5rem; color: var(--gray-600);">
+                            💡 Solo archivos CSV. Si tienes Excel, conviértelo así: Archivo → Exportar → CSV
+                        </small>
+                    </div>
                     </div>
                     <div v-if="archivoSeleccionado" style="margin-bottom: 1rem;">
                         <p>📄 {{ archivoSeleccionado.name }}</p>
                         <div class="form-group">
-                            <label for="sucursal-importacion">Sucursal para el stock</label>
+                            <label for="sucursal-importacion">
+                                Sucursal para el stock
+                                <span v-if="sucursalImportacion" style="color: green; font-weight: bold;">
+                                    ✓ (Detectada automáticamente)
+                                </span>
+                            </label>
                             <select v-model="sucursalImportacion" id="sucursal-importacion" name="sucursal_importacion" required>
                                 <option value="">Selecciona sucursal</option>
                                 <option v-for="suc in sucursales" :key="suc.id" :value="suc.id">
                                     {{ suc.nombre }}
                                 </option>
                             </select>
+                            <small style="display: block; margin-top: 0.5rem; color: var(--gray-600);">
+                                💡 Formato sugerido de archivo: <code style="background: var(--gray-100); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">productos_Sucursal_Centro.csv</code>
+                            </small>
                         </div>
-                        <button @click="procesarImportacion" class="btn btn-success" :disabled="importandoProductos">
+                        <button @click="procesarImportacion" class="btn btn-success" :disabled="importandoProductos || !sucursalImportacion">
                             <span v-if="!importandoProductos">✓ Importar Productos</span>
                             <span v-else><span class="spinner"></span> Procesando...</span>
                         </button>
@@ -596,14 +726,44 @@ const ProductosView = {
 
                 <!-- Búsqueda y filtros -->
                 <div style="margin-bottom: 1rem;">
-                    <input 
-                        v-model="busquedaProducto"
-                        id="buscar-productos"
-                        name="buscar_productos"
-                        type="text"
-                        placeholder="Buscar productos..."
-                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
-                    >
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label for="buscar-productos-productos">Buscar Producto</label>
+                            <input 
+                                v-model="busquedaProducto"
+                                id="buscar-productos-productos"
+                                name="buscar_productos_productos"
+                                type="text"
+                                placeholder="Nombre o código..."
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="categoria-selector-productos">Categoría</label>
+                            <select v-model="categoriaSeleccionada" id="categoria-selector-productos" name="categoria_selector_productos">
+                                <option value="">Todas</option>
+                                <option v-for="cat in categorias" :key="cat.id" :value="cat.id">
+                                    {{ cat.nombre }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subcategoria-selector-productos">Subcategoría</label>
+                            <select v-model="subcategoriaSeleccionada" id="subcategoria-selector-productos" name="subcategoria_selector_productos">
+                                <option value="">Todas</option>
+                                <option v-for="subcat in subcategoriasFiltradasPorCategoria" :key="subcat.id" :value="subcat.id">
+                                    {{ subcat.nombre }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button @click="aplicarFiltros" class="btn btn-primary" style="padding: 0.625rem 1.25rem;">
+                            🔍 Buscar/Filtrar
+                        </button>
+                        <button @click="limpiarFiltros" class="btn" style="padding: 0.625rem 1.25rem;">
+                            ✕ Limpiar Filtros
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Tabla de productos -->
@@ -619,9 +779,10 @@ const ProductosView = {
                             <tr>
                                 <th>Código</th>
                                 <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Subcategoría</th>
                                 <th>Precio</th>
                                 <th>Impuesto</th>
-                                <th>Categoría</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -629,9 +790,15 @@ const ProductosView = {
                             <tr v-for="producto in productosFiltrados" :key="producto.id">
                                 <td>{{ producto.codigo }}</td>
                                 <td>{{ producto.nombre }}</td>
-                                <td><span v-if="producto.precio">\${{ producto.precio }}</span><span v-else style="color: var(--warning); font-weight: 600;">⚠ Sin precio</span></td>
+                                <td>{{ obtenerCategoria(producto) }}</td>
+                                <td>{{ obtenerSubcategoria(producto) }}</td>
+                                <td>
+                                    <span v-if="producto.precio && producto.precio > 0">\${{ producto.precio }}</span>
+                                    <button v-else @click="abrirModalPrecio(producto)" class="btn btn-warning btn-sm" style="background-color: #ffc107; color: #000;">
+                                        ⚠ Sin precio
+                                    </button>
+                                </td>
                                 <td>{{ producto.impuesto }}%</td>
-                                <td>{{ producto.subcategoria_id }}</td>
                                 <td>
                                     <button class="btn btn-primary btn-sm" @click="editarProducto(producto)">Editar</button>
                                     <button class="btn btn-danger btn-sm" @click="eliminarProducto(producto.id)">Eliminar</button>
@@ -640,6 +807,37 @@ const ProductosView = {
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Modal para agregar precio -->
+                <div v-if="mostrarModalPrecio" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                    <div style="background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; width: 90%;">
+                        <h3 style="margin-top: 0; margin-bottom: 1rem;">Agregar Precio</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <p style="margin: 0 0 0.5rem 0; font-weight: 600;">Producto: {{ productoParaPrecio?.nombre }}</p>
+                            <p style="margin: 0 0 1rem 0; color: var(--gray-600); font-size: 0.875rem;">Código: {{ productoParaPrecio?.codigo }}</p>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1.5rem;">
+                            <label for="modal-precio-input">Precio</label>
+                            <input 
+                                v-model.number="precioIngresado"
+                                id="modal-precio-input"
+                                name="modal_precio_input"
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                placeholder="Ej: 100, 50.50, 0"
+                            >
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <button @click="cerrarModalPrecio" class="btn" style="padding: 0.625rem 1.25rem;">
+                                Cancelar
+                            </button>
+                            <button @click="guardarPrecio" class="btn btn-primary" style="padding: 0.625rem 1.25rem;">
+                                Guardar Precio
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     `,
@@ -647,11 +845,19 @@ const ProductosView = {
         return {
             productos: [],
             subcategorias: [],
+            categorias: [],
             sucursales: [],
             mostrarFormulario: false,
             mostrarImportacion: false,
             loading: true,
             busquedaProducto: '',
+            categoriaSeleccionada: '',
+            subcategoriaSeleccionada: '',
+            filtrosAplicados: {
+                busqueda: '',
+                categoria: '',
+                subcategoria: ''
+            },
             editandoProductoId: null,
             error: '',
             nuevoProducto: {
@@ -667,22 +873,41 @@ const ProductosView = {
             sucursalImportacion: '',
             importandoProductos: false,
             mensajeImportacion: '',
-            tipoMensajeImportacion: 'success'
+            tipoMensajeImportacion: 'success',
+            mostrarModalPrecio: false,
+            productoParaPrecio: null,
+            precioIngresado: 0
         };
     },
     computed: {
+        subcategoriasFiltradasPorCategoria() {
+            if (!this.categoriaSeleccionada) return this.subcategorias;
+            return this.subcategorias.filter(sub => sub.categoria_id === this.categoriaSeleccionada);
+        },
         productosFiltrados() {
-            return this.productos.filter(p => 
-                p.nombre.toLowerCase().includes(this.busquedaProducto.toLowerCase()) ||
-                p.codigo.toLowerCase().includes(this.busquedaProducto.toLowerCase())
-            );
+            return this.productos.filter(p => {
+                // Filtrar por búsqueda
+                const coincideBusqueda = !this.filtrosAplicados.busqueda || 
+                    p.nombre.toLowerCase().includes(this.filtrosAplicados.busqueda.toLowerCase()) ||
+                    p.codigo.toLowerCase().includes(this.filtrosAplicados.busqueda.toLowerCase());
+                
+                // Filtrar por categoría
+                const coincideCategoria = !this.filtrosAplicados.categoria || 
+                    p.categoria_id === this.filtrosAplicados.categoria;
+                
+                // Filtrar por subcategoría
+                const coincideSubcategoria = !this.filtrosAplicados.subcategoria || 
+                    p.subcategoria_id === this.filtrosAplicados.subcategoria;
+                
+                return coincideBusqueda && coincideCategoria && coincideSubcategoria;
+            });
         }
     },
     methods: {
         async cargarProductos() {
             try {
                 const res = await axios.get(
-                    `${window.location.origin}/api/productos`,
+                    `${window.location.origin}/api/productos?per_page=9999`,
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
                 this.productos = res.data.productos || [];
@@ -764,6 +989,80 @@ const ProductosView = {
         manejarCargaArchivo(evento) {
             this.archivoSeleccionado = evento.target.files[0];
             this.mensajeImportacion = '';
+            
+            if (this.archivoSeleccionado) {
+                const nombreArchivo = this.archivoSeleccionado.name.toLowerCase();
+                const esCSV = nombreArchivo.endsWith('.csv');
+                
+                if (!esCSV) {
+                    this.mensajeImportacion = `❌ Error: El archivo debe ser CSV (.csv). Recibido: ${this.archivoSeleccionado.name}`;
+                    this.tipoMensajeImportacion = 'danger';
+                    this.archivoSeleccionado = null;
+                    return;
+                }
+                // Sucursal se detecta automáticamente del CSV (nombres de columnas)
+                this.mensajeImportacion = 'ℹ️ Las sucursales se detectarán del archivo CSV';
+                this.tipoMensajeImportacion = 'info';
+            }
+        },
+        extraerSucursalDelArchivo(nombreArchivo) {
+            /**
+             * Extrae el nombre de la sucursal del nombre del archivo
+             * Formatos soportados:
+             * - productos_Sucursal_Centro.csv → Sucursal Centro
+             * - productos_Sucursal Centro.csv → Sucursal Centro
+             * - Sucursal_Centro_productos.csv → Sucursal Centro
+             * - Centro_productos.csv → Centro
+             */
+            
+            // Remover extensión
+            let nombre = nombreArchivo.replace(/\.(csv|xlsx)$/i, '');
+            
+            // Intentar extraer la sucursal
+            let sucursalNombre = null;
+            
+            // Patrón 1: "productos_XXX" o "productos-XXX"
+            let match = nombre.match(/(?:productos|importar)[_\-](.+)/i);
+            if (match) {
+                sucursalNombre = match[1];
+            }
+            // Patrón 2: "XXX_productos" o "XXX-productos"
+            if (!sucursalNombre) {
+                match = nombre.match(/(.+?)[_\-](?:productos|importar)/i);
+                if (match) {
+                    sucursalNombre = match[1];
+                }
+            }
+            // Patrón 3: Si no hay patrón, usar todo el nombre
+            if (!sucursalNombre) {
+                sucursalNombre = nombre;
+            }
+            
+            // Normalizar: reemplazar guiones y guiones bajos por espacios
+            sucursalNombre = sucursalNombre.replace(/[_\-]+/g, ' ').trim();
+            
+            // Capitalizar cada palabra
+            sucursalNombre = sucursalNombre
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+            
+            console.log('Nombre extraído del archivo:', sucursalNombre);
+            
+            // Buscar la sucursal por nombre
+            const sucursal = this.sucursales.find(s => 
+                s.nombre.toLowerCase() === sucursalNombre.toLowerCase()
+            );
+            
+            if (sucursal) {
+                this.sucursalImportacion = sucursal.id;
+                console.log('Sucursal encontrada:', sucursal.nombre, 'ID:', sucursal.id);
+            } else {
+                console.warn('Sucursal no encontrada para:', sucursalNombre);
+                this.mensajeImportacion = `⚠️ No se encontró sucursal "${sucursalNombre}". Por favor, selecciona una manualmente.`;
+                this.tipoMensajeImportacion = 'warning';
+                this.sucursalImportacion = '';
+            }
         },
         async procesarImportacion() {
             if (!this.archivoSeleccionado || !this.sucursalImportacion) {
@@ -782,21 +1081,74 @@ const ProductosView = {
                         const lineas = csv.split('\n');
                         const encabezados = lineas[0].split(',').map(h => h.trim());
                         
-                        // Encontrar índices de columnas
-                        const idxCodigo = encabezados.findIndex(h => h === 'REF');
-                        const idxNombre = encabezados.findIndex(h => h === 'Nombre');
-                        const idxCategoria = encabezados.findIndex(h => h === 'Categoria');
+                        // Encontrar índices de columnas - Soportar múltiples nombres
+                        const idxCodigo = encabezados.findIndex(h => 
+                            h.toLowerCase() === 'codigo' || 
+                            h.toLowerCase() === 'ref' || 
+                            h.toLowerCase() === 'sku'
+                        );
+                        const idxNombre = encabezados.findIndex(h => 
+                            h.toLowerCase() === 'nombre' || 
+                            h.toLowerCase() === 'producto'
+                        );
+                        const idxCategoria = encabezados.findIndex(h => 
+                            h.toLowerCase() === 'categoria' || 
+                            h.toLowerCase() === 'categoría'
+                        );
+                        const idxSubcategoria = encabezados.findIndex(h => 
+                            h.toLowerCase() === 'subcategoria' || 
+                            h.toLowerCase() === 'subcategoría'
+                        );
                         
-                        // Buscar columna de precio para la sucursal
-                        const columnaSucursal = encabezados.find(h => h.includes('Precio ['));
-                        const idxPrecio = columnaSucursal ? encabezados.indexOf(columnaSucursal) : -1;
+                        // Buscar columna de precio
+                        const idxPrecio = encabezados.findIndex(h => 
+                            h.toLowerCase() === 'precio' || 
+                            h.toLowerCase().includes('precio')
+                        );
                         
-                        // Buscar columna de stock para la sucursal
-                        const columnaStock = encabezados.find(h => h.includes('En inventario ['));
-                        const idxStock = columnaStock ? encabezados.indexOf(columnaStock) : -1;
+                        // Buscar columna de stock estándar
+                        const idxStock = encabezados.findIndex(h => 
+                            h.toLowerCase() === 'stock' || 
+                            h.toLowerCase() === 'cantidad' || 
+                            h.toLowerCase().includes('inventario')
+                        );
+                        
+                        // DETECTAR DINÁMICAMENTE columnas de sucursales
+                        const sucursalesMap = {}; // {nombreSucursal: id}
+                        this.sucursales.forEach(s => {
+                            sucursalesMap[s.nombre.toLowerCase().trim()] = s.id;
+                        });
+                        
+                        // Encontrar columnas que coincidan con sucursales
+                        const columnsSucursales = [];
+                        encabezados.forEach((header, idx) => {
+                            const headerLower = header.toLowerCase().trim();
+                            // Búsqueda exacta y parcial
+                            for (const [nombreSuc, idSuc] of Object.entries(sucursalesMap)) {
+                                if (headerLower === nombreSuc || headerLower.includes(nombreSuc)) {
+                                    console.log(`[DEBUG] Detectada sucursal: "${header}" (idx=${idx}) → ID=${idSuc}`);
+                                    columnsSucursales.push({
+                                        index: idx,
+                                        nombre: header,
+                                        sucursal_id: idSuc
+                                    });
+                                    break;
+                                }
+                            }
+                        });
+                        
+                        console.log(`[DEBUG] Columnas de sucursales detectadas: ${columnsSucursales.length}`, columnsSucursales);
                         
                         const productosProcesados = [];
                         const errores = [];
+                        
+                        // Validar que encontró las columnas mínimas
+                        if (idxCodigo === -1 || idxNombre === -1) {
+                            this.mensajeImportacion = `❌ Error: No se encontraron las columnas necesarias. Se requiere al menos "Codigo" y "Nombre"`;
+                            this.tipoMensajeImportacion = 'danger';
+                            this.importandoProductos = false;
+                            return;
+                        }
                         
                         for (let i = 1; i < lineas.length; i++) {
                             const linea = lineas[i].trim();
@@ -806,20 +1158,48 @@ const ProductosView = {
                             
                             const codigo = valores[idxCodigo]?.trim();
                             const nombre = valores[idxNombre]?.trim();
-                            const categoria = valores[idxCategoria]?.trim();
-                            const precio = parseFloat(valores[idxPrecio]) || 0;
-                            const stock = parseInt(valores[idxStock]) || 0;
+                            const categoria = idxCategoria !== -1 ? (valores[idxCategoria]?.trim() || '') : '';
+                            const subcategoria = idxSubcategoria !== -1 ? (valores[idxSubcategoria]?.trim() || '') : '';
+                            const precio = idxPrecio !== -1 ? (parseFloat(valores[idxPrecio]) || 0) : 0;
                             
                             if (codigo && nombre) {
-                                productosProcesados.push({
-                                    codigo,
-                                    nombre,
-                                    categoria,
-                                    precio,
-                                    stock,
-                                    sucursal_id: this.sucursalImportacion
-                                });
+                                // SI hay columnas de sucursales dinámicas, usarlas
+                                if (columnsSucursales.length > 0) {
+                                    for (const sucCol of columnsSucursales) {
+                                        const stock = parseInt(valores[sucCol.index]) || 0;
+                                        if (stock > 0 || stock === 0) { // Incluir aunque sea 0
+                                            productosProcesados.push({
+                                                codigo,
+                                                nombre,
+                                                categoria: categoria || 'General',
+                                                subcategoria: subcategoria || categoria || '',
+                                                precio,
+                                                stock,
+                                                sucursal_id: sucCol.sucursal_id
+                                            });
+                                        }
+                                    }
+                                } else {
+                                    // Si NO hay columnas de sucursales, usar sucursal seleccionada + columna stock
+                                    const stock = idxStock !== -1 ? (parseInt(valores[idxStock]) || 0) : 0;
+                                    productosProcesados.push({
+                                        codigo,
+                                        nombre,
+                                        categoria: categoria || 'General',
+                                        subcategoria: subcategoria || categoria || '',
+                                        precio,
+                                        stock,
+                                        sucursal_id: this.sucursalImportacion
+                                    });
+                                }
                             }
+                        }
+                        
+                        if (productosProcesados.length === 0) {
+                            this.mensajeImportacion = `❌ Error: No se encontraron productos en el archivo. Verifica que tenga datos después del encabezado.`;
+                            this.tipoMensajeImportacion = 'danger';
+                            this.importandoProductos = false;
+                            return;
                         }
                         
                         // Enviar productos procesados al servidor
@@ -829,12 +1209,20 @@ const ProductosView = {
                             { headers: { Authorization: `Bearer ${this.token}` } }
                         );
                         
-                        this.mensajeImportacion = `✓ ${response.data.importados} productos importados exitosamente`;
-                        this.tipoMensajeImportacion = 'success';
+                        if (response.data.errores && response.data.errores.length > 0) {
+                            const detalles = response.data.errores.slice(0, 3).join('\n');
+                            this.mensajeImportacion = `⚠️ ${response.data.importados} de ${response.data.total} importados.\n\nErrores:\n${detalles}`;
+                            this.tipoMensajeImportacion = 'warning';
+                        } else {
+                            this.mensajeImportacion = `✓ ${response.data.importados} productos importados exitosamente`;
+                            this.tipoMensajeImportacion = 'success';
+                        }
                         this.archivoSeleccionado = null;
                         await this.cargarProductos();
                     } catch (err) {
-                        this.mensajeImportacion = 'Error procesando archivo: ' + (err.response?.data?.error || err.message);
+                        console.error('Error en importación:', err);
+                        const errorMsg = err.response?.data?.error || err.message || 'Error desconocido';
+                        this.mensajeImportacion = `❌ Error: ${errorMsg}\n\nDetalles: ${JSON.stringify(err.response?.data || {})}`;
                         this.tipoMensajeImportacion = 'danger';
                     } finally {
                         this.importandoProductos = false;
@@ -858,12 +1246,70 @@ const ProductosView = {
             } catch (err) {
                 alert('Error: ' + err.response?.data?.error);
             }
+        },
+        async cargarCategorias() {
+            try {
+                const res = await axios.get(
+                    `${window.location.origin}/api/productos/categorias`,
+                    { headers: { Authorization: `Bearer ${this.token}` } }
+                );
+                this.categorias = res.data || [];
+            } catch (err) {
+                console.error('Error cargando categorías:', err);
+            }
+        },
+        aplicarFiltros() {
+            this.filtrosAplicados.busqueda = this.busquedaProducto;
+            this.filtrosAplicados.categoria = this.categoriaSeleccionada;
+            this.filtrosAplicados.subcategoria = this.subcategoriaSeleccionada;
+        },
+        limpiarFiltros() {
+            this.busquedaProducto = '';
+            this.categoriaSeleccionada = '';
+            this.subcategoriaSeleccionada = '';
+            this.filtrosAplicados = { busqueda: '', categoria: '', subcategoria: '' };
+        },
+        obtenerCategoria(producto) {
+            if (!producto.categoria_id) return '-';
+            const categoria = this.categorias.find(c => c.id === producto.categoria_id);
+            return categoria ? categoria.nombre : '-';
+        },
+        obtenerSubcategoria(producto) {
+            if (!producto.subcategoria_id) return '-';
+            const subcategoria = this.subcategorias.find(s => s.id === producto.subcategoria_id);
+            return subcategoria ? subcategoria.nombre : '-';
+        },
+        abrirModalPrecio(producto) {
+            this.productoParaPrecio = producto;
+            this.precioIngresado = producto.precio || 0;
+            this.mostrarModalPrecio = true;
+        },
+        async guardarPrecio() {
+            if (!this.productoParaPrecio) return;
+            
+            try {
+                await axios.put(
+                    `${window.location.origin}/api/productos/${this.productoParaPrecio.id}`,
+                    { precio: this.precioIngresado },
+                    { headers: { Authorization: `Bearer ${this.token}` } }
+                );
+                this.mostrarModalPrecio = false;
+                await this.cargarProductos();
+            } catch (err) {
+                alert('Error al guardar precio: ' + (err.response?.data?.error || err.message));
+            }
+        },
+        cerrarModalPrecio() {
+            this.mostrarModalPrecio = false;
+            this.productoParaPrecio = null;
+            this.precioIngresado = 0;
         }
     },
     mounted() {
         if (this.token) {
             this.cargarProductos();
             this.cargarSubcategorias();
+            this.cargarCategorias();
             this.cargarSucursales();
         }
     },
@@ -872,8 +1318,13 @@ const ProductosView = {
             if (newToken) {
                 this.cargarProductos();
                 this.cargarSubcategorias();
+                this.cargarCategorias();
                 this.cargarSucursales();
             }
+        },
+        categoriaSeleccionada() {
+            // Cuando cambia la categoría, resetear subcategoría pero no filtrar automáticamente
+            this.subcategoriaSeleccionada = '';
         }
     }
 };
@@ -886,9 +1337,14 @@ const InventarioView = {
             <div class="card">
                 <div class="card-header">
                     <h3>Gestión de Inventario</h3>
-                    <button @click="mostrarEntrada = !mostrarEntrada" class="btn btn-primary">
-                        {{ mostrarEntrada ? '← Ocultar' : '+ Registrar Entrada' }}
-                    </button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button @click="mostrarEntrada = !mostrarEntrada" class="btn btn-primary">
+                            {{ mostrarEntrada ? '← Ocultar' : '+ Registrar Entrada' }}
+                        </button>
+                        <button @click="exportarInventario" class="btn btn-success">
+                            📥 Exportar Inventario
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Formulario de entrada -->
@@ -906,22 +1362,27 @@ const InventarioView = {
                         </div>
                         <div class="form-group">
                             <label for="buscar-producto">Producto</label>
-                            <input 
-                                v-model="busquedaProductoEntrada"
-                                id="buscar-producto"
-                                name="buscar_producto"
-                                type="text"
-                                placeholder="Busca producto..."
-                                style="width: 100%; padding: 0.5rem;"
-                            >
-                            <div v-if="productosEncontrados.length > 0" style="position: absolute; background: white; border: 1px solid var(--gray-300); border-radius: 0.375rem; width: 100%; max-height: 200px; overflow-y: auto; z-index: 10;">
-                                <div 
-                                    v-for="prod in productosEncontrados" 
-                                    :key="prod.id"
-                                    @click="entrada.producto_id = prod.id; busquedaProductoEntrada = prod.nombre;"
-                                    style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--gray-200);"
+                            <div style="position: relative;">
+                                <input 
+                                    :value="entrada.producto_id ? '✓ ' + obtenerNombreProducto(entrada.producto_id) : busquedaProductoEntrada"
+                                    @input="manejarBusquedaProducto"
+                                    @focus="entrada.producto_id = ''"
+                                    id="buscar-producto"
+                                    name="buscar_producto"
+                                    type="text"
+                                    placeholder="Busca producto..."
+                                    style="width: 100%; padding: 0.5rem;"
                                 >
-                                    {{ prod.nombre }} ({{ prod.codigo }})
+                                <!-- Dropdown de búsqueda -->
+                                <div v-if="productosEncontrados.length > 0 && busquedaProductoEntrada" style="position: absolute; background: white; border: 1px solid var(--gray-300); border-radius: 0.375rem; width: 100%; max-height: 200px; overflow-y: auto; z-index: 10; top: 100%;">
+                                    <div 
+                                        v-for="prod in productosEncontrados" 
+                                        :key="prod.id"
+                                        @click="seleccionarProducto(prod)"
+                                        style="padding: 0.5rem; cursor: pointer; border-bottom: 1px solid var(--gray-200);"
+                                    >
+                                        {{ prod.nombre }} ({{ prod.codigo }})
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -950,14 +1411,74 @@ const InventarioView = {
 
                 <!-- Tabla de stock por sucursal -->
                 <h4 style="margin-bottom: 1rem; margin-top: 2rem;">Stock Actual por Sucursal</h4>
-                <div class="form-group">
-                    <label for="sucursal-selector">Selecciona Sucursal</label>
-                    <select v-model="sucursalSeleccionada" id="sucursal-selector" name="sucursal_selector">
-                        <option value="">Todas</option>
-                        <option v-for="suc in sucursales" :key="suc.id" :value="suc.id">
-                            {{ suc.nombre }}
-                        </option>
-                    </select>
+                
+                <!-- Sucursal (primera) -->
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="form-group" style="max-width: 400px;">
+                        <label for="sucursal-selector">Selecciona Sucursal</label>
+                        <select v-model="sucursalSeleccionada" id="sucursal-selector" name="sucursal_selector">
+                            <option value="">Todas</option>
+                            <option v-for="suc in sucursales" :key="suc.id" :value="suc.id">
+                                {{ suc.nombre }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Filtros de búsqueda y categorías -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="busqueda-productos">Buscar Producto</label>
+                        <input 
+                            v-model="busquedaProductos" 
+                            id="busqueda-productos"
+                            name="busqueda_productos"
+                            type="text" 
+                            placeholder="Nombre o código..."
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria-selector">Categoría</label>
+                        <select v-model="categoriaSeleccionada" id="categoria-selector" name="categoria_selector">
+                            <option value="">Todas</option>
+                            <option v-for="cat in categorias" :key="cat.id" :value="cat.id">
+                                {{ cat.nombre }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="subcategoria-selector">Subcategoría</label>
+                        <select v-model="subcategoriaSeleccionada" id="subcategoria-selector" name="subcategoria_selector">
+                            <option value="">Todas</option>
+                            <option v-for="subcat in subcategoriasFiltradasPorCategoria" :key="subcat.id" :value="subcat.id">
+                                {{ subcat.nombre }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Botones de filtrar y limpiar -->
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                    <button @click="aplicarFiltros" class="btn btn-primary" style="padding: 0.625rem 1.25rem;">
+                        🔍 Buscar/Filtrar
+                    </button>
+                    <button @click="limpiarFiltros" class="btn" style="padding: 0.625rem 1.25rem;">
+                        ✕ Limpiar Filtros
+                    </button>
+                </div>
+                
+                <!-- Items por página -->
+                <div style="margin-bottom: 1.5rem;">
+                    <div class="form-group" style="max-width: 200px;">
+                        <label for="items-por-pagina">Items por página</label>
+                        <select v-model.number="itemsPorPagina" id="items-por-pagina" name="items_por_pagina" @change="paginaActual = 1">
+                            <option :value="10">10</option>
+                            <option :value="20">20</option>
+                            <option :value="30">30</option>
+                            <option :value="50">50</option>
+                            <option :value="100">100</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div v-if="cargandoStock" style="text-align: center; padding: 2rem;">
@@ -966,23 +1487,31 @@ const InventarioView = {
                 <div v-else-if="stocks.length === 0" style="padding: 2rem; text-align: center; color: var(--gray-600);">
                     No hay productos en stock
                 </div>
-                <div v-else style="overflow-x: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Producto</th>
-                                <th>Cantidad</th>
-                                <th>Mínimo</th>
-                                <th>Estado</th>
-                                <th>Precio</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="stock in stocks" :key="stock.id">
+                <div v-else-if="stocksFiltrados.length === 0" style="padding: 2rem; text-align: center; color: var(--gray-600);">
+                    No se encontraron productos con los filtros seleccionados
+                </div>
+                <div v-else>
+                    <div style="overflow-x: auto; margin-bottom: 1rem;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th>Subcategoría</th>
+                                    <th>Cantidad</th>
+                                    <th>Mínimo</th>
+                                    <th>Estado</th>
+                                    <th>Precio</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="stock in stocksPaginadosFiltrados" :key="stock.id">
                                 <td>{{ stock.producto_codigo }}</td>
                                 <td>{{ stock.producto_nombre }}</td>
+                                <td>{{ obtenerCategoria(stock.producto_id) }}</td>
+                                <td>{{ obtenerSubcategoria(stock.producto_id) }}</td>
                                 <td style="font-weight: 600;">{{ stock.cantidad }}</td>
                                 <td>{{ stock.cantidad_minima }}</td>
                                 <td>
@@ -1001,6 +1530,42 @@ const InventarioView = {
                             </tr>
                         </tbody>
                     </table>
+                    </div>
+                    
+                    <!-- Información de paginación y controles -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem; background-color: var(--gray-50); border-radius: 0.375rem;">
+                        <div style="color: var(--gray-600); font-size: 0.875rem;">
+                            Mostrando {{ rangoMostradoFiltrado.inicio }}-{{ rangoMostradoFiltrado.fin }} de {{ rangoMostradoFiltrado.total }} resultados
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <button @click="paginaActual = 1" :disabled="paginaActual === 1" class="btn btn-sm" style="padding: 0.5rem 0.75rem;" title="Primera página">
+                                «
+                            </button>
+                            <button @click="paginaActual--" :disabled="paginaActual === 1" class="btn btn-sm" style="padding: 0.5rem 0.75rem;">
+                                ‹ Anterior
+                            </button>
+                            <div style="display: flex; gap: 0.25rem;">
+                                <button 
+                                    v-for="n in paginasAMostrar" 
+                                    :key="n"
+                                    @click="paginaActual = n"
+                                    :class="['btn', 'btn-sm', paginaActual === n ? 'btn-primary' : '']"
+                                    style="padding: 0.5rem 0.75rem; min-width: 35px;"
+                                >
+                                    {{ n }}
+                                </button>
+                            </div>
+                            <button @click="paginaActual++" :disabled="paginaActual === totalPaginasFiltradas" class="btn btn-sm" style="padding: 0.5rem 0.75rem;">
+                                Siguiente ›
+                            </button>
+                            <button @click="paginaActual = totalPaginasFiltradas" :disabled="paginaActual === totalPaginasFiltradas" class="btn btn-sm" style="padding: 0.5rem 0.75rem;" title="Última página">
+                                »
+                            </button>
+                        </div>
+                        <div style="color: var(--gray-600); font-size: 0.875rem;">
+                            Página {{ paginaActual }} de {{ totalPaginasFiltradas }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1010,9 +1575,19 @@ const InventarioView = {
             sucursales: [],
             stocks: [],
             productos: [],
+            categorias: [],
+            subcategorias: [],
+            filtrosAplicados: {
+                busqueda: '',
+                categoria: '',
+                subcategoria: ''
+            },
             mostrarEntrada: false,
             sucursalSeleccionada: '',
             cargandoStock: false,
+            busquedaProductos: '',
+            categoriaSeleccionada: '',
+            subcategoriaSeleccionada: '',
             entrada: {
                 sucursal_id: '',
                 producto_id: '',
@@ -1023,7 +1598,9 @@ const InventarioView = {
             },
             busquedaProductoEntrada: '',
             mensajeEntrada: '',
-            tipoMensajeEntrada: 'success'
+            tipoMensajeEntrada: 'success',
+            itemsPorPagina: 10,
+            paginaActual: 1
         };
     },
     computed: {
@@ -1033,6 +1610,86 @@ const InventarioView = {
                 p.nombre.toLowerCase().includes(this.busquedaProductoEntrada.toLowerCase()) ||
                 p.codigo.toLowerCase().includes(this.busquedaProductoEntrada.toLowerCase())
             ).slice(0, 5);
+        },
+        totalPaginas() {
+            return Math.ceil(this.stocks.length / this.itemsPorPagina);
+        },
+        stocksPaginados() {
+            const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
+            const fin = inicio + this.itemsPorPagina;
+            return this.stocks.slice(inicio, fin);
+        },
+        rangoMostrado() {
+            const inicio = (this.paginaActual - 1) * this.itemsPorPagina + 1;
+            const fin = Math.min(this.paginaActual * this.itemsPorPagina, this.stocks.length);
+            return { inicio, fin, total: this.stocks.length };
+        },
+        paginasAMostrar() {
+            const total = this.totalPaginas;
+            const actual = this.paginaActual;
+            const rango = 5;
+            
+            let inicio, fin;
+            
+            // Si hay 5 o menos páginas, mostrar todas
+            if (total <= rango) {
+                inicio = 1;
+                fin = total;
+            }
+            // Si estamos en las primeras 3 páginas
+            else if (actual <= 3) {
+                inicio = 1;
+                fin = rango;
+            }
+            // Si estamos en las últimas 3 páginas
+            else if (actual > total - 3) {
+                inicio = total - rango + 1;
+                fin = total;
+            }
+            // En el medio: mostrar 2 antes y 2 después de la actual
+            else {
+                inicio = actual - 2;
+                fin = actual + 2;
+            }
+            
+            const paginas = [];
+            for (let i = inicio; i <= fin; i++) {
+                paginas.push(i);
+            }
+            return paginas;
+        },
+        subcategoriasFiltradasPorCategoria() {
+            if (!this.categoriaSeleccionada) return this.subcategorias;
+            return this.subcategorias.filter(sub => sub.categoria_id === this.categoriaSeleccionada);
+        },
+        stocksFiltrados() {
+            return this.stocks.filter(stock => {
+                // Usar filtrosAplicados en lugar de valores en tiempo real
+                const coincideBusqueda = !this.filtrosAplicados.busqueda || 
+                    stock.producto_nombre.toLowerCase().includes(this.filtrosAplicados.busqueda.toLowerCase()) ||
+                    stock.producto_codigo.toLowerCase().includes(this.filtrosAplicados.busqueda.toLowerCase());
+                
+                const coincideCategoria = !this.filtrosAplicados.categoria || 
+                    (this.productos.find(p => p.id === stock.producto_id)?.categoria_id === this.filtrosAplicados.categoria);
+                
+                const coincideSubcategoria = !this.filtrosAplicados.subcategoria || 
+                    (this.productos.find(p => p.id === stock.producto_id)?.subcategoria_id === this.filtrosAplicados.subcategoria);
+                
+                return coincideBusqueda && coincideCategoria && coincideSubcategoria;
+            });
+        },
+        totalPaginasFiltradas() {
+            return Math.ceil(this.stocksFiltrados.length / this.itemsPorPagina);
+        },
+        stocksPaginadosFiltrados() {
+            const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
+            const fin = inicio + this.itemsPorPagina;
+            return this.stocksFiltrados.slice(inicio, fin);
+        },
+        rangoMostradoFiltrado() {
+            const inicio = (this.paginaActual - 1) * this.itemsPorPagina + 1;
+            const fin = Math.min(this.paginaActual * this.itemsPorPagina, this.stocksFiltrados.length);
+            return { inicio, fin, total: this.stocksFiltrados.length };
         }
     },
     methods: {
@@ -1064,7 +1721,7 @@ const InventarioView = {
             this.cargandoStock = true;
             try {
                 const res = await axios.get(
-                    `${window.location.origin}/api/inventario/stock/${this.sucursalSeleccionada}`,
+                    `${window.location.origin}/api/inventario/stock/${this.sucursalSeleccionada}?per_page=9999`,
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
                 this.stocks = res.data.stocks || [];
@@ -1077,7 +1734,7 @@ const InventarioView = {
         async cargarProductos() {
             try {
                 const res = await axios.get(
-                    `${window.location.origin}/api/productos?per_page=2000`,
+                    `${window.location.origin}/api/productos?per_page=9999`,
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
                 this.productos = res.data.productos || [];
@@ -1141,10 +1798,38 @@ const InventarioView = {
             this.entrada.cantidad = stock.cantidad;
             this.entrada.cantidad_minima = stock.cantidad_minima;
             this.entrada.observaciones = '';
+            this.busquedaProductoEntrada = ''; // Limpiar búsqueda para no mostrar dropdown
             this.mostrarEntrada = true;
         },
+        seleccionarProducto(producto) {
+            // Establecer producto y cerrar dropdown
+            this.entrada.producto_id = producto.id;
+            this.busquedaProductoEntrada = ''; // Limpiar búsqueda para cerrar dropdown
+        },
+        manejarBusquedaProducto(evento) {
+            // Limpiar producto seleccionado cuando el usuario empieza a escribir
+            this.entrada.producto_id = '';
+            this.busquedaProductoEntrada = evento.target.value;
+        },
+        obtenerNombreProducto(productoId) {
+            // Buscar nombre del producto por ID
+            const producto = this.productos.find(p => p.id === productoId);
+            return producto ? producto.nombre : 'Producto desconocido';
+        },
+        obtenerCategoria(productoId) {
+            const producto = this.productos.find(p => p.id === productoId);
+            if (!producto) return '-';
+            const categoria = this.categorias.find(c => c.id === producto.categoria_id);
+            return categoria ? categoria.nombre : '-';
+        },
+        obtenerSubcategoria(productoId) {
+            const producto = this.productos.find(p => p.id === productoId);
+            if (!producto) return '-';
+            const subcategoria = this.subcategorias.find(s => s.id === producto.subcategoria_id);
+            return subcategoria ? subcategoria.nombre : '-';
+        },
         cancelarEdicion() {
-            this.entrada = { sucursal_id: '', producto_id: '', cantidad: 1, cantidad_minima: null, observaciones: '', stock_id: null };
+            this.entrada = { sucursal_id: this.sucursales[0]?.id || '', producto_id: '', cantidad: 1, cantidad_minima: null, observaciones: '', stock_id: null };
             this.busquedaProductoEntrada = '';
             this.mostrarEntrada = false;
         },
@@ -1162,12 +1847,78 @@ const InventarioView = {
                 this.mensajeEntrada = 'Error: ' + (err.response?.data?.error || err.message);
                 this.tipoMensajeEntrada = 'danger';
             }
+        },
+        async cargarCategorias() {
+            try {
+                const res = await axios.get(
+                    `${window.location.origin}/api/productos/categorias`,
+                    { headers: { Authorization: `Bearer ${this.token}` } }
+                );
+                this.categorias = res.data || [];
+            } catch (err) {
+                console.error('Error cargando categorías:', err);
+            }
+        },
+        async cargarSubcategorias() {
+            try {
+                const res = await axios.get(
+                    `${window.location.origin}/api/productos/subcategorias`,
+                    { headers: { Authorization: `Bearer ${this.token}` } }
+                );
+                this.subcategorias = res.data || [];
+            } catch (err) {
+                console.error('Error cargando subcategorías:', err);
+            }
+        },
+        aplicarFiltros() {
+            this.filtrosAplicados.busqueda = this.busquedaProductos;
+            this.filtrosAplicados.categoria = this.categoriaSeleccionada;
+            this.filtrosAplicados.subcategoria = this.subcategoriaSeleccionada;
+            this.paginaActual = 1;
+        },
+        limpiarFiltros() {
+            this.busquedaProductos = '';
+            this.categoriaSeleccionada = '';
+            this.subcategoriaSeleccionada = '';
+            this.filtrosAplicados = { busqueda: '', categoria: '', subcategoria: '' };
+            this.paginaActual = 1;
+        },
+        async exportarInventario() {
+            try {
+                const response = await axios.get(
+                    `${window.location.origin}/api/inventario/exportar`,
+                    { 
+                        headers: { Authorization: `Bearer ${this.token}` },
+                        responseType: 'blob'
+                    }
+                );
+                
+                // Crear blob y descargar
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `inventario_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                alert('Error al exportar inventario: ' + (err.response?.data?.error || err.message));
+            }
         }
     },
     mounted() {
         if (this.token) {
             this.cargarSucursales();
             this.cargarProductos();
+            this.cargarCategorias();
+            this.cargarSubcategorias();
+            // Cargar stock con la sucursal por defecto (la primera que está seleccionada)
+            setTimeout(() => {
+                if (this.sucursalSeleccionada) {
+                    this.cargarStock();
+                }
+            }, 500);
         }
     },
     watch: {
@@ -1175,12 +1926,18 @@ const InventarioView = {
             if (newToken) {
                 this.cargarSucursales();
                 this.cargarProductos();
+                this.cargarCategorias();
+                this.cargarSubcategorias();
             }
         },
         sucursalSeleccionada() {
             if (this.sucursalSeleccionada) {
                 this.cargarStock();
             }
+        },
+        categoriaSeleccionada() {
+            // Cuando cambia la categoría, resetear subcategoría pero no filtrar automáticamente
+            this.subcategoriaSeleccionada = '';
         }
     }
 };
@@ -1787,6 +2544,9 @@ const DashboardView = {
                 <div class="stat-card" style="border-left-color: #ef4444;">
                     <h3>Bajo Stock</h3>
                     <div class="value">{{ bajoStock }}</div>
+                    <div style="font-size: 0.85rem; color: var(--gray-600); margin-top: 0.5rem;">
+                        {{ itemsBajoStock }} items en bajo stock
+                    </div>
                 </div>
             </div>
 
@@ -1848,6 +2608,7 @@ const DashboardView = {
             transaccionesHoy: 0,
             totalProductos: 0,
             bajoStock: 0,
+            itemsBajoStock: 0,
             ventasPorSucursal: [],
             productosTopVenta: [],
             chartSucursalesInstance: null
@@ -1897,6 +2658,7 @@ const DashboardView = {
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
                 this.bajoStock = resBajoStock.data.cantidad_bajo_stock || 0;
+                this.itemsBajoStock = resBajoStock.data.items_bajo_stock || 0;
                 
                 // Total de productos
                 const resTotalProductos = await axios.get(

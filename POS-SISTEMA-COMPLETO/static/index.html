@@ -60,9 +60,8 @@
 
         .navbar-content {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            gap: 2rem;
+            gap: 0;
         }
 
         .navbar-brand {
@@ -70,13 +69,54 @@
             font-weight: bold;
             color: var(--primary);
             text-decoration: none;
+            flex-shrink: 0;
         }
 
         .navbar-menu {
-            display: flex;
+            display: none;
             gap: 1rem;
             flex: 1;
             flex-wrap: wrap;
+        }
+
+        .menu-toggle {
+            display: block;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--primary);
+            padding: 0.5rem;
+            flex-shrink: 0;
+        }
+        
+        .navbar-user {
+            margin-left: auto;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .navbar-menu.collapsed {
+            display: none !important;
+        }
+
+        .navbar-menu.expanded {
+            display: flex !important;
+            flex-direction: column;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem;
+            z-index: 99;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .navbar-menu a, .navbar-menu button {
@@ -316,10 +356,6 @@
             .navbar-content {
                 flex-wrap: wrap;
                 gap: 1rem;
-            }
-
-            .navbar-menu {
-                width: 100%;
             }
 
             table {
@@ -980,94 +1016,98 @@
                             Motocell
                         </a>
                         
-                        <div class="navbar-menu">
+                        <button class="menu-toggle" @click="menuAbierto = !menuAbierto">
+                            {{ menuAbierto ? '✕' : '☰' }}
+                        </button>
+                        
+                        <div :class="['navbar-menu', menuAbierto ? 'expanded' : 'collapsed']">
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['dashboard', currentView === 'dashboard' ? 'active' : '']"
-                                @click.prevent="currentView = 'dashboard'"
+                                @click.prevent="irAVista('dashboard')"
                                 href="#"
                             >Dashboard</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['products', currentView === 'productos' ? 'active' : '']"
-                                @click.prevent="currentView = 'productos'"
+                                @click.prevent="irAVista('productos')"
                                 href="#"
                             >Productos</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['inventory', currentView === 'inventario' ? 'active' : '']"
-                                @click.prevent="currentView = 'inventario'"
+                                @click.prevent="irAVista('inventario')"
                                 href="#"
                             >Inventario</a>
                             <a 
                                 :class="['sales', currentView === 'ventas' ? 'active' : '']"
-                                @click.prevent="currentView = 'ventas'"
+                                @click.prevent="irAVista('ventas')"
                                 href="#"
                             >Ventas</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['reports', currentView === 'reportes' ? 'active' : '']"
-                                @click.prevent="currentView = 'reportes'"
+                                @click.prevent="irAVista('reportes')"
                                 href="#"
                             >Reportes</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['users', currentView === 'usuarios' ? 'active' : '']"
-                                @click.prevent="currentView = 'usuarios'"
+                                @click.prevent="irAVista('usuarios')"
                                 href="#"
                             >Usuarios</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['branches', currentView === 'sucursales' ? 'active' : '']"
-                                @click.prevent="currentView = 'sucursales'"
+                                @click.prevent="irAVista('sucursales')"
                                 href="#"
                             >Sucursales</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['categories', currentView === 'categorias' ? 'active' : '']"
-                                @click.prevent="currentView = 'categorias'"
+                                @click.prevent="irAVista('categorias')"
                                 href="#"
                             >Categorías</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['subcategories', currentView === 'subcategorias' ? 'active' : '']"
-                                @click.prevent="currentView = 'subcategorias'"
+                                @click.prevent="irAVista('subcategorias')"
                                 href="#"
                             >Subcategorías</a>
                             <a 
                                 v-if="userRole === 'employee'" 
                                 :class="['sales-day', currentView === 'ventas-del-dia' ? 'active' : '']"
-                                @click.prevent="currentView = 'ventas-del-dia'"
+                                @click.prevent="irAVista('ventas-del-dia')"
                                 href="#"
                             >Ventas del Día</a>
                             <a 
                                 v-if="userRole === 'employee'" 
                                 :class="['cash-close', currentView === 'cierre-caja' ? 'active' : '']"
-                                @click.prevent="currentView = 'cierre-caja'"
+                                @click.prevent="irAVista('cierre-caja')"
                                 href="#"
                             >Cierre de Caja</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['reports', currentView === 'reportes-ventas' ? 'active' : '']"
-                                @click.prevent="currentView = 'reportes-ventas'"
+                                @click.prevent="irAVista('reportes-ventas')"
                                 href="#"
                             >Reportes Ventas</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['returns', currentView === 'devoluciones' ? 'active' : '']"
-                                @click.prevent="currentView = 'devoluciones'"
+                                @click.prevent="irAVista('devoluciones')"
                                 href="#"
                             >Devoluciones</a>
                             <a 
                                 v-if="userRole === 'admin' || userRole === 'employee'" 
                                 :class="['compatibility', currentView === 'compatibilidad' ? 'active' : '']"
-                                @click.prevent="currentView = 'compatibilidad'"
+                                @click.prevent="irAVista('compatibilidad')"
                                 href="#"
                             >🔍 Compatibilidad</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['stock-sales', currentView === 'ventas-sin-stock' ? 'active' : '']"
-                                @click.prevent="currentView = 'ventas-sin-stock'"
+                                @click.prevent="irAVista('ventas-sin-stock')"
                                 href="#"
                             >📦 Ventas Sin Stock</a>
                         </div>

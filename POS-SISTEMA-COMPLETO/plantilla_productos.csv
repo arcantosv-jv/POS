@@ -1,0 +1,16 @@
+codigo,nombre,categoria,subcategoria,precio,stock,sucursal_id
+MICA-001,Mica Samsung A10,Protección,Protección Pantalla,150.00,50,
+MICA-002,Mica Samsung A20,Protección,Protección Pantalla,150.00,45,
+MICA-003,Mica Samsung A30,Protección,Protección Pantalla,180.00,40,
+MICA-004,Mica iPhone 12,Protección,Protección Pantalla,200.00,30,
+MICA-005,Mica iPhone 13,Protección,Protección Pantalla,220.00,25,
+FUNDA-001,Funda Negra Samsung A10,Accesorios,Fundas,120.00,60,
+FUNDA-002,Funda Azul Samsung A20,Accesorios,Fundas,120.00,50,
+FUNDA-003,Funda Roja Samsung A30,Accesorios,Fundas,150.00,40,
+PROTECTOR-001,Protector de Cámara iPhone 12,Protección,Protección Cámara,80.00,100,
+PROTECTOR-002,Protector de Cámara iPhone 13,Protección,Protección Cámara,80.00,100,
+CABLE-001,Cable USB-C 2 metros,Accesorios,Cables,60.00,80,
+CABLE-002,Cable Lightning 2 metros,Accesorios,Cables,70.00,75,
+CARGADOR-001,Cargador Rápido 30W,Accesorios,Cargadores,350.00,20,
+CARGADOR-002,Cargador Rápido 65W,Accesorios,Cargadores,450.00,15,
+

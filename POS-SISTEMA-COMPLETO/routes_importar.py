@@ -20,8 +20,15 @@ def importar_productos():
         data = request.get_json()
         productos_data = data.get('productos', [])
         
+        print(f"[DEBUG] Importar productos - Recibidos {len(productos_data)} productos")
+        print(f"[DEBUG] Data completa: {data}")
+        
         if not productos_data:
-            return jsonify({'error': 'No hay productos para importar'}), 400
+            print("[ERROR] No hay productos en el request")
+            return jsonify({
+                'error': 'No hay productos para importar',
+                'detalles': 'El archivo CSV no contiene datos válidos. Verifica que:\n1. El archivo sea CSV\n2. Tenga al menos código y nombre\n3. Tenga datos después del encabezado'
+            }), 400
         
         importados = 0
         errores = []
@@ -31,9 +38,12 @@ def importar_productos():
                 codigo = prod.get('codigo', '').strip()
                 nombre = prod.get('nombre', '').strip()
                 categoria_nombre = prod.get('categoria', '').strip()
+                subcategoria_nombre = prod.get('subcategoria', '').strip() or categoria_nombre
                 precio = float(prod.get('precio', 0)) if prod.get('precio') else 0
                 stock_cantidad = int(prod.get('stock', 0)) if prod.get('stock') else 0
-                sucursal_id = prod.get('sucursal_id')
+                sucursal_id = str(prod.get('sucursal_id', '')).strip() if prod.get('sucursal_id') else None
+                
+                print(f"[DEBUG] Producto: codigo={codigo}, stock={stock_cantidad}, sucursal_id={sucursal_id}")
                 
                 # Validaciones
                 if not codigo or not nombre:
@@ -48,8 +58,8 @@ def importar_productos():
                     if precio > 0:
                         producto_existente.precio = precio
                     
-                    # Actualizar stock si se proporciona
-                    if sucursal_id and stock_cantidad >= 0:
+                    # Actualizar o crear stock para la sucursal especificada
+                    if sucursal_id:
                         stock = Stock.query.filter_by(
                             producto_id=producto_existente.id,
                             sucursal_id=sucursal_id
@@ -69,49 +79,36 @@ def importar_productos():
                     importados += 1
                     continue
                 
-                # Crear nueva subcategoría si no existe
-                subcategoria = None
+                # Crear categoría si no existe
+                categoria = None
                 if categoria_nombre:
-                    # Crear categoría si no existe
                     categoria = Categoria.query.filter_by(nombre=categoria_nombre).first()
                     if not categoria:
-                        categoria = Categoria(nombre=categoria_nombre)
+                        categoria = Categoria(nombre=categoria_nombre, descripcion=f'Categoría {categoria_nombre}')
                         db.session.add(categoria)
-                        db.session.flush()
-                    
-                    # Crear subcategoría
-                    subcategoria = Subcategoria.query.filter_by(
-                        nombre=categoria_nombre,
-                        categoria_id=categoria.id
-                    ).first()
-                    
-                    if not subcategoria:
-                        subcategoria = Subcategoria(
-                            nombre=categoria_nombre,
-                            categoria_id=categoria.id
-                        )
-                        db.session.add(subcategoria)
                         db.session.flush()
                 else:
-                    # Si no hay categoría, usar una por defecto
+                    # Si no hay categoría, usar General
                     categoria = Categoria.query.filter_by(nombre='General').first()
                     if not categoria:
-                        categoria = Categoria(nombre='General')
+                        categoria = Categoria(nombre='General', descripcion='Categoría General')
                         db.session.add(categoria)
                         db.session.flush()
-                    
-                    subcategoria = Subcategoria.query.filter_by(
-                        nombre='General',
+                
+                # Crear subcategoría si no existe
+                subcategoria = Subcategoria.query.filter_by(
+                    nombre=subcategoria_nombre,
+                    categoria_id=categoria.id
+                ).first()
+                
+                if not subcategoria:
+                    subcategoria = Subcategoria(
+                        nombre=subcategoria_nombre,
+                        descripcion=f'Subcategoría {subcategoria_nombre}',
                         categoria_id=categoria.id
-                    ).first()
-                    
-                    if not subcategoria:
-                        subcategoria = Subcategoria(
-                            nombre='General',
-                            categoria_id=categoria.id
-                        )
-                        db.session.add(subcategoria)
-                        db.session.flush()
+                    )
+                    db.session.add(subcategoria)
+                    db.session.flush()
                 
                 # Crear producto
                 producto = Producto(
@@ -142,6 +139,8 @@ def importar_productos():
                 errores.append(f"Error en producto {prod.get('nombre', 'desconocido')}: {str(e)}")
             except Exception as e:
                 db.session.rollback()
+                print(f"[ERROR] Excepción no esperada: {str(e)}")
+                print(f"[ERROR] Producto: {prod}")
                 errores.append(f"Error procesando producto: {str(e)}")
         
         resultado = {

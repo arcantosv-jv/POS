@@ -3,9 +3,16 @@ from datetime import datetime
 from sqlalchemy import func
 import bcrypt
 import uuid
+import random
 from config import get_cdmx_now
 
 db = SQLAlchemy()
+
+def generate_venta_id():
+    """Genera un ID de venta alfanumérico de 10 caracteres (ej: A3K9X2M7B1)"""
+    import string
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(chars) for _ in range(10))
 
 class User(db.Model):
     """Modelo de usuario"""
@@ -150,6 +157,7 @@ class Producto(db.Model):
             'precio': float(self.precio) if self.precio is not None else None,
             'impuesto': float(self.impuesto) if self.impuesto is not None else 0,
             'subcategoria_id': self.subcategoria_id,
+            'categoria_id': self.subcategoria.categoria_id if self.subcategoria else None,
             'codigo_barras': self.codigo_barras,
             'is_active': self.is_active
         }
@@ -209,7 +217,7 @@ class Venta(db.Model):
     """Modelo de venta"""
     __tablename__ = 'ventas'
     
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = db.Column(db.String(10), primary_key=True, default=generate_venta_id)
     numero_venta = db.Column(db.String(50), unique=True, nullable=False)
     sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False)
     cajero_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)

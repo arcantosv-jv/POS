@@ -30,6 +30,7 @@ createApp({
             
             // Vistas
             currentView: 'dashboard',
+            menuAbierto: false,
             
             // Formulario de login
             loginForm: {
@@ -107,6 +108,11 @@ createApp({
             } finally {
                 this.loginLoading = false;
             }
+        },
+        
+        irAVista(nombreVista) {
+            this.currentView = nombreVista;
+            this.menuAbierto = false; // Cerrar menú automáticamente
         },
         
         logout() {

@@ -305,7 +305,7 @@ def get_productos():
     """Obtener productos con filtros opcionales"""
     try:
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
+        per_page = request.args.get('per_page', 5000, type=int)
         subcategoria_id = request.args.get('subcategoria_id')
         categoria_id = request.args.get('categoria_id')
         

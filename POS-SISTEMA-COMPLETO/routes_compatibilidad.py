@@ -9,6 +9,10 @@ import os
 import requests
 import json
 from dotenv import load_dotenv
+import logging
+
+# Configurar logging
+logger = logging.getLogger(__name__)
 
 # Cargar variables de entorno
 load_dotenv()
@@ -251,40 +255,59 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
 """
     
     try:
-        import google.generativeai as genai
+        import google.genai as genai
         
-        genai.configure(api_key=api_key)
-        # Usar gemini-flash-latest (mejor rendimiento y disponibilidad)
-        model = genai.GenerativeModel('gemini-flash-latest')
+        # Usar la nueva API de google.genai
+        client = genai.Client(api_key=api_key)
         
-        response = model.generate_content(prompt)
+        logger.info(f"[GEMINI] Solicitando recomendación para modelo")
+        
+        # Usar gemini-3.5-flash (modelo más reciente)
+        response = client.models.generate_content(
+            model='gemini-3.5-flash',
+            contents=prompt
+        )
+        
+        logger.info(f"[GEMINI] Respuesta recibida")
         
         # Extraer el texto de la respuesta
         content = response.text
         
+        logger.info(f"[GEMINI] Parseando JSON...")
+        
         # Intentar parsear como JSON
         data = json.loads(content)
+        logger.info(f"[GEMINI] ✅ Éxito - Datos JSON válidos")
         return data
         
-    except ImportError:
+    except ImportError as e:
+        logger.error(f"[GEMINI] ❌ Import Error: {str(e)}")
         return {
-            'error': 'Google Generative AI no instalado',
-            'mensaje': 'Ejecuta: pip install google-generativeai'
+            'error': 'Google Genai no instalado',
+            'mensaje': 'Ejecuta: pip install google-genai'
         }
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        logger.error(f"[GEMINI] ❌ JSON Error: {str(e)}")
+        logger.error(f"[GEMINI] Contenido recibido: {content[:200]}")
         return {
             'error': 'Respuesta de Gemini no es JSON válido',
             'mensaje': 'Intenta de nuevo o contacta al administrador'
         }
     except Exception as e:
         error_msg = str(e)
+        logger.error(f"[GEMINI] ❌ Error: {error_msg}")
+        logger.error(f"[GEMINI] Tipo: {type(e).__name__}")
+        
         if '429' in error_msg or 'quota' in error_msg.lower():
             return {
                 'error': 'Límite de cuota alcanzado',
-                'mensaje': 'Has alcanzado el límite de solicitudes. Intenta más tarde o usa OpenAI/Anthropic',
+                'mensaje': 'Has alcanzado el límite de solicitudes. Intenta más tarde',
                 'detalles': error_msg[:100]
             }
-        return {'error': f'Error en Gemini: {error_msg[:100]}', 'tipo': type(e).__name__}
+        return {
+            'error': f'Error en Gemini: {error_msg[:100]}', 
+            'tipo': type(e).__name__
+        }
 
 
 def _get_generic_recommendation(modelo_celular):
@@ -380,6 +403,38 @@ def _get_generic_recommendation(modelo_celular):
         }
 
 
+def _ajustar_compatibilidad_por_notch(recomendaciones):
+    """
+    Post-procesamiento: Si solo difiere el notch (gota o V), elevar la compatibilidad a media mínimo
+    
+    Detecta en la razón si solo el notch es diferente y ajusta el nivel de baja a media.
+    """
+    if not recomendaciones or 'compatibles' not in recomendaciones:
+        return recomendaciones
+    
+    for mica in recomendaciones.get('compatibles', []):
+        razon = (mica.get('razon', '') or '').lower()
+        
+        # Palabras clave que indican que solo el notch es diferente
+        palabras_clave_notch = [
+            'notch', 'gota', 'v-notch', 'pantalla sin notch',
+            'diferencia notch', 'solo notch', 'solo diferencia es notch',
+            'único cambio', 'cambio solo'
+        ]
+        
+        # Si la razón menciona notch y el nivel es baja, elevar a media
+        tiene_notch_mention = any(palabra in razon for palabra in palabras_clave_notch)
+        
+        if tiene_notch_mention and mica.get('nivel_compatibilidad') == 'baja':
+            # Elevamos a media porque el notch no afecta la compatibilidad física
+            mica['nivel_compatibilidad'] = 'media'
+            # Actualizar también la razón para reflejar el ajuste
+            if 'notch' in razon:
+                mica['razon'] += ' ✓ Ajustada a media (notch no afecta la instalación de mica)'
+    
+    return recomendaciones
+
+
 @compatibilidad_bp.route('/buscar', methods=['POST'])
 @jwt_required()
 def buscar_compatibilidad():
@@ -408,6 +463,9 @@ def buscar_compatibilidad():
         
         if 'error' in recomendaciones:
             return jsonify(recomendaciones), 503
+        
+        # Post-procesamiento: Ajustar compatibilidad cuando solo difiere el notch
+        recomendaciones = _ajustar_compatibilidad_por_notch(recomendaciones)
         
         return jsonify({
             'exito': True,
