@@ -3758,57 +3758,76 @@ const VentasDelDiaView = {
             </div>
 
             <!-- Modal para editar pagos mixtos -->
-            <div v-if="ventaSeleccionada" class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Desglose de Pagos - {{ ventaSeleccionada.numero_venta }}</h5>
-                            <button type="button" class="btn-close" @click="ventaSeleccionada = null"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label">Total a distribuir: <strong>{{ formatoMoneda(ventaSeleccionada.total) }}</strong></label>
-                            </div>
-                            
-                            <div v-for="(pago, index) in pagosTemporal" :key="index" class="mb-3 p-3 border rounded">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Método de Pago</label>
-                                        <select v-model="pago.metodo_pago" class="form-select">
-                                            <option value="efectivo">Efectivo</option>
-                                            <option value="tarjeta">Tarjeta</option>
-                                            <option value="transferencia">Transferencia</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Monto</label>
-                                        <input v-model.number="pago.monto" type="number" class="form-control" step="0.01" min="0">
-                                    </div>
+            <!-- Modal Desglose de Pagos -->
+            <div v-if="ventaSeleccionada" class="modal-overlay" style="z-index: 1001;">
+                <div class="modal" style="max-width: 550px;">
+                    
+                    <!-- Header -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0;">📋 Desglose de Pagos - {{ ventaSeleccionada.numero_venta }}</h3>
+                        <button @click="ventaSeleccionada = null" class="modal-close">✕</button>
+                    </div>
+
+                    <!-- Total Display -->
+                    <div style="background-color: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Total a distribuir:</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">{{ formatoMoneda(ventaSeleccionada.total) }}</div>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <div v-for="(pago, index) in pagosTemporal" :key="index" style="margin-bottom: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.75rem; align-items: end;">
+                                <!-- Method Select -->
+                                <div>
+                                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Método</label>
+                                    <select v-model="pago.metodo_pago" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.875rem;">
+                                        <option value="efectivo">💵 Efectivo</option>
+                                        <option value="tarjeta">💳 Tarjeta</option>
+                                        <option value="transferencia">🏦 Transferencia</option>
+                                    </select>
                                 </div>
-                                <button v-if="pagosTemporal.length > 1" class="btn btn-sm btn-danger mt-2" @click="pagosTemporal.splice(index, 1)">
-                                    Eliminar
+                                
+                                <!-- Amount Input -->
+                                <div>
+                                    <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Monto</label>
+                                    <input v-model.number="pago.monto" type="number" step="0.01" min="0" placeholder="0.00" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.875rem;">
+                                </div>
+
+                                <!-- Delete Button -->
+                                <button v-if="pagosTemporal.length > 1" @click="pagosTemporal.splice(index, 1)" style="padding: 0.5rem 0.75rem; background-color: var(--danger); color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 600;">
+                                    🗑️
                                 </button>
                             </div>
-
-                            <button class="btn btn-sm btn-secondary" @click="agregarPagoMas">
-                                + Agregar otro método
-                            </button>
-
-                            <div class="mt-3">
-                                <small class="text-muted">
-                                    Total pagos: <strong>{{ formatoMoneda(calcularTotalPagos()) }}</strong>
-                                </small>
-                                <div v-if="calcularTotalPagos() !== parseFloat(ventaSeleccionada.total)" class="text-danger mt-2">
-                                    ⚠️ El total de pagos no coincide con el total de la venta
-                                </div>
-                            </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @click="ventaSeleccionada = null">Cancelar</button>
-                            <button type="button" class="btn btn-primary" @click="guardarPagosMixtos" :disabled="calcularTotalPagos() !== parseFloat(ventaSeleccionada.total)">
-                                Guardar Pagos
-                            </button>
+
+                        <!-- Add Another Method Button -->
+                        <button @click="agregarPagoMas" style="width: 100%; padding: 0.75rem; background-color: var(--gray-200); color: var(--gray-700); border: 1px solid var(--gray-300); border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">
+                            + Agregar otro método
+                        </button>
+                    </div>
+
+                    <!-- Summary Box -->
+                    <div style="background-color: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <span>Total registrado:</span>
+                            <span style="font-weight: 700;">{{ formatoMoneda(calcularTotalPagos()) }}</span>
                         </div>
+                        <div v-if="calcularTotalPagos() === parseFloat(ventaSeleccionada.total)" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 0.375rem; color: #155724; font-size: 0.875rem; font-weight: 600;">
+                            <span>✓ Los montos coinciden perfectamente</span>
+                        </div>
+                        <div v-else style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 0.375rem; color: #856404; font-size: 0.875rem; font-weight: 600;">
+                            <span>⚠️ Diferencia:</span>
+                            <span>{{ formatoMoneda(Math.abs(calcularTotalPagos() - parseFloat(ventaSeleccionada.total))) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button @click="ventaSeleccionada = null" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+                        <button @click="guardarPagosMixtos" class="btn btn-success" style="flex: 1;" :disabled="calcularTotalPagos() !== parseFloat(ventaSeleccionada.total)">
+                            ✓ Guardar Pagos
+                        </button>
                     </div>
                 </div>
             </div>

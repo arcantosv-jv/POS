@@ -107,6 +107,20 @@ def crear_venta():
         venta.total_impuestos = total_impuestos
         
         db.session.add(venta)
+        db.session.flush()  # Para obtener el ID de la venta
+        
+        # Si es pago mixto, registrar desglose de pagos
+        if data.get('forma_pago') == 'mixto' and data.get('pagos_mixtos'):
+            pagos_mixtos = data.get('pagos_mixtos')
+            for metodo, monto in pagos_mixtos.items():
+                if monto and monto > 0:
+                    pago = PagoVenta(
+                        venta_id=venta.id,
+                        metodo_pago=metodo,
+                        monto=Decimal(str(monto))
+                    )
+                    db.session.add(pago)
+        
         db.session.commit()
         
         return jsonify({
