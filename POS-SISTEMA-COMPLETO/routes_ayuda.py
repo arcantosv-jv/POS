@@ -6,7 +6,7 @@ Integración con IA para proporcionar soluciones de troubleshooting de dispositi
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
-import google.genai as genai
+from google import genai
 from dotenv import load_dotenv
 import logging
 
@@ -19,12 +19,12 @@ load_dotenv()
 ayuda_bp = Blueprint('ayuda', __name__, url_prefix='/api/ayuda')
 
 # Configurar API de Google Generative AI (google-genai)
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 genai_client = None
-if GOOGLE_API_KEY:
-    genai_client = genai.Client(api_key=GOOGLE_API_KEY)
+if GEMINI_API_KEY:
+    genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
 
 CATEGORY_MAP = {
     'formateo': 'Formateo',
@@ -109,7 +109,7 @@ def get_solution_from_ai(modelo, categoria, version_so, requerimiento_especifico
         dict - {"solucion": "texto de la solución", "error": None/str}
     """
     
-    if not GOOGLE_API_KEY:
+    if not GEMINI_API_KEY:
         return {
             "solucion": None,
             "error": "No hay clave API de Google configurada. Contacta al administrador."

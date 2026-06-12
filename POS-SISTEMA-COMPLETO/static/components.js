@@ -6375,7 +6375,7 @@ const AyudaView = {
                                 class="btn btn-primary"
                                 :disabled="!formulario.modelo || !formulario.categoria || cargandoAyuda"
                             >
-                                {{ cargandoAyuda ? '🔄 Obteniendo solución...' : '🤖 Obtener Solución con IA' }}
+                                {{ cargandoAyuda ? '🔄 Obteniendo solución...' : '🤖 Obtener Solución' }}
                             </button>
                             <button @click="limpiarFormulario" class="btn btn-secondary">Limpiar</button>
                         </div>
