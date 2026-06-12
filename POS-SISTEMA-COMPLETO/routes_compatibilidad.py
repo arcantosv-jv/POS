@@ -260,9 +260,9 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
         # Usar la nueva API de google.genai
         client = genai.Client(api_key=api_key)
         
-        # Usar modelo disponible (gemini-2.0-flash)
+        # Usar modelo disponible (gemini-3.5-flash con cuota disponible)
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-3.5-flash',
             contents=prompt
         )
         
