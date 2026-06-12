@@ -255,19 +255,18 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
 """
     
     try:
-        import google.genai as genai
+        from google import genai
         
         # Usar la nueva API de google.genai
         client = genai.Client(api_key=api_key)
         
-        logger.info(f"[GEMINI] Solicitando recomendación para modelo")
-        
-        # Usar gemini-3.5-flash (modelo más reciente)
+        # Usar modelo disponible (gemini-2.0-flash)
         response = client.models.generate_content(
-            model='gemini-3.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt
         )
         
+        logger.info(f"[GEMINI] Solicitando recomendación para modelo")
         logger.info(f"[GEMINI] Respuesta recibida")
         
         # Extraer el texto de la respuesta
