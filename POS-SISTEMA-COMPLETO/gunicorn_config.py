@@ -32,7 +32,7 @@ proc_name = "pos_app"
 keepalive = 5
 
 # Preload app para ahorrar memoria
-preload_app = True
+preload_app = False
 
 # Max requests per worker (reciclar workers)
 max_requests = 1000
@@ -68,17 +68,4 @@ tmp_upload_dir = None
 
 # Application
 raw_env = []
-pythonpath = None
 reload = False
-reload_extra_files = []
-
-# Hooks
-on_starting = None
-on_exit = None
-when_ready = None
-pre_fork = None
-post_fork = None
-post_worker_init = None
-worker_abort = None
-pre_exec = None
-pre_replace_worker = None

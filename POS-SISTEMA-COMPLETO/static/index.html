@@ -1111,6 +1111,12 @@
                                 href="#"
                             >🔧 Reparaciones</a>
                             <a 
+                                v-if="userRole === 'admin' || userRole === 'employee'" 
+                                :class="['help', currentView === 'ayuda' ? 'active' : '']"
+                                @click.prevent="irAVista('ayuda')"
+                                href="#"
+                            >❓ Ayuda</a>
+                            <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['stock-sales', currentView === 'ventas-sin-stock' ? 'active' : '']"
                                 @click.prevent="irAVista('ventas-sin-stock')"
@@ -1214,6 +1220,12 @@
                 <div v-if="currentView === 'reparaciones'">
                     <h1 style="margin-bottom: 2rem;">🔧 Reparaciones</h1>
                     <reparaciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reparaciones-view>
+                </div>
+
+                <!-- Ayuda (Admin y Empleados) -->
+                <div v-if="currentView === 'ayuda'">
+                    <h1 style="margin-bottom: 2rem;">❓ Ayuda</h1>
+                    <ayuda-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ayuda-view>
                 </div>
 
                 <!-- Ventas sin Stock (Admin) -->

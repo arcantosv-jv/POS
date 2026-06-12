@@ -6287,3 +6287,209 @@ const ReparacionesView = {
         }
     }
 };
+// ============= COMPONENTE: AYUDA =============
+const AyudaView = {
+    props: {
+        apiUrl: String,
+        token: String,
+        userRole: String
+    },
+    template: `
+        <div style="padding: 1rem;">
+            <h2 style="margin-bottom: 1.5rem;">📞 Centro de Ayuda</h2>
+            
+            <!-- Tabs -->
+            <div class="tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--gray-300); margin-bottom: 2rem;">
+                <button 
+                    @click="tabActiva = 'compatibilidad'"
+                    :class="['btn', 'btn-sm', tabActiva === 'compatibilidad' ? 'btn-primary' : 'btn-secondary']"
+                >
+                    🔍 Compatibilidad de Micas
+                </button>
+                <button 
+                    @click="tabActiva = 'ayuda-general'"
+                    :class="['btn', 'btn-sm', tabActiva === 'ayuda-general' ? 'btn-primary' : 'btn-secondary']"
+                >
+                    ⚙️ Ayuda General
+                </button>
+            </div>
+            
+            <!-- Tab: Compatibilidad -->
+            <div v-if="tabActiva === 'compatibilidad'">
+                <compatibilidad-view 
+                    :apiUrl="apiUrl" 
+                    :token="token"
+                    :userRole="userRole"
+                ></compatibilidad-view>
+            </div>
+            
+            <!-- Tab: Ayuda General -->
+            <div v-if="tabActiva === 'ayuda-general'">
+                <div class="card">
+                    <h3>¿Necesitas Ayuda?</h3>
+                    <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
+                        Cuéntanos qué problema tienes y nuestra IA te brindará una solución personalizada.
+                    </p>
+                    
+                    <!-- Formulario de Ayuda -->
+                    <div class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                        <!-- Modelo -->
+                        <label>Modelo del Dispositivo *</label>
+                        <input 
+                            v-model="formulario.modelo" 
+                            type="text" 
+                            placeholder="ej: iPhone 13, Samsung Galaxy S21, Motorola G9, etc."
+                            required
+                        />
+                        
+                        <!-- Versión del SO (Opcional) -->
+                        <label style="margin-top: 1rem;">Versión del SO (Opcional)</label>
+                        <input 
+                            v-model="formulario.version_so" 
+                            type="text" 
+                            placeholder="ej: iOS 17, Android 13"
+                        />
+                        <small style="color: var(--gray-500);">Si no especificas, usaremos la última versión disponible</small>
+                        
+                        <!-- Categoría -->
+                        <label style="margin-top: 1rem;">¿Cuál es tu problema? *</label>
+                        <select v-model="formulario.categoria" required>
+                            <option value="">-- Selecciona una opción --</option>
+                            <option value="formateo">Formateo del dispositivo</option>
+                            <option value="gmail">Creación de cuenta Gmail</option>
+                            <option value="icloud">Creación de cuenta iCloud</option>
+                            <option value="bateria">Revisión de estado de batería</option>
+                            <option value="otro">Otro (especificar)</option>
+                        </select>
+                        
+                        <!-- Campo de texto para "Otro" -->
+                        <div v-if="formulario.categoria === 'otro'" style="margin-top: 1rem;">
+                            <label>Describe tu problema</label>
+                            <textarea 
+                                v-model="formulario.requerimiento_especifico" 
+                                placeholder="Describe el problema específico que tienes..."
+                                style="height: 100px;"
+                                required
+                            ></textarea>
+                        </div>
+                        
+                        <!-- Botones -->
+                        <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                            <button 
+                                @click="obtenerAyuda" 
+                                class="btn btn-primary"
+                                :disabled="!formulario.modelo || !formulario.categoria || cargandoAyuda"
+                            >
+                                {{ cargandoAyuda ? '🔄 Obteniendo solución...' : '🤖 Obtener Solución con IA' }}
+                            </button>
+                            <button @click="limpiarFormulario" class="btn btn-secondary">Limpiar</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Mensaje de error -->
+                    <div v-if="errorAyuda" class="alert alert-danger" style="margin-bottom: 1rem;">
+                        <strong>❌ Error:</strong> {{ errorAyuda }}
+                    </div>
+                    
+                    <!-- Respuesta de la IA -->
+                    <div v-if="respuestaIA" class="card" style="background: var(--gray-50); border-left: 4px solid var(--success); margin-top: 1.5rem;">
+                        <h4 style="margin-top: 0;">💡 Solución Sugerida</h4>
+                        <div v-html="respuestaFormateada" style="line-height: 1.8; color: var(--gray-700);"></div>
+                        <button @click="copiarRespuesta" class="btn btn-sm btn-secondary" style="margin-top: 1rem;">
+                            📋 Copiar Respuesta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            tabActiva: 'compatibilidad',
+            formulario: {
+                modelo: '',
+                version_so: '',
+                categoria: '',
+                requerimiento_especifico: ''
+            },
+            respuestaIA: '',
+            cargandoAyuda: false,
+            errorAyuda: ''
+        };
+    },
+    computed: {
+        apiUrlFinal() {
+            return this.apiUrl || window.location.origin;
+        },
+        respuestaFormateada() {
+            if (!this.respuestaIA) return '';
+            // Convertir saltos de línea a <br> y negritas
+            return this.respuestaIA
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        }
+    },
+    methods: {
+        async obtenerAyuda() {
+            this.errorAyuda = '';
+            this.respuestaIA = '';
+            
+            // Validar campos requeridos
+            if (!this.formulario.modelo || !this.formulario.categoria) {
+                this.errorAyuda = 'Por favor completa todos los campos requeridos';
+                return;
+            }
+            
+            // Si es "Otro", validar que haya especificación
+            if (this.formulario.categoria === 'otro' && !this.formulario.requerimiento_especifico) {
+                this.errorAyuda = 'Por favor describe tu problema específico';
+                return;
+            }
+            
+            this.cargandoAyuda = true;
+            
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                
+                const response = await axios.post(
+                    `${this.apiUrlFinal}/api/ayuda/obtener-solucion`,
+                    {
+                        modelo: this.formulario.modelo,
+                        version_so: this.formulario.version_so || '',
+                        categoria: this.formulario.categoria,
+                        requerimiento_especifico: this.formulario.requerimiento_especifico || ''
+                    },
+                    { headers }
+                );
+                
+                this.respuestaIA = response.data.solucion;
+            } catch (error) {
+                console.error('Error al obtener ayuda:', error);
+                this.errorAyuda = error.response?.data?.error || 'Error al conectar con IA. Intenta nuevamente.';
+            } finally {
+                this.cargandoAyuda = false;
+            }
+        },
+        
+        limpiarFormulario() {
+            this.formulario = {
+                modelo: '',
+                version_so: '',
+                categoria: '',
+                requerimiento_especifico: ''
+            };
+            this.respuestaIA = '';
+            this.errorAyuda = '';
+        },
+        
+        copiarRespuesta() {
+            const texto = this.respuestaIA;
+            navigator.clipboard.writeText(texto).then(() => {
+                alert('✓ Respuesta copiada al portapapeles');
+            }).catch(() => {
+                alert('No se pudo copiar. Intenta manualmente.');
+            });
+        }
+    }
+};

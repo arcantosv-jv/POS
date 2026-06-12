@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY . .
 
+# Dar permisos de ejecución al entrypoint
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Crear usuario no-root para seguridad
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
@@ -27,9 +30,6 @@ EXPOSE 5000 8000
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-
-# Script de inicio
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # Comando para ejecutar
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

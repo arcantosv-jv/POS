@@ -17,7 +17,8 @@ createApp({
         'devoluciones-view': DevolucionesView,
         'compatibilidad-view': CompatibilidadView,
         'reparaciones-view': ReparacionesView,
-        'ventas-sin-stock-view': VentasSinStockView
+        'ventas-sin-stock-view': VentasSinStockView,
+        'ayuda-view': AyudaView
     },
     data() {
         return {

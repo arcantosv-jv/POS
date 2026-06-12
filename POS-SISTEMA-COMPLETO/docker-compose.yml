@@ -13,7 +13,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pos_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pos_user} -d ${DB_NAME:-pos_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,13 +21,14 @@ services:
   web:
     build: .
     container_name: pos_app
-    command: >
-      bash -c "flask db upgrade && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 app:app"
+    command: ["gunicorn", "--config", "gunicorn_config.py", "app:app"]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-pos_user}:${DB_PASSWORD:-pos_secure_password_123}@db:5432/${DB_NAME:-pos_db}
       FLASK_ENV: ${FLASK_ENV:-production}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key-change-in-production}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
     volumes:
       - .:/app
     ports:

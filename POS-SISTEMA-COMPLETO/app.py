@@ -36,6 +36,7 @@ def create_app(config_name=None):
     from routes_devoluciones import devoluciones_bp
     from routes_compatibilidad import compatibilidad_bp
     from routes_reparaciones import reparaciones_bp
+    from routes_ayuda import ayuda_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -47,22 +48,12 @@ def create_app(config_name=None):
     app.register_blueprint(devoluciones_bp)
     app.register_blueprint(compatibilidad_bp)
     app.register_blueprint(reparaciones_bp)
+    app.register_blueprint(ayuda_bp)
     
     # Ruta raíz
     @app.route('/', methods=['GET'])
     def index():
-        return jsonify({
-            'message': 'POS API - Sistema de Punto de Venta',
-            'version': '1.0.0',
-            'endpoints': {
-                'auth': '/api/auth',
-                'admin': '/api/admin',
-                'productos': '/api/productos',
-                'inventario': '/api/inventario',
-                'ventas': '/api/ventas',
-                'reportes': '/api/reportes'
-            }
-        }), 200
+        return send_from_directory('static', 'index.html')
     
     # Rutas para archivos estáticos del frontend
     @app.route('/static/<path:filename>')
@@ -149,6 +140,8 @@ def create_initial_data():
     db.session.commit()
     print("✓ Datos iniciales creados/verificados\n")
 
+# Instancia de la app para gunicorn y otros servidores WSGI
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     app.run(debug=True, host='0.0.0.0', port=8000)
