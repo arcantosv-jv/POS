@@ -6300,12 +6300,7 @@ const AyudaView = {
             
             <!-- Tabs -->
             <div class="tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--gray-300); margin-bottom: 2rem;">
-                <button 
-                    @click="tabActiva = 'compatibilidad'"
-                    :class="['btn', 'btn-sm', tabActiva === 'compatibilidad' ? 'btn-primary' : 'btn-secondary']"
-                >
-                    🔍 Compatibilidad de Micas
-                </button>
+                
                 <button 
                     @click="tabActiva = 'ayuda-general'"
                     :class="['btn', 'btn-sm', tabActiva === 'ayuda-general' ? 'btn-primary' : 'btn-secondary']"
