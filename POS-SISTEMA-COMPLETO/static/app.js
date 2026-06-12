@@ -16,6 +16,7 @@ createApp({
         'reportes-ventas-view': ReportesVentasView,
         'devoluciones-view': DevolucionesView,
         'compatibilidad-view': CompatibilidadView,
+        'reparaciones-view': ReparacionesView,
         'ventas-sin-stock-view': VentasSinStockView
     },
     data() {
@@ -132,21 +133,27 @@ createApp({
             const token = localStorage.getItem('token');
             const user = localStorage.getItem('user');
             
+            console.log('[verificarAutenticacion] token:', token ? 'presente' : 'no', 'user:', user ? 'presente' : 'no');
+            
             if (token && user) {
                 try {
                     const userData = JSON.parse(user);
+                    console.log('[verificarAutenticacion] userData:', userData);
                     this.token = token;
                     this.isAuthenticated = true;
                     this.userName = userData.username;
                     this.userId = userData.id;
                     this.userRole = userData.role;
                     this.userSucursal = userData.sucursal_id;
+                    console.log('[verificarAutenticacion] después de asignar userRole:', this.userRole);
                     this.currentView = userData.role === 'admin' ? 'dashboard' : 'ventas';
                 } catch (e) {
                     console.error('Error al recuperar datos de sesión:', e);
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
                 }
+            } else {
+                console.log('[verificarAutenticacion] No hay token o user en localStorage');
             }
         }
     }

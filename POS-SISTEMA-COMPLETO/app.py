@@ -35,6 +35,7 @@ def create_app(config_name=None):
     from routes_importar import importar_bp
     from routes_devoluciones import devoluciones_bp
     from routes_compatibilidad import compatibilidad_bp
+    from routes_reparaciones import reparaciones_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -45,6 +46,7 @@ def create_app(config_name=None):
     app.register_blueprint(importar_bp)
     app.register_blueprint(devoluciones_bp)
     app.register_blueprint(compatibilidad_bp)
+    app.register_blueprint(reparaciones_bp)
     
     # Ruta raíz
     @app.route('/', methods=['GET'])

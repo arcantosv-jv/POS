@@ -4388,6 +4388,7 @@ const ReportesVentasView = {
                                     <th>Sucursal</th>
                                     <th>Cajero</th>
                                     <th>Métodos de Pago</th>
+                                    <th>Notas</th>
                                     <th>Total</th>
                                 </tr>
                             </thead>
@@ -4404,6 +4405,14 @@ const ReportesVentasView = {
                                                     {{ capitalizarPalabra(pago.metodo_pago) }}: {{ formatoMoneda(pago.monto) }}
                                                 </span>
                                             </div>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <span v-if="venta.observaciones" class="badge bg-warning text-dark" :title="venta.observaciones">
+                                                📝 {{ venta.observaciones.substring(0, 20) }}{{ venta.observaciones.length > 20 ? '...' : '' }}
+                                            </span>
+                                            <span v-else class="text-muted">-</span>
                                         </small>
                                     </td>
                                     <td><small><strong>{{ formatoMoneda(venta.total) }}</strong></small></td>
@@ -4428,6 +4437,7 @@ const ReportesVentasView = {
                                     <th>Tarjeta</th>
                                     <th>Transferencia</th>
                                     <th>Diferencia</th>
+                                    <th>Notas</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
@@ -4444,6 +4454,14 @@ const ReportesVentasView = {
                                         <small>
                                             <span v-if="cierre.diferencia !== null" :class="cierre.diferencia === 0 ? 'text-success fw-bold' : 'text-warning fw-bold'">
                                                 {{ formatoMoneda(cierre.diferencia) }}
+                                            </span>
+                                            <span v-else class="text-muted">-</span>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <span v-if="cierre.observaciones" class="badge bg-info text-dark" :title="cierre.observaciones">
+                                                📝 {{ cierre.observaciones.substring(0, 20) }}{{ cierre.observaciones.length > 20 ? '...' : '' }}
                                             </span>
                                             <span v-else class="text-muted">-</span>
                                         </small>
@@ -4514,9 +4532,11 @@ const ReportesVentasView = {
             .then(response => {
                 this.ventas = response.data.ventas;
                 this.totales = response.data.totales;
-                // Generar gráficas después de obtener datos
+                // Generar gráficas después de obtener datos con tiempo suficiente
                 this.$nextTick(() => {
-                    this.generarGraficasVentas();
+                    setTimeout(() => {
+                        this.generarGraficasVentas();
+                    }, 300);
                 });
             })
             .catch(err => {
@@ -4528,83 +4548,98 @@ const ReportesVentasView = {
             });
         },
         generarGraficasVentas() {
-            if (this.ventas.length === 0) return;
+            try {
+                if (this.ventas.length === 0) return;
 
-            // Agrupar ventas por fecha
-            const ventasPorFecha = {};
-            const totalesPorMetodo = { efectivo: 0, tarjeta: 0, transferencia: 0 };
+                // Verificar que los refs existen, si no reintentar
+                if (!this.$refs.chartVentasPorDia || !this.$refs.chartMetodosPago) {
+                    console.warn('Canvas refs aún no disponibles, reintentando...');
+                    setTimeout(() => this.generarGraficasVentas(), 200);
+                    return;
+                }
 
-            this.ventas.forEach(venta => {
-                const fecha = new Date(venta.created_at).toLocaleDateString('es-AR');
-                ventasPorFecha[fecha] = (ventasPorFecha[fecha] || 0) + venta.total;
+                // Agrupar ventas por fecha
+                const ventasPorFecha = {};
+                const totalesPorMetodo = { efectivo: 0, tarjeta: 0, transferencia: 0 };
 
-                // Contar métodos de pago
-                venta.pagos.forEach(pago => {
-                    if (pago.metodo_pago === 'efectivo') totalesPorMetodo.efectivo += pago.monto;
-                    else if (pago.metodo_pago === 'tarjeta') totalesPorMetodo.tarjeta += pago.monto;
-                    else if (pago.metodo_pago === 'transferencia') totalesPorMetodo.transferencia += pago.monto;
+                this.ventas.forEach(venta => {
+                    const fecha = new Date(venta.created_at).toLocaleDateString('es-AR');
+                    ventasPorFecha[fecha] = (ventasPorFecha[fecha] || 0) + venta.total;
+
+                    // Contar métodos de pago (con validación)
+                    if (venta.pagos && Array.isArray(venta.pagos)) {
+                        venta.pagos.forEach(pago => {
+                            const metodo = (pago.metodo_pago || '').toLowerCase().trim();
+                            if (metodo === 'efectivo') totalesPorMetodo.efectivo += pago.monto || 0;
+                            else if (metodo === 'tarjeta') totalesPorMetodo.tarjeta += pago.monto || 0;
+                            else if (metodo === 'transferencia') totalesPorMetodo.transferencia += pago.monto || 0;
+                        });
+                    }
                 });
-            });
 
-            // Gráfica 1: Ventas por Día
-            const fechas = Object.keys(ventasPorFecha).sort();
-            const montos = fechas.map(f => ventasPorFecha[f]);
+                // Gráfica 1: Ventas por Día
+                const fechas = Object.keys(ventasPorFecha).sort();
+                const montos = fechas.map(f => ventasPorFecha[f]);
 
-            if (this.chartVentasInstance) this.chartVentasInstance.destroy();
-            this.chartVentasInstance = new Chart(this.$refs.chartVentasPorDia, {
-                type: 'line',
-                data: {
-                    labels: fechas,
-                    datasets: [{
-                        label: 'Ventas Diarias',
-                        data: montos,
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#2563eb'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: true }
+                if (this.chartVentasInstance) this.chartVentasInstance.destroy();
+                this.chartVentasInstance = new Chart(this.$refs.chartVentasPorDia, {
+                    type: 'line',
+                    data: {
+                        labels: fechas,
+                        datasets: [{
+                            label: 'Ventas Diarias',
+                            data: montos,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#2563eb'
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toLocaleString('es-AR');
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: true }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString('es-AR');
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
 
-            // Gráfica 2: Métodos de Pago
-            if (this.chartPagoInstance) this.chartPagoInstance.destroy();
-            this.chartPagoInstance = new Chart(this.$refs.chartMetodosPago, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Efectivo', 'Tarjeta', 'Transferencia'],
-                    datasets: [{
-                        data: [totalesPorMetodo.efectivo, totalesPorMetodo.tarjeta, totalesPorMetodo.transferencia],
-                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { position: 'bottom' }
+                // Gráfica 2: Métodos de Pago
+                if (this.chartPagoInstance) this.chartPagoInstance.destroy();
+                this.chartPagoInstance = new Chart(this.$refs.chartMetodosPago, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Efectivo', 'Tarjeta', 'Transferencia'],
+                        datasets: [{
+                            data: [totalesPorMetodo.efectivo, totalesPorMetodo.tarjeta, totalesPorMetodo.transferencia],
+                            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
                     }
-                }
-            });
+                });
+                console.log('✓ Gráficas de ventas generadas correctamente');
+            } catch (error) {
+                console.error('Error generando gráficas:', error);
+            }
         },
         cargarReporteCierres() {
             axios.get(`${window.location.origin}/api/ventas/reportes/cierres-caja`, {
@@ -4769,55 +4804,74 @@ const DevolucionesView = {
                 </div>
             </div>
             
-            <!-- MODAL DE DEVOLUCIÓN -->
-            <div v-if="modalDevolucion" class="modal d-block" style="background: rgba(0,0,0,0.5);">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title">Registrar Devolución</h5>
-                            <button type="button" class="btn-close btn-close-white" @click="modalDevolucion = false"></button>
+            <!-- Modal Registrar Devolución -->
+            <div v-if="modalDevolucion" class="modal-overlay" style="z-index: 1001;">
+                <div class="modal" style="max-width: 550px;">
+                    
+                    <!-- Header -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; color: var(--danger);">↩️ Registrar Devolución</h3>
+                        <button @click="modalDevolucion = false" class="modal-close">✕</button>
+                    </div>
+
+                    <!-- Product Info Display -->
+                    <div v-if="detalleSeleccionado" style="background-color: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem;">
+                        <div style="margin-bottom: 0.75rem;">
+                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">Producto:</div>
+                            <div style="font-size: 1rem; font-weight: 700;">{{ detalleSeleccionado.producto_nombre }}</div>
                         </div>
-                        <div class="modal-body">
-                            <div v-if="detalleSeleccionado">
-                                <p><strong>Producto:</strong> {{ detalleSeleccionado.producto_nombre }}</p>
-                                <p><strong>Cantidad Original:</strong> {{ detalleSeleccionado.cantidad }}</p>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Cantidad a Devolver</label>
-                                    <input v-model.number="cantidadDevoluciones" type="number" class="form-control"
-                                           min="1" :max="cantidadDisponible">
-                                    <small class="text-muted">Máximo disponible: {{ cantidadDisponible }}</small>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Motivo de la Devolución</label>
-                                    <select v-model="motivoDevoluciones" class="form-control">
-                                        <option value="">Selecciona un motivo</option>
-                                        <option value="Defectuoso">Defectuoso</option>
-                                        <option value="Cambio de opinión">Cambio de opinión</option>
-                                        <option value="Falta de stock">Falta de stock</option>
-                                        <option value="Error de venta">Error de venta</option>
-                                        <option value="Dañado en tránsito">Dañado en tránsito</option>
-                                        <option value="Otro">Otro</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Notas Adicionales (opcional)</label>
-                                    <textarea v-model="notasDevoluciones" class="form-control" rows="3"></textarea>
-                                </div>
-                                
-                                <div class="alert alert-info">
-                                    <strong>Monto a Revertir:</strong> {{ formatoMoneda(detalleSeleccionado.precio_unitario * cantidadDevoluciones) }}
-                                </div>
-                            </div>
+                        <div style="margin-bottom: 0;">
+                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">Cantidad Original:</div>
+                            <div style="font-size: 1rem; font-weight: 700;">{{ detalleSeleccionado.cantidad }} unidades</div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @click="modalDevolucion = false">Cancelar</button>
-                            <button type="button" class="btn btn-danger" @click="registrarDevolucion" :disabled="cantidadDevoluciones <= 0">
-                                Registrar Devolución
-                            </button>
+                    </div>
+
+                    <!-- Form Fields -->
+                    <div v-if="detalleSeleccionado" style="margin-bottom: 1.5rem;">
+                        <!-- Cantidad a Devolver -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Cantidad a Devolver</label>
+                            <input v-model.number="cantidadDevoluciones" type="number" 
+                                   min="1" :max="cantidadDisponible"
+                                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.875rem;">
+                            <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Máximo disponible: {{ cantidadDisponible }}</small>
                         </div>
+
+                        <!-- Motivo Dropdown -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Motivo de la Devolución</label>
+                            <select v-model="motivoDevoluciones" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.875rem;">
+                                <option value="">Selecciona un motivo</option>
+                                <option value="Defectuoso">Defectuoso</option>
+                                <option value="Cambio de opinión">Cambio de opinión</option>
+                                <option value="Falta de stock">Falta de stock</option>
+                                <option value="Error de venta">Error de venta</option>
+                                <option value="Dañado en tránsito">Dañado en tránsito</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <!-- Notas Adicionales -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Notas Adicionales (opcional)</label>
+                            <textarea v-model="notasDevoluciones" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; font-size: 0.875rem; font-family: inherit; resize: vertical;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Amount Summary -->
+                    <div style="background-color: #ffe8e8; padding: 1rem; border-radius: 0.375rem; margin-bottom: 1.5rem; border: 1px solid #ffcccc;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.875rem; font-weight: 600; color: var(--danger);">Monto a Revertir:</span>
+                            <span style="font-size: 1.25rem; font-weight: 700; color: var(--danger);">{{ formatoMoneda(detalleSeleccionado.precio_unitario * cantidadDevoluciones) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button @click="modalDevolucion = false" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+                        <button @click="registrarDevolucion" class="btn btn-danger" style="flex: 1;" :disabled="cantidadDevoluciones <= 0">
+                            ↩️ Registrar Devolución
+                        </button>
                     </div>
                 </div>
             </div>
@@ -5229,6 +5283,1007 @@ const CompatibilidadView = {
                 'baja': '4px solid var(--danger)'
             };
             return colores[nivel] || '4px solid var(--gray-400)';
+        }
+    }
+};
+
+// ============= COMPONENTE: REPARACIONES =============
+const ReparacionesView = {
+    props: {
+        apiUrl: String,
+        token: String,
+        userRole: String
+    },
+    template: `
+        <div style="padding: 1rem;">
+            <!-- Sección Admin: Catálogos -->
+            <div v-if="userRoleLocal === 'admin'" style="margin-bottom: 2rem;">
+                <div class="tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--gray-300); margin-bottom: 1.5rem;">
+                    <button 
+                        v-for="tab in tabs" 
+                        :key="tab"
+                        @click="tabActiva = tab"
+                        :class="['btn', 'btn-sm', tabActiva === tab ? 'btn-primary' : 'btn-secondary']"
+                    >
+                        {{ tab }}
+                    </button>
+                </div>
+
+                <!-- Marcas -->
+                <div v-if="tabActiva === 'Marcas'" class="card">
+                    <div class="card-header">
+                        <h3>Gestión de Marcas</h3>
+                        <button v-if="!editandoMarcaId" @click="mostrarFormularioMarca = !mostrarFormularioMarca" class="btn btn-primary btn-sm">
+                            {{ mostrarFormularioMarca ? 'Cancelar' : '+ Nueva Marca' }}
+                        </button>
+                    </div>
+
+                    <div v-if="mostrarFormularioMarca && !editandoMarcaId" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                        <label>Nombre de Marca</label>
+                        <input v-model="formularioMarca.nombre" type="text" placeholder="Ej: Samsung" required>
+                        <div style="margin-top: 0.5rem;">
+                            <button @click="guardarMarca" class="btn btn-success btn-sm">Guardar</button>
+                            <button @click="mostrarFormularioMarca = false" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                        </div>
+                    </div>
+                    
+                    <div v-if="editandoMarcaId" class="form-group" style="background: var(--yellow-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; border-left: 4px solid var(--warning);">
+                        <h4 style="margin-top: 0;">Editar Marca</h4>
+                        <label>Nombre de Marca</label>
+                        <input v-model="formularioMarca.nombre" type="text" placeholder="Ej: Samsung" required>
+                        <div style="margin-top: 0.5rem;">
+                            <button @click="guardarEdicionMarca" class="btn btn-success btn-sm">Guardar Cambios</button>
+                            <button @click="cancelarEdicionMarca" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="marca in marcas" :key="marca.id">
+                                <td>{{ marca.nombre }}</td>
+                                <td><span :style="{color: marca.is_active ? 'var(--success)' : 'var(--danger)'}">{{ marca.is_active ? '✓ Activa' : '✗ Inactiva' }}</span></td>
+                                <td>
+                                    <button @click="iniciarEdicionMarca(marca)" class="btn btn-primary btn-sm">Editar</button>
+                                    <button @click="eliminarMarca(marca.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Paginación Marcas -->
+                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;">
+                        <button @click="irAPaginaMarcas(paginaMarcas - 1)" :disabled="paginaMarcas === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                        <span style="min-width: 100px; text-align: center;">Página {{ paginaMarcas }} de {{ totalPagesMarcas }}</span>
+                        <button @click="irAPaginaMarcas(paginaMarcas + 1)" :disabled="paginaMarcas === totalPagesMarcas" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- Modelos -->
+                <div v-if="tabActiva === 'Modelos'" class="card">
+                    <div class="card-header">
+                        <h3>Gestión de Modelos</h3>
+                        <button v-if="!editandoModeloId" @click="mostrarFormularioModelo = !mostrarFormularioModelo" class="btn btn-primary btn-sm">
+                            {{ mostrarFormularioModelo ? 'Cancelar' : '+ Nuevo Modelo' }}
+                        </button>
+                    </div>
+
+                    <div v-if="mostrarFormularioModelo && !editandoModeloId" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                        <label>Marca</label>
+                        <select v-model="formularioModelo.marca_id" required>
+                            <option value="">Selecciona una marca</option>
+                            <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                        </select>
+                        <label style="margin-top: 0.5rem;">Nombre del Modelo</label>
+                        <input v-model="formularioModelo.nombre" type="text" placeholder="Ej: A32 4G" required>
+                        <div style="margin-top: 0.5rem;">
+                            <button @click="guardarModelo" class="btn btn-success btn-sm">Guardar</button>
+                            <button @click="mostrarFormularioModelo = false" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                        </div>
+                    </div>
+                    
+                    <div v-if="editandoModeloId" class="form-group" style="background: var(--yellow-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; border-left: 4px solid var(--warning);">
+                        <h4 style="margin-top: 0;">Editar Modelo</h4>
+                        <label>Marca</label>
+                        <select v-model="formularioModelo.marca_id" required>
+                            <option value="">Selecciona una marca</option>
+                            <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                        </select>
+                        <label style="margin-top: 0.5rem;">Nombre del Modelo</label>
+                        <input v-model="formularioModelo.nombre" type="text" placeholder="Ej: A32 4G" required>
+                        <div style="margin-top: 0.5rem;">
+                            <button @click="guardarEdicionModelo" class="btn btn-success btn-sm">Guardar Cambios</button>
+                            <button @click="cancelarEdicionModelo" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Marca</th>
+                                <th>Modelo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="modelo in modelos" :key="modelo.id">
+                                <td>{{ modelo.marca_nombre }}</td>
+                                <td>{{ modelo.nombre }}</td>
+                                <td><span :style="{color: modelo.is_active ? 'var(--success)' : 'var(--danger)'}">{{ modelo.is_active ? '✓' : '✗' }}</span></td>
+                                <td>
+                                    <button @click="iniciarEdicionModelo(modelo)" class="btn btn-primary btn-sm">Editar</button>
+                                    <button @click="eliminarModelo(modelo.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Paginación Modelos -->
+                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;">
+                        <button @click="irAPaginaModelos(paginaModelos - 1)" :disabled="paginaModelos === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                        <span style="min-width: 100px; text-align: center;">Página {{ paginaModelos }} de {{ totalPagesModelos }}</span>
+                        <button @click="irAPaginaModelos(paginaModelos + 1)" :disabled="paginaModelos === totalPagesModelos" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- Tipos de Reparación -->
+                <div v-if="tabActiva === 'Tipos'" class="card">
+                    <div class="card-header">
+                        <h3>Tipos de Reparación</h3>
+                        <button v-if="!editandoTipoId" @click="mostrarFormularioTipo = !mostrarFormularioTipo" class="btn btn-primary btn-sm">
+                            {{ mostrarFormularioTipo ? 'Cancelar' : '+ Nuevo Tipo' }}
+                        </button>
+                    </div>
+
+                    <div v-if="mostrarFormularioTipo && !editandoTipoId" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                        <label>Nombre</label>
+                        <input v-model="formularioTipo.nombre" type="text" placeholder="Ej: Cambio de Pantalla" required>
+                        <label style="margin-top: 0.5rem;">Descripción (opcional)</label>
+                        <textarea v-model="formularioTipo.descripcion" placeholder="Descripción"></textarea>
+                        <div style="margin-top: 0.5rem;">
+                            <button @click="guardarTipo" class="btn btn-success btn-sm">Guardar</button>
+                            <button @click="mostrarFormularioTipo = false" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                        </div>
+                    </div>
+                    
+                    <div v-if="editandoTipoId" class="form-group" style="background: var(--yellow-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; border-left: 4px solid var(--warning);">
+                        <h4 style="margin-top: 0;">Editar Tipo de Reparación</h4>
+                        <label>Nombre</label>
+                        <input v-model="formularioTipo.nombre" type="text" placeholder="Ej: Cambio de Pantalla" required>
+                        <label style="margin-top: 0.5rem;">Descripción (opcional)</label>
+                        <textarea v-model="formularioTipo.descripcion" placeholder="Descripción"></textarea>
+                        <div style="margin-top: 0.5rem;">
+                            <button @click="guardarEdicionTipo" class="btn btn-success btn-sm">Guardar Cambios</button>
+                            <button @click="cancelarEdicionTipo" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="tipo in tipos" :key="tipo.id">
+                                <td>{{ tipo.nombre }}</td>
+                                <td>{{ tipo.descripcion || '-' }}</td>
+                                <td><span :style="{color: tipo.is_active ? 'var(--success)' : 'var(--danger)'}">{{ tipo.is_active ? '✓' : '✗' }}</span></td>
+                                <td>
+                                    <button @click="iniciarEdicionTipo(tipo)" class="btn btn-primary btn-sm">Editar</button>
+                                    <button @click="eliminarTipo(tipo.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Paginación Tipos -->
+                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;">
+                        <button @click="irAPaginaTipos(paginaTipos - 1)" :disabled="paginaTipos === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                        <span style="min-width: 100px; text-align: center;">Página {{ paginaTipos }} de {{ totalPagesTipos }}</span>
+                        <button @click="irAPaginaTipos(paginaTipos + 1)" :disabled="paginaTipos === totalPagesTipos" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Catálogo: Visible para todos (admin puede editar/eliminar) -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-header">
+                    <h3>Catálogo de Reparaciones</h3>
+                    <button v-if="userRoleLocal === 'admin' && !editandoCatalogoId" @click="mostrarFormularioCatalogo = !mostrarFormularioCatalogo" class="btn btn-primary btn-sm">
+                        {{ mostrarFormularioCatalogo ? 'Cancelar' : '+ Agregar al Catálogo' }}
+                    </button>
+                </div>
+
+                <!-- Barra de búsqueda por modelo -->
+                <div style="padding: 1rem; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); display: flex; gap: 1rem; align-items: center;">
+                    <div style="flex: 1;">
+                        <input 
+                            v-model="searchModeloCatalogo"
+                            @keyup.enter="buscarEnCatalogo"
+                            type="text"
+                            placeholder="🔍 Buscar por modelo..."
+                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
+                        >
+                    </div>
+                    <button 
+                        @click="buscarEnCatalogo"
+                        class="btn btn-primary btn-sm"
+                        style="white-space: nowrap;"
+                    >
+                        Buscar
+                    </button>
+                    <button 
+                        v-if="searchModeloCatalogo"
+                        @click="searchModeloCatalogo = ''; buscarEnCatalogo()"
+                        class="btn btn-secondary btn-sm"
+                        style="white-space: nowrap;"
+                    >
+                        Limpiar búsqueda
+                    </button>
+                </div>
+
+                <div v-if="mostrarFormularioCatalogo && !editandoCatalogoId && userRoleLocal === 'admin'" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                    <label>Marca</label>
+                    <select v-model="formularioCatalogo.marca_id" @change="cargarModelosDeMarca" required>
+                        <option value="">Selecciona una marca</option>
+                        <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                    </select>
+                    <label style="margin-top: 0.5rem;">Modelo</label>
+                    <select v-model="formularioCatalogo.modelo_id" required>
+                        <option value="">Selecciona un modelo</option>
+                        <option v-for="modelo in modelosFiltrados" :key="modelo.id" :value="modelo.id">{{ modelo.nombre }}</option>
+                    </select>
+                    <label style="margin-top: 0.5rem;">Tipo de Reparación</label>
+                    <select v-model="formularioCatalogo.tipo_reparacion_id" required>
+                        <option value="">Selecciona un tipo</option>
+                        <option v-for="tipo in tipos" :key="tipo.id" :value="tipo.id">{{ tipo.nombre }}</option>
+                    </select>
+                    <label style="margin-top: 0.5rem;">Costo</label>
+                    <input v-model="formularioCatalogo.costo" type="number" placeholder="Ej: 690" required>
+                    <div style="margin-top: 0.5rem;">
+                        <button @click="guardarCatalogo" class="btn btn-success btn-sm">Guardar</button>
+                        <button @click="mostrarFormularioCatalogo = false" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                    </div>
+                </div>
+                
+                <div v-if="editandoCatalogoId && userRoleLocal === 'admin'" class="form-group" style="background: var(--yellow-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; border-left: 4px solid var(--warning);">
+                    <h4 style="margin-top: 0;">Editar Catálogo</h4>
+                    <label>Marca</label>
+                    <select v-model="formularioCatalogo.marca_id" @change="cargarModelosDeMarca" required>
+                        <option value="">Selecciona una marca</option>
+                        <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                    </select>
+                    <label style="margin-top: 0.5rem;">Modelo</label>
+                    <select v-model="formularioCatalogo.modelo_id" required>
+                        <option value="">Selecciona un modelo</option>
+                        <option v-for="modelo in modelosFiltrados" :key="modelo.id" :value="modelo.id">{{ modelo.nombre }}</option>
+                    </select>
+                    <label style="margin-top: 0.5rem;">Tipo de Reparación</label>
+                    <select v-model="formularioCatalogo.tipo_reparacion_id" required>
+                        <option value="">Selecciona un tipo</option>
+                        <option v-for="tipo in tipos" :key="tipo.id" :value="tipo.id">{{ tipo.nombre }}</option>
+                    </select>
+                    <label style="margin-top: 0.5rem;">Costo</label>
+                    <input v-model="formularioCatalogo.costo" type="number" placeholder="Ej: 690" required>
+                    <div style="margin-top: 0.5rem;">
+                        <button @click="guardarEdicionCatalogo" class="btn btn-success btn-sm">Guardar Cambios</button>
+                        <button @click="cancelarEdicionCatalogo" class="btn btn-secondary btn-sm" style="margin-left: 0.5rem;">Cancelar</button>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Tipo de Reparación</th>
+                            <th>Costo</th>
+                            <th v-if="userRoleLocal === 'admin'">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="item in catalogo" :key="item.id">
+                            <td>{{ item.marca_nombre }}</td>
+                            <td>{{ item.modelo_nombre }}</td>
+                            <td>{{ item.tipo_reparacion_nombre }}</td>
+                            <td>\${{ item.costo }}</td>
+                            <td v-if="userRoleLocal === 'admin'">
+                                <button @click="iniciarEdicionCatalogo(item)" class="btn btn-primary btn-sm">Editar</button>
+                                <button @click="eliminarCatalogo(item.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <!-- Paginación Catálogo -->
+                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="font-size: 0.875rem; white-space: nowrap;">Mostrar:</label>
+                        <select v-model.number="itemsPerPageCatalogo" @change="cambiarItemsPerPageCatalogo" style="padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                            <option :value="5">5</option>
+                            <option :value="10">10</option>
+                            <option :value="20">20</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button @click="irAPaginaCatalogo(paginaCatalogo - 1)" :disabled="paginaCatalogo === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                        <span style="min-width: 100px; text-align: center;">Página {{ paginaCatalogo }} de {{ totalPagesCatalogo }}</span>
+                        <button @click="irAPaginaCatalogo(paginaCatalogo + 1)" :disabled="paginaCatalogo === totalPagesCatalogo" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección para Empleados y Admin: Registro de Reparaciones -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>{{ mostrarNuevaReparacion ? 'Nueva Reparación' : 'Listado de Reparaciones' }}</h3>
+                    <button @click="mostrarNuevaReparacion = !mostrarNuevaReparacion" class="btn btn-primary btn-sm">
+                        {{ mostrarNuevaReparacion ? 'Ver Listado' : '+ Nueva Reparación' }}
+                    </button>
+                </div>
+
+                <!-- Formulario Nueva Reparación -->
+                <div v-if="mostrarNuevaReparacion" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Nombre del Cliente</label>
+                            <input v-model="formularioReparacion.nombre_cliente" type="text" placeholder="Ej: Juan Pérez" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input v-model="formularioReparacion.telefono_cliente" type="tel" placeholder="Ej: 5551234567" maxlength="10" pattern="[0-9]+" @input="validarTelefono" required>
+                            <small style="color: var(--gray-600);">Máximo 10 dígitos</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Marca</label>
+                            <select v-model="formularioReparacion.marca_id" @change="cargarModelosDeMarcaReparacion" required>
+                                <option value="">Selecciona una marca</option>
+                                <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo</label>
+                            <select v-model="formularioReparacion.modelo_id" required>
+                                <option value="">Selecciona un modelo</option>
+                                <option v-for="modelo in modelosFiltrados" :key="modelo.id" :value="modelo.id">{{ modelo.nombre }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Reparación</label>
+                            <select v-model="formularioReparacion.tipo_reparacion_id" required>
+                                <option value="">Selecciona un tipo</option>
+                                <option v-for="tipo in tipos" :key="tipo.id" :value="tipo.id">{{ tipo.nombre }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Costo</label>
+                            <input v-model="formularioReparacion.costo" type="number" placeholder="Ej: 690" required>
+                        </div>
+                        <div class="form-group" v-if="userRoleLocal === 'admin'">
+                            <label>Sucursal *</label>
+                            <select v-model="formularioReparacion.sucursal_id" required>
+                                <option value="">Selecciona una sucursal</option>
+                                <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">{{ sucursal.nombre }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group" v-else>
+                            <label>Sucursal</label>
+                            <input type="text" :value="sucursalEmpleado" disabled style="background-color: var(--gray-200); color: var(--gray-600);">
+                            <small style="color: var(--gray-600);">(Auto-asignada)</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha</label>
+                            <input v-model="formularioReparacion.fecha" type="date" required>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        <button @click="guardarReparacion" class="btn btn-success">Guardar Reparación</button>
+                        <button @click="mostrarNuevaReparacion = false" class="btn btn-secondary">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Listado de Reparaciones -->
+                <div v-if="!mostrarNuevaReparacion">
+                    <!-- Filtros -->
+                    <div style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                        <h4>Filtros</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; margin-bottom: 0.5rem;">
+                            <div class="form-group">
+                                <label>Desde</label>
+                                <input v-model="filtroFechaInicio" type="date">
+                            </div>
+                            <div class="form-group">
+                                <label>Hasta</label>
+                                <input v-model="filtroFechaFin" type="date">
+                            </div>
+                            <div class="form-group" v-if="userRoleLocal === 'admin'">
+                                <label>Sucursal</label>
+                                <select v-model="filtroSucursal">
+                                    <option value="">Todas las sucursales</option>
+                                    <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">{{ sucursal.nombre }}</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                                <button @click="aplicarFiltrosReparaciones" class="btn btn-primary btn-sm" style="min-width: 80px;">Filtrar</button>
+                                <button @click="limpiarFiltrosReparaciones" class="btn btn-secondary btn-sm" style="min-width: 80px;">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Teléfono</th>
+                                <th>Marca</th>
+                                <th>Modelo</th>
+                                <th>Tipo</th>
+                                <th>Costo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="rep in reparaciones" :key="rep.id">
+                                <td>{{ rep.fecha }}</td>
+                                <td>{{ rep.nombre_cliente }}</td>
+                                <td>{{ rep.telefono_cliente }}</td>
+                                <td>{{ rep.marca_nombre }}</td>
+                                <td>{{ rep.modelo_nombre }}</td>
+                                <td>{{ rep.tipo_reparacion_nombre }}</td>
+                                <td>\${{ rep.costo }}</td>
+                                <td><span :style="{color: rep.estado === 'entregada' ? 'var(--success)' : 'var(--warning)'}">{{ rep.estado === 'entregada' ? '✓ Entregada' : '⏳ Registrada' }}</span></td>
+                                <td>
+                                    <button v-if="rep.estado !== 'entregada'" @click="marcarEntregada(rep.id)" class="btn btn-success btn-sm" title="Marcar como entregada">✓</button>
+                                    <button @click="editarReparacion(rep)" class="btn btn-primary btn-sm" style="margin-left: 0.25rem;">Editar</button>
+                                    <button v-if="userRoleLocal === 'admin'" @click="eliminarReparacion(rep.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Paginación Reparaciones -->
+                    <div style=\"display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;\">
+                        <button @click=\"irAPaginaReparaciones(paginaReparaciones - 1)\" :disabled=\"paginaReparaciones === 1\" class=\"btn btn-secondary btn-sm\">← Anterior</button>
+                        <span style=\"min-width: 150px; text-align: center;\">Página {{ paginaReparaciones }} de {{ totalPagesReparaciones }} (Total: {{ totalReparaciones }})</span>
+                        <button @click=\"irAPaginaReparaciones(paginaReparaciones + 1)\" :disabled=\"paginaReparaciones === totalPagesReparaciones\" class=\"btn btn-secondary btn-sm\">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de error/éxito -->
+            <div v-if="mensaje" :class="['alert', mensaje.tipo === 'error' ? 'alert-danger' : 'alert-success']" style="position: fixed; top: 20px; right: 20px; width: 300px; z-index: 1000;">
+                {{ mensaje.texto }}
+                <button @click="mensaje = null" style="float: right; background: none; border: none; cursor: pointer; font-weight: bold;">✕</button>
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            tabs: ['Marcas', 'Modelos', 'Tipos'],
+            tabActiva: 'Marcas',
+            marcas: [],
+            modelos: [],
+            tipos: [],
+            catalogo: [],
+            reparaciones: [],
+            sucursales: [],
+            
+            mostrarFormularioMarca: false,
+            mostrarFormularioModelo: false,
+            mostrarFormularioTipo: false,
+            mostrarFormularioCatalogo: false,
+            mostrarNuevaReparacion: false,
+            
+            editandoMarcaId: null,
+            editandoModeloId: null,
+            editandoTipoId: null,
+            editandoCatalogoId: null,
+            
+            formularioMarca: { nombre: '' },
+            formularioModelo: { marca_id: '', nombre: '' },
+            formularioTipo: { nombre: '', descripcion: '' },
+            formularioCatalogo: { marca_id: '', modelo_id: '', tipo_reparacion_id: '', costo: '' },
+            formularioReparacion: {
+                nombre_cliente: '',
+                telefono_cliente: '',
+                marca_id: '',
+                modelo_id: '',
+                tipo_reparacion_id: '',
+                costo: '',
+                sucursal_id: '',
+                fecha: new Date().toISOString().split('T')[0]
+            },
+            
+            // Paginación
+            paginaMarcas: 1,
+            paginaModelos: 1,
+            paginaTipos: 1,
+            paginaCatalogo: 1,
+            paginaReparaciones: 1,
+            perPageDefault: 20,
+            itemsPerPageCatalogo: 20,
+            searchModeloCatalogo: '',
+            totalPagesMarcas: 1,
+            totalPagesModelos: 1,
+            totalPagesTipos: 1,
+            totalPagesCatalogo: 1,
+            totalPagesReparaciones: 1,
+            totalReparaciones: 0,
+            
+            // Filtros
+            filtroFechaInicio: '',
+            filtroFechaFin: '',
+            filtroSucursal: '',
+            
+            modelosFiltrados: [],
+            mensaje: null,
+            userSucursal: null,
+            userRoleLocal: null
+        };
+    },
+    mounted() {
+        console.log('ReparacionesView mounted - userRole:', this.userRole, 'token:', this.token ? 'present' : 'missing');
+        
+        // Si userRole está vacío, intenta leerlo del localStorage
+        if (!this.userRole) {
+            const user = localStorage.getItem('user');
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    this.userRoleLocal = userData.role;
+                    console.log('userRole cargado desde localStorage:', this.userRoleLocal);
+                } catch (e) {
+                    console.error('Error al parsear user del localStorage:', e);
+                }
+            }
+        } else {
+            this.userRoleLocal = this.userRole;
+        }
+        
+        if (this.userRoleLocal === 'employee') {
+            this.cargarPerfilEmpleado();
+        }
+        this.cargarDatos();
+    },
+    methods: {
+        async cargarPerfilEmpleado() {
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                const res = await axios.get(`/api/auth/profile`, { headers });
+                this.userSucursal = res.data.sucursal_id;
+            } catch (err) {
+                console.error('Error al cargar perfil:', err);
+            }
+        },
+        async cargarDatos() {
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                
+                const [marcasRes, modelosRes, tiposRes, catalogoRes, reparacionesRes, sucursalesRes] = await Promise.all([
+                    axios.get(`/api/reparaciones/marcas`, { 
+                        params: { page: this.paginaMarcas, per_page: this.perPageDefault },
+                        headers 
+                    }),
+                    axios.get(`/api/reparaciones/modelos`, { 
+                        params: { page: this.paginaModelos, per_page: this.perPageDefault },
+                        headers 
+                    }),
+                    axios.get(`/api/reparaciones/tipos`, { 
+                        params: { page: this.paginaTipos, per_page: this.perPageDefault },
+                        headers 
+                    }),
+                    axios.get(`/api/reparaciones/catalogo`, { 
+                        params: { 
+                            page: this.paginaCatalogo, 
+                            per_page: this.itemsPerPageCatalogo,
+                            search: this.searchModeloCatalogo || undefined
+                        },
+                        headers 
+                    }),
+                    axios.get(`/api/reparaciones`, { 
+                        params: { 
+                            page: this.paginaReparaciones, 
+                            per_page: this.perPageDefault,
+                            fecha_inicio: this.filtroFechaInicio || undefined,
+                            fecha_fin: this.filtroFechaFin || undefined,
+                            sucursal_id: this.filtroSucursal || undefined
+                        },
+                        headers 
+                    }),
+                    axios.get(`/api/admin/sucursales-publico`, { headers })
+                ]);
+                
+                // Marcas
+                this.marcas = marcasRes.data.marcas;
+                this.totalPagesMarcas = marcasRes.data.pages;
+                
+                // Modelos
+                this.modelos = modelosRes.data.modelos;
+                this.totalPagesModelos = modelosRes.data.pages;
+                
+                // Tipos
+                this.tipos = tiposRes.data.tipos;
+                this.totalPagesTipos = tiposRes.data.pages;
+                
+                // Catálogo
+                this.catalogo = catalogoRes.data.catalogo;
+                this.totalPagesCatalogo = catalogoRes.data.pages;
+                
+                // Reparaciones
+                this.reparaciones = reparacionesRes.data.reparaciones;
+                this.totalPagesReparaciones = reparacionesRes.data.pages;
+                this.totalReparaciones = reparacionesRes.data.total;
+                
+                // Sucursales
+                this.sucursales = sucursalesRes.data;
+            } catch (err) {
+                this.mostrarMensaje('Error al cargar datos', 'error');
+            }
+        },
+        irAPaginaMarcas(pagina) {
+            if (pagina >= 1 && pagina <= this.totalPagesMarcas) {
+                this.paginaMarcas = pagina;
+                this.cargarDatos();
+            }
+        },
+        irAPaginaModelos(pagina) {
+            if (pagina >= 1 && pagina <= this.totalPagesModelos) {
+                this.paginaModelos = pagina;
+                this.cargarDatos();
+            }
+        },
+        irAPaginaTipos(pagina) {
+            if (pagina >= 1 && pagina <= this.totalPagesTipos) {
+                this.paginaTipos = pagina;
+                this.cargarDatos();
+            }
+        },
+        irAPaginaCatalogo(pagina) {
+            if (pagina >= 1 && pagina <= this.totalPagesCatalogo) {
+                this.paginaCatalogo = pagina;
+                this.cargarDatos();
+            }
+        },
+        irAPaginaReparaciones(pagina) {
+            if (pagina >= 1 && pagina <= this.totalPagesReparaciones) {
+                this.paginaReparaciones = pagina;
+                this.cargarDatos();
+            }
+        },
+        aplicarFiltrosReparaciones() {
+            this.paginaReparaciones = 1;
+            this.cargarDatos();
+        },
+        limpiarFiltrosReparaciones() {
+            this.filtroFechaInicio = '';
+            this.filtroFechaFin = '';
+            this.filtroSucursal = '';
+            this.paginaReparaciones = 1;
+            this.cargarDatos();
+        },
+        async guardarMarca() {
+            if (!this.formularioMarca.nombre) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.post(`/api/reparaciones/marcas`, this.formularioMarca, { headers });
+                this.mostrarMensaje('Marca guardada', 'exito');
+                this.formularioMarca = { nombre: '' };
+                this.mostrarFormularioMarca = false;
+                this.paginaMarcas = 1;
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        iniciarEdicionMarca(marca) {
+            this.editandoMarcaId = marca.id;
+            this.formularioMarca = { nombre: marca.nombre };
+        },
+        async guardarEdicionMarca() {
+            if (!this.formularioMarca.nombre) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.put(`/api/reparaciones/marcas/${this.editandoMarcaId}`, this.formularioMarca, { headers });
+                this.mostrarMensaje('Marca actualizada', 'exito');
+                this.editandoMarcaId = null;
+                this.formularioMarca = { nombre: '' };
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        cancelarEdicionMarca() {
+            this.editandoMarcaId = null;
+            this.formularioMarca = { nombre: '' };
+        },
+        async guardarModelo() {
+            if (!this.formularioModelo.marca_id || !this.formularioModelo.nombre) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.post(`/api/reparaciones/modelos`, this.formularioModelo, { headers });
+                this.mostrarMensaje('Modelo guardado', 'exito');
+                this.formularioModelo = { marca_id: '', nombre: '' };
+                this.mostrarFormularioModelo = false;
+                this.paginaModelos = 1;
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        iniciarEdicionModelo(modelo) {
+            this.editandoModeloId = modelo.id;
+            this.formularioModelo = { marca_id: modelo.marca_id, nombre: modelo.nombre };
+        },
+        async guardarEdicionModelo() {
+            if (!this.formularioModelo.marca_id || !this.formularioModelo.nombre) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.put(`/api/reparaciones/modelos/${this.editandoModeloId}`, this.formularioModelo, { headers });
+                this.mostrarMensaje('Modelo actualizado', 'exito');
+                this.editandoModeloId = null;
+                this.formularioModelo = { marca_id: '', nombre: '' };
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        cancelarEdicionModelo() {
+            this.editandoModeloId = null;
+            this.formularioModelo = { marca_id: '', nombre: '' };
+        },
+        async guardarTipo() {
+            if (!this.formularioTipo.nombre) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.post(`/api/reparaciones/tipos`, this.formularioTipo, { headers });
+                this.mostrarMensaje('Tipo guardado', 'exito');
+                this.formularioTipo = { nombre: '', descripcion: '' };
+                this.mostrarFormularioTipo = false;
+                this.paginaTipos = 1;
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        iniciarEdicionTipo(tipo) {
+            this.editandoTipoId = tipo.id;
+            this.formularioTipo = { nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+        },
+        async guardarEdicionTipo() {
+            if (!this.formularioTipo.nombre) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.put(`/api/reparaciones/tipos/${this.editandoTipoId}`, this.formularioTipo, { headers });
+                this.mostrarMensaje('Tipo actualizado', 'exito');
+                this.editandoTipoId = null;
+                this.formularioTipo = { nombre: '', descripcion: '' };
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        cancelarEdicionTipo() {
+            this.editandoTipoId = null;
+            this.formularioTipo = { nombre: '', descripcion: '' };
+        },
+        async guardarCatalogo() {
+            if (!this.formularioCatalogo.marca_id || !this.formularioCatalogo.modelo_id || !this.formularioCatalogo.tipo_reparacion_id || !this.formularioCatalogo.costo) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.post(`/api/reparaciones/catalogo`, this.formularioCatalogo, { headers });
+                this.mostrarMensaje('Catálogo guardado', 'exito');
+                this.formularioCatalogo = { marca_id: '', modelo_id: '', tipo_reparacion_id: '', costo: '' };
+                this.mostrarFormularioCatalogo = false;
+                this.paginaCatalogo = 1;
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        iniciarEdicionCatalogo(item) {
+            this.editandoCatalogoId = item.id;
+            this.formularioCatalogo = { marca_id: item.marca_id, modelo_id: item.modelo_id, tipo_reparacion_id: item.tipo_reparacion_id, costo: item.costo };
+            this.cargarModelosDeMarca();
+        },
+        async guardarEdicionCatalogo() {
+            if (!this.formularioCatalogo.marca_id || !this.formularioCatalogo.modelo_id || !this.formularioCatalogo.tipo_reparacion_id || !this.formularioCatalogo.costo) return;
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.put(`/api/reparaciones/catalogo/${this.editandoCatalogoId}`, this.formularioCatalogo, { headers });
+                this.mostrarMensaje('Catálogo actualizado', 'exito');
+                this.editandoCatalogoId = null;
+                this.formularioCatalogo = { marca_id: '', modelo_id: '', tipo_reparacion_id: '', costo: '' };
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        cancelarEdicionCatalogo() {
+            this.editandoCatalogoId = null;
+            this.formularioCatalogo = { marca_id: '', modelo_id: '', tipo_reparacion_id: '', costo: '' };
+        },
+        cambiarItemsPerPageCatalogo() {
+            this.paginaCatalogo = 1;
+            this.cargarDatos();
+        },
+        buscarEnCatalogo() {
+            this.paginaCatalogo = 1;
+            this.cargarDatos();
+        },
+        async guardarReparacion() {
+            if (!this.formularioReparacion.nombre_cliente || !this.formularioReparacion.marca_id || !this.formularioReparacion.modelo_id || !this.formularioReparacion.tipo_reparacion_id) return;
+            
+            // Validar que admin seleccione sucursal
+            if (this.userRoleLocal === 'admin' && !this.formularioReparacion.sucursal_id) {
+                this.mostrarMensaje('Admin debe seleccionar una sucursal', 'error');
+                return;
+            }
+            
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                const datos = { ...this.formularioReparacion };
+                
+                // Si es empleado, usar su sucursal_id; si es admin, ya está en el formulario
+                if (this.userRoleLocal === 'employee') {
+                    const userRes = await axios.get(`/api/auth/profile`, { headers });
+                    datos.sucursal_id = userRes.data.sucursal_id;
+                }
+                
+                // Buscar el costo en el catálogo si no está especificado
+                if (!datos.costo || datos.costo === '') {
+                    const catalogoItem = this.catalogo.find(cat => 
+                        cat.marca_id === this.formularioReparacion.marca_id &&
+                        cat.modelo_id === this.formularioReparacion.modelo_id &&
+                        cat.tipo_reparacion_id === this.formularioReparacion.tipo_reparacion_id
+                    );
+                    if (catalogoItem) {
+                        datos.costo = catalogoItem.costo;
+                    } else {
+                        this.mostrarMensaje('No se encontró el costo en el catálogo. Por favor especifique el costo.', 'error');
+                        return;
+                    }
+                }
+                
+                await axios.post(`/api/reparaciones`, datos, { headers });
+                this.mostrarMensaje('Reparación registrada', 'exito');
+                this.formularioReparacion = {
+                    nombre_cliente: '',
+                    telefono_cliente: '',
+                    marca_id: '',
+                    modelo_id: '',
+                    tipo_reparacion_id: '',
+                    costo: '',
+                    sucursal_id: '',
+                    fecha: new Date().toISOString().split('T')[0]
+                };
+                this.mostrarNuevaReparacion = false;
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        async marcarEntregada(id) {
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                await axios.put(`/api/reparaciones/${id}/entregar`, {}, { headers });
+                this.mostrarMensaje('Marcada como entregada', 'exito');
+                this.cargarDatos();
+            } catch (err) {
+                this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            }
+        },
+        async editarReparacion(rep) {
+            this.formularioReparacion = {
+                nombre_cliente: rep.nombre_cliente,
+                telefono_cliente: rep.telefono_cliente,
+                marca_id: rep.marca_id,
+                modelo_id: rep.modelo_id,
+                tipo_reparacion_id: rep.tipo_reparacion_id,
+                costo: rep.costo,
+                sucursal_id: rep.sucursal_id,
+                fecha: rep.fecha
+            };
+            this.mostrarNuevaReparacion = true;
+        },
+        cargarModelosDeMarca() {
+            this.modelosFiltrados = this.modelos.filter(m => m.marca_id === this.formularioCatalogo.marca_id);
+            this.formularioCatalogo.modelo_id = '';
+        },
+        cargarModelosDeMarcaReparacion() {
+            this.modelosFiltrados = this.modelos.filter(m => m.marca_id === this.formularioReparacion.marca_id);
+            this.formularioReparacion.modelo_id = '';
+        },
+        validarTelefono() {
+            // Solo permite números y limita a 10 dígitos
+            this.formularioReparacion.telefono_cliente = this.formularioReparacion.telefono_cliente
+                .replace(/[^0-9]/g, '') // Elimina todo lo que no sea número
+                .slice(0, 10); // Limita a 10 caracteres
+        },
+        async eliminarMarca(id) {
+            if (confirm('¿Estás seguro?')) {
+                try {
+                    const headers = { Authorization: `Bearer ${this.token}` };
+                    await axios.delete(`/api/reparaciones/marcas/${id}`, { headers });
+                    this.mostrarMensaje('Marca eliminada', 'exito');
+                    this.cargarDatos();
+                } catch (err) {
+                    this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+                }
+            }
+        },
+        async eliminarModelo(id) {
+            if (confirm('¿Estás seguro?')) {
+                try {
+                    const headers = { Authorization: `Bearer ${this.token}` };
+                    await axios.delete(`/api/reparaciones/modelos/${id}`, { headers });
+                    this.mostrarMensaje('Modelo eliminado', 'exito');
+                    this.cargarDatos();
+                } catch (err) {
+                    this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+                }
+            }
+        },
+        async eliminarTipo(id) {
+            if (confirm('¿Estás seguro?')) {
+                try {
+                    const headers = { Authorization: `Bearer ${this.token}` };
+                    await axios.delete(`/api/reparaciones/tipos/${id}`, { headers });
+                    this.mostrarMensaje('Tipo eliminado', 'exito');
+                    this.cargarDatos();
+                } catch (err) {
+                    this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+                }
+            }
+        },
+        async eliminarCatalogo(id) {
+            if (confirm('¿Estás seguro?')) {
+                try {
+                    const headers = { Authorization: `Bearer ${this.token}` };
+                    await axios.delete(`/api/reparaciones/catalogo/${id}`, { headers });
+                    this.mostrarMensaje('Catálogo eliminado', 'exito');
+                    this.cargarDatos();
+                } catch (err) {
+                    this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+                }
+            }
+        },
+        async eliminarReparacion(id) {
+            if (confirm('¿Estás seguro de que deseas eliminar esta reparación?')) {
+                try {
+                    const headers = { Authorization: `Bearer ${this.token}` };
+                    await axios.delete(`/api/reparaciones/${id}`, { headers });
+                    this.mostrarMensaje('Reparación eliminada', 'exito');
+                    this.cargarDatos();
+                } catch (err) {
+                    this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+                }
+            }
+        },
+        mostrarMensaje(texto, tipo) {
+            this.mensaje = { texto, tipo };
+            setTimeout(() => { this.mensaje = null; }, 3000);
+        }
+    },
+    computed: {
+        sucursalEmpleado() {
+            if (this.userSucursal) {
+                const sucursal = this.sucursales.find(s => s.id === this.userSucursal);
+                return sucursal ? sucursal.nombre : 'Desconocida';
+            }
+            return 'Cargando...';
         }
     }
 };

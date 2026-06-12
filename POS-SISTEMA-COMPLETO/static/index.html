@@ -1001,7 +1001,7 @@
                 </form>
 
                 <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200); text-align: center;">
-                    <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Demo: usuario=admin, password=admin123</p>
+                    <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;"></p>
                 </div>
             </div>
         </div>
@@ -1105,6 +1105,12 @@
                                 href="#"
                             >🔍 Compatibilidad</a>
                             <a 
+                                v-if="userRole === 'admin' || userRole === 'employee'" 
+                                :class="['repairs', currentView === 'reparaciones' ? 'active' : '']"
+                                @click.prevent="irAVista('reparaciones')"
+                                href="#"
+                            >🔧 Reparaciones</a>
+                            <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['stock-sales', currentView === 'ventas-sin-stock' ? 'active' : '']"
                                 @click.prevent="irAVista('ventas-sin-stock')"
@@ -1202,6 +1208,12 @@
                 <!-- Compatibilidad (Admin y Empleados) -->
                 <div v-if="currentView === 'compatibilidad' && (userRole === 'admin' || userRole === 'employee')">
                     <compatibilidad-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></compatibilidad-view>
+                </div>
+
+                <!-- Reparaciones (Admin y Empleados) -->
+                <div v-if="currentView === 'reparaciones'">
+                    <h1 style="margin-bottom: 2rem;">🔧 Reparaciones</h1>
+                    <reparaciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reparaciones-view>
                 </div>
 
                 <!-- Ventas sin Stock (Admin) -->

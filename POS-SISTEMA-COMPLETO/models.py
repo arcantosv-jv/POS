@@ -377,3 +377,149 @@ class DevolucionVenta(db.Model):
             'usuario_nombre': self.usuario.username,
             'created_at': self.created_at.isoformat()
         }
+
+# ==================== MODELOS PARA REPARACIONES ====================
+
+class MarcaDispositivo(db.Model):
+    """Modelo para marcas de dispositivos móviles"""
+    __tablename__ = 'marcas_dispositivos'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    nombre = db.Column(db.String(100), nullable=False, unique=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=get_cdmx_now)
+    
+    # Relationships
+    modelos = db.relationship('ModeloDispositivo', backref='marca', cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'is_active': self.is_active
+        }
+
+class ModeloDispositivo(db.Model):
+    """Modelo para modelos específicos de dispositivos"""
+    __tablename__ = 'modelos_dispositivos'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    marca_id = db.Column(db.String(36), db.ForeignKey('marcas_dispositivos.id'), nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=get_cdmx_now)
+    
+    __table_args__ = (
+        db.UniqueConstraint('marca_id', 'nombre', name='uq_modelo_marca_nombre'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'marca_id': self.marca_id,
+            'marca_nombre': self.marca.nombre if self.marca else None,
+            'nombre': self.nombre,
+            'is_active': self.is_active
+        }
+
+class TipoReparacion(db.Model):
+    """Modelo para tipos de reparaciones"""
+    __tablename__ = 'tipos_reparacion'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    nombre = db.Column(db.String(100), nullable=False, unique=True)
+    descripcion = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=get_cdmx_now)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'descripcion': self.descripcion,
+            'is_active': self.is_active
+        }
+
+class CatalogoReparacion(db.Model):
+    """Modelo para catálogo de reparaciones con precios"""
+    __tablename__ = 'catalogo_reparaciones'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    marca_id = db.Column(db.String(36), db.ForeignKey('marcas_dispositivos.id'), nullable=False)
+    modelo_id = db.Column(db.String(36), db.ForeignKey('modelos_dispositivos.id'), nullable=False)
+    tipo_reparacion_id = db.Column(db.String(36), db.ForeignKey('tipos_reparacion.id'), nullable=False)
+    costo = db.Column(db.Numeric(10, 2), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=get_cdmx_now)
+    updated_at = db.Column(db.DateTime, default=get_cdmx_now, onupdate=get_cdmx_now)
+    
+    # Relationships
+    marca = db.relationship('MarcaDispositivo')
+    modelo = db.relationship('ModeloDispositivo')
+    tipo_reparacion = db.relationship('TipoReparacion')
+    
+    __table_args__ = (
+        db.UniqueConstraint('marca_id', 'modelo_id', 'tipo_reparacion_id', name='uq_catalogo_reparacion'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'marca_id': self.marca_id,
+            'marca_nombre': self.marca.nombre if self.marca else None,
+            'modelo_id': self.modelo_id,
+            'modelo_nombre': self.modelo.nombre if self.modelo else None,
+            'tipo_reparacion_id': self.tipo_reparacion_id,
+            'tipo_reparacion_nombre': self.tipo_reparacion.nombre if self.tipo_reparacion else None,
+            'costo': float(self.costo),
+            'is_active': self.is_active
+        }
+
+class Reparacion(db.Model):
+    """Modelo para registrar reparaciones de dispositivos"""
+    __tablename__ = 'reparaciones'
+    
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    fecha = db.Column(db.Date, default=lambda: get_cdmx_now().date())
+    nombre_cliente = db.Column(db.String(100), nullable=False)
+    telefono_cliente = db.Column(db.String(20), nullable=False)
+    marca_id = db.Column(db.String(36), db.ForeignKey('marcas_dispositivos.id'), nullable=False)
+    modelo_id = db.Column(db.String(36), db.ForeignKey('modelos_dispositivos.id'), nullable=False)
+    tipo_reparacion_id = db.Column(db.String(36), db.ForeignKey('tipos_reparacion.id'), nullable=False)
+    costo = db.Column(db.Numeric(10, 2), nullable=False)
+    estado = db.Column(db.String(20), default='registrada')  # registrada, entregada
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False)
+    empleado_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    fecha_entrega = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=get_cdmx_now, index=True)
+    updated_at = db.Column(db.DateTime, default=get_cdmx_now, onupdate=get_cdmx_now)
+    
+    # Relationships
+    marca = db.relationship('MarcaDispositivo')
+    modelo = db.relationship('ModeloDispositivo')
+    tipo_reparacion = db.relationship('TipoReparacion')
+    sucursal = db.relationship('Sucursal', backref='reparaciones')
+    empleado = db.relationship('User', backref='reparaciones')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'fecha': self.fecha.isoformat(),
+            'nombre_cliente': self.nombre_cliente,
+            'telefono_cliente': self.telefono_cliente,
+            'marca_id': self.marca_id,
+            'marca_nombre': self.marca.nombre if self.marca else None,
+            'modelo_id': self.modelo_id,
+            'modelo_nombre': self.modelo.nombre if self.modelo else None,
+            'tipo_reparacion_id': self.tipo_reparacion_id,
+            'tipo_reparacion_nombre': self.tipo_reparacion.nombre if self.tipo_reparacion else None,
+            'costo': float(self.costo),
+            'estado': self.estado,
+            'sucursal_id': self.sucursal_id,
+            'sucursal_nombre': self.sucursal.nombre if self.sucursal else None,
+            'empleado_id': self.empleado_id,
+            'empleado_nombre': self.empleado.username if self.empleado else None,
+            'fecha_entrega': self.fecha_entrega.isoformat() if self.fecha_entrega else None,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
