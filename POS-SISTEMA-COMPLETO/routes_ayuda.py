@@ -217,7 +217,7 @@ Mantén la respuesta técnica pero accesible.
 """
         
         # Llamar a Google Generative AI con fallback de modelos
-        modelos_intentos = [GEMINI_MODEL, 'gemini-3.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']
+        modelos_intentos = [GEMINI_MODEL, 'gemini-3.5-flash']
         respuesta_obtenida = False
         ultimo_error = None
         
