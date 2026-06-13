@@ -261,20 +261,23 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
         client = genai.Client(api_key=api_key)
         
         # Usar modelo disponible (gemini-3.5-flash con cuota disponible)
+        
+        modelo_gemini = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+
         response = client.models.generate_content(
-            model='gemini-3.5-flash',
+            model=modelo_gemini,
             contents=prompt
         )
-        
         logger.info(f"[GEMINI] Solicitando recomendación para modelo")
         logger.info(f"[GEMINI] Respuesta recibida")
-        
-        # Extraer el texto de la respuesta
-        content = response.text
-        
-        logger.info(f"[GEMINI] Parseando JSON...")
-        
-        # Intentar parsear como JSON
+
+        content = response.text.strip()
+
+        if content.startswith("```json"):
+            content = content.replace("```json", "", 1).replace("```", "").strip()
+        elif content.startswith("```"):
+            content = content.replace("```", "").strip()
+
         data = json.loads(content)
         logger.info(f"[GEMINI] ✅ Éxito - Datos JSON válidos")
         return data
