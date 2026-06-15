@@ -212,6 +212,8 @@ Incluye:
 2. Soluciones recomendadas en orden de probabilidad
 3. Pasos específicos para implementar cada solución
 4. Cuándo contactar soporte técnico
+5. Se lo más específico posible según el requerimiento del usuario
+6. Se claro y directo, evitando información irrelevante
 
 Mantén la respuesta técnica pero accesible.
 """
