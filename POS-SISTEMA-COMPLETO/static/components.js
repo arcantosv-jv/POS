@@ -1455,6 +1455,15 @@ const InventarioView = {
                             </option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="estado-selector">Estado de Stock</label>
+                        <select v-model="estadoSeleccionado" id="estado-selector" name="estado_selector">
+                            <option value="">Todos</option>
+                            <option value="ok">✓ OK</option>
+                            <option value="bajo">⚠ Bajo Stock</option>
+                            <option value="sin">❌ Sin Stock</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <!-- Botones de filtrar y limpiar -->
@@ -1515,7 +1524,10 @@ const InventarioView = {
                                 <td style="font-weight: 600;">{{ stock.cantidad }}</td>
                                 <td>{{ stock.cantidad_minima }}</td>
                                 <td>
-                                    <span v-if="stock.cantidad <= stock.cantidad_minima" style="color: var(--danger); font-weight: 600;">
+                                    <span v-if="obtenerEstadoStock(stock) === 'sin'" style="color: var(--danger); font-weight: 600;">
+                                        ❌ Sin Stock
+                                    </span>
+                                    <span v-else-if="obtenerEstadoStock(stock) === 'bajo'" style="color: var(--danger); font-weight: 600;">
                                         ⚠ Bajo Stock
                                     </span>
                                     <span v-else style="color: var(--success);">✓ OK</span>
@@ -1580,7 +1592,8 @@ const InventarioView = {
             filtrosAplicados: {
                 busqueda: '',
                 categoria: '',
-                subcategoria: ''
+                subcategoria: '',
+                estado: ''
             },
             mostrarEntrada: false,
             sucursalSeleccionada: '',
@@ -1588,6 +1601,7 @@ const InventarioView = {
             busquedaProductos: '',
             categoriaSeleccionada: '',
             subcategoriaSeleccionada: '',
+            estadoSeleccionado: '',
             entrada: {
                 sucursal_id: '',
                 producto_id: '',
@@ -1675,7 +1689,10 @@ const InventarioView = {
                 const coincideSubcategoria = !this.filtrosAplicados.subcategoria || 
                     (this.productos.find(p => p.id === stock.producto_id)?.subcategoria_id === this.filtrosAplicados.subcategoria);
                 
-                return coincideBusqueda && coincideCategoria && coincideSubcategoria;
+                const coincideEstado = !this.filtrosAplicados.estado || 
+                    this.obtenerEstadoStock(stock) === this.filtrosAplicados.estado;
+                
+                return coincideBusqueda && coincideCategoria && coincideSubcategoria && coincideEstado;
             });
         },
         totalPaginasFiltradas() {
@@ -1828,6 +1845,16 @@ const InventarioView = {
             const subcategoria = this.subcategorias.find(s => s.id === producto.subcategoria_id);
             return subcategoria ? subcategoria.nombre : '-';
         },
+        obtenerEstadoStock(stock) {
+            // Determinar el estado: OK, Bajo Stock, o Sin Stock
+            if (stock.cantidad === 0) {
+                return 'sin';
+            } else if (stock.cantidad <= stock.cantidad_minima) {
+                return 'bajo';
+            } else {
+                return 'ok';
+            }
+        },
         cancelarEdicion() {
             this.entrada = { sucursal_id: this.sucursales[0]?.id || '', producto_id: '', cantidad: 1, cantidad_minima: null, observaciones: '', stock_id: null };
             this.busquedaProductoEntrada = '';
@@ -1874,13 +1901,15 @@ const InventarioView = {
             this.filtrosAplicados.busqueda = this.busquedaProductos;
             this.filtrosAplicados.categoria = this.categoriaSeleccionada;
             this.filtrosAplicados.subcategoria = this.subcategoriaSeleccionada;
+            this.filtrosAplicados.estado = this.estadoSeleccionado;
             this.paginaActual = 1;
         },
         limpiarFiltros() {
             this.busquedaProductos = '';
             this.categoriaSeleccionada = '';
             this.subcategoriaSeleccionada = '';
-            this.filtrosAplicados = { busqueda: '', categoria: '', subcategoria: '' };
+            this.estadoSeleccionado = '';
+            this.filtrosAplicados = { busqueda: '', categoria: '', subcategoria: '', estado: '' };
             this.paginaActual = 1;
         },
         async exportarInventario() {
