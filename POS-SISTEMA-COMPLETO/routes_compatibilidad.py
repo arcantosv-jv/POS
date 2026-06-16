@@ -232,6 +232,7 @@ Tu tarea es dar recomendaciones de micas COMPATIBLES para el modelo: {modelo_cel
 IMPORTANTE:
 - Es común que las micas de un modelo sirvan para otros modelos similares
 - Los modelos de la misma marca y generación similar suelen compartir dimensiones
+- Considera modelos recientes de la misma marca de un tamaño similar, por ejemplo al Samsung S25 FE le queda excelente el Samsung A37
 - Considera modelos de diferentes marcas que tengan tamaños de pantalla similares
 - Proporciona EXACTAMENTE 10 opciones de micas compatibles (incluye el modelo exacto y 9 alternativas)
 - Varía entre compatibilidad alta, media y baja
