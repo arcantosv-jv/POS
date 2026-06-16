@@ -237,6 +237,8 @@ IMPORTANTE:
 - Varía entre compatibilidad alta, media y baja
 - Proporciona modelos de diferentes marcas para dar más opciones
 - Considera modelos de marcas comerciales populares en Latinoamérica (Samsung, Xiaomi, Motorola, Apple, Oppo, Huawei,etc) para mayor relevancia 
+- Omite modelos de marcas no comerciales como vivo, realme, etc que no son comunes en la región
+- Omite el modelo solicitado en las recomendaciones, solo incluye alternativas compatibles
 
 FORMATO DE RESPUESTA (JSON):
 {{
