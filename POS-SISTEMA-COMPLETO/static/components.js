@@ -5387,10 +5387,21 @@ const ReparacionesView = {
                     </table>
                     
                     <!-- Paginación Marcas -->
-                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;">
-                        <button @click="irAPaginaMarcas(paginaMarcas - 1)" :disabled="paginaMarcas === 1" class="btn btn-secondary btn-sm">← Anterior</button>
-                        <span style="min-width: 100px; text-align: center;">Página {{ paginaMarcas }} de {{ totalPagesMarcas }}</span>
-                        <button @click="irAPaginaMarcas(paginaMarcas + 1)" :disabled="paginaMarcas === totalPagesMarcas" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <label style="font-size: 0.875rem; white-space: nowrap;">Mostrar:</label>
+                            <select v-model.number="itemsPerPageMarcas" @change="cambiarItemsPerPageMarcas" style="padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                                <option :value="5">5</option>
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="20">20</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button @click="irAPaginaMarcas(paginaMarcas - 1)" :disabled="paginaMarcas === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                            <span style="min-width: 100px; text-align: center;">Página {{ paginaMarcas }} de {{ totalPagesMarcas }}</span>
+                            <button @click="irAPaginaMarcas(paginaMarcas + 1)" :disabled="paginaMarcas === totalPagesMarcas" class="btn btn-secondary btn-sm">Siguiente →</button>
+                        </div>
                     </div>
                 </div>
 
@@ -5455,10 +5466,21 @@ const ReparacionesView = {
                     </table>
                     
                     <!-- Paginación Modelos -->
-                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;">
-                        <button @click="irAPaginaModelos(paginaModelos - 1)" :disabled="paginaModelos === 1" class="btn btn-secondary btn-sm">← Anterior</button>
-                        <span style="min-width: 100px; text-align: center;">Página {{ paginaModelos }} de {{ totalPagesModelos }}</span>
-                        <button @click="irAPaginaModelos(paginaModelos + 1)" :disabled="paginaModelos === totalPagesModelos" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <label style="font-size: 0.875rem; white-space: nowrap;">Mostrar:</label>
+                            <select v-model.number="itemsPerPageModelos" @change="cambiarItemsPerPageModelos" style="padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                                <option :value="5">5</option>
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="20">20</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button @click="irAPaginaModelos(paginaModelos - 1)" :disabled="paginaModelos === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                            <span style="min-width: 100px; text-align: center;">Página {{ paginaModelos }} de {{ totalPagesModelos }}</span>
+                            <button @click="irAPaginaModelos(paginaModelos + 1)" :disabled="paginaModelos === totalPagesModelos" class="btn btn-secondary btn-sm">Siguiente →</button>
+                        </div>
                     </div>
                 </div>
 
@@ -5517,10 +5539,21 @@ const ReparacionesView = {
                     </table>
                     
                     <!-- Paginación Tipos -->
-                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;">
-                        <button @click="irAPaginaTipos(paginaTipos - 1)" :disabled="paginaTipos === 1" class="btn btn-secondary btn-sm">← Anterior</button>
-                        <span style="min-width: 100px; text-align: center;">Página {{ paginaTipos }} de {{ totalPagesTipos }}</span>
-                        <button @click="irAPaginaTipos(paginaTipos + 1)" :disabled="paginaTipos === totalPagesTipos" class="btn btn-secondary btn-sm">Siguiente →</button>
+                    <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <label style="font-size: 0.875rem; white-space: nowrap;">Mostrar:</label>
+                            <select v-model.number="itemsPerPageTipos" @change="cambiarItemsPerPageTipos" style="padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                                <option :value="5">5</option>
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="20">20</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <button @click="irAPaginaTipos(paginaTipos - 1)" :disabled="paginaTipos === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                            <span style="min-width: 100px; text-align: center;">Página {{ paginaTipos }} de {{ totalPagesTipos }}</span>
+                            <button @click="irAPaginaTipos(paginaTipos + 1)" :disabled="paginaTipos === totalPagesTipos" class="btn btn-secondary btn-sm">Siguiente →</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5641,6 +5674,7 @@ const ReparacionesView = {
                         <select v-model.number="itemsPerPageCatalogo" @change="cambiarItemsPerPageCatalogo" style="padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
                             <option :value="5">5</option>
                             <option :value="10">10</option>
+                            <option :value="15">15</option>
                             <option :value="20">20</option>
                         </select>
                     </div>
@@ -5780,10 +5814,21 @@ const ReparacionesView = {
                     </table>
                     
                     <!-- Paginación Reparaciones -->
-                    <div style=\"display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; align-items: center;\">
-                        <button @click=\"irAPaginaReparaciones(paginaReparaciones - 1)\" :disabled=\"paginaReparaciones === 1\" class=\"btn btn-secondary btn-sm\">← Anterior</button>
-                        <span style=\"min-width: 150px; text-align: center;\">Página {{ paginaReparaciones }} de {{ totalPagesReparaciones }} (Total: {{ totalReparaciones }})</span>
-                        <button @click=\"irAPaginaReparaciones(paginaReparaciones + 1)\" :disabled=\"paginaReparaciones === totalPagesReparaciones\" class=\"btn btn-secondary btn-sm\">Siguiente →</button>
+                    <div style=\"display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;\">
+                        <div style=\"display: flex; gap: 0.5rem; align-items: center;\">
+                            <label style=\"font-size: 0.875rem; white-space: nowrap;\">Mostrar:</label>
+                            <select v-model.number=\"itemsPerPageReparaciones\" @change=\"cambiarItemsPerPageReparaciones\" style=\"padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;\">
+                                <option :value=\"5\">5</option>
+                                <option :value=\"10\">10</option>
+                                <option :value=\"15\">15</option>
+                                <option :value=\"20\">20</option>
+                            </select>
+                        </div>
+                        <div style=\"display: flex; gap: 0.5rem; align-items: center;\">
+                            <button @click=\"irAPaginaReparaciones(paginaReparaciones - 1)\" :disabled=\"paginaReparaciones === 1\" class=\"btn btn-secondary btn-sm\">← Anterior</button>
+                            <span style=\"min-width: 150px; text-align: center;\">Página {{ paginaReparaciones }} de {{ totalPagesReparaciones }} (Total: {{ totalReparaciones }})</span>
+                            <button @click=\"irAPaginaReparaciones(paginaReparaciones + 1)\" :disabled=\"paginaReparaciones === totalPagesReparaciones\" class=\"btn btn-secondary btn-sm\">Siguiente →</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5838,8 +5883,11 @@ const ReparacionesView = {
             paginaTipos: 1,
             paginaCatalogo: 1,
             paginaReparaciones: 1,
-            perPageDefault: 20,
-            itemsPerPageCatalogo: 20,
+            itemsPerPageMarcas: 5,
+            itemsPerPageModelos: 5,
+            itemsPerPageTipos: 5,
+            itemsPerPageCatalogo: 5,
+            itemsPerPageReparaciones: 5,
             searchModeloCatalogo: '',
             totalPagesMarcas: 1,
             totalPagesModelos: 1,
@@ -5899,15 +5947,15 @@ const ReparacionesView = {
                 
                 const [marcasRes, modelosRes, tiposRes, catalogoRes, reparacionesRes, sucursalesRes] = await Promise.all([
                     axios.get(`/api/reparaciones/marcas`, { 
-                        params: { page: this.paginaMarcas, per_page: this.perPageDefault },
+                        params: { page: this.paginaMarcas, per_page: this.itemsPerPageMarcas },
                         headers 
                     }),
                     axios.get(`/api/reparaciones/modelos`, { 
-                        params: { page: this.paginaModelos, per_page: this.perPageDefault },
+                        params: { page: this.paginaModelos, per_page: this.itemsPerPageModelos },
                         headers 
                     }),
                     axios.get(`/api/reparaciones/tipos`, { 
-                        params: { page: this.paginaTipos, per_page: this.perPageDefault },
+                        params: { page: this.paginaTipos, per_page: this.itemsPerPageTipos },
                         headers 
                     }),
                     axios.get(`/api/reparaciones/catalogo`, { 
@@ -5921,7 +5969,7 @@ const ReparacionesView = {
                     axios.get(`/api/reparaciones`, { 
                         params: { 
                             page: this.paginaReparaciones, 
-                            per_page: this.perPageDefault,
+                            per_page: this.itemsPerPageReparaciones,
                             fecha_inicio: this.filtroFechaInicio || undefined,
                             fecha_fin: this.filtroFechaFin || undefined,
                             sucursal_id: this.filtroSucursal || undefined
@@ -5987,6 +6035,22 @@ const ReparacionesView = {
                 this.paginaReparaciones = pagina;
                 this.cargarDatos();
             }
+        },
+        cambiarItemsPerPageMarcas() {
+            this.paginaMarcas = 1;
+            this.cargarDatos();
+        },
+        cambiarItemsPerPageModelos() {
+            this.paginaModelos = 1;
+            this.cargarDatos();
+        },
+        cambiarItemsPerPageTipos() {
+            this.paginaTipos = 1;
+            this.cargarDatos();
+        },
+        cambiarItemsPerPageReparaciones() {
+            this.paginaReparaciones = 1;
+            this.cargarDatos();
         },
         aplicarFiltrosReparaciones() {
             this.paginaReparaciones = 1;
