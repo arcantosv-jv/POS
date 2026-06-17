@@ -504,10 +504,14 @@ def create_reparacion():
         
         data = request.get_json()
         
-        required_fields = ['nombre_cliente', 'telefono_cliente', 'marca_id', 'modelo_id', 
+        required_fields = ['nombre_cliente', 'telefono_cliente', 'marca_id',
                           'tipo_reparacion_id', 'costo']
         if not all(field in data for field in required_fields):
             return jsonify({'error': f'Campos requeridos: {", ".join(required_fields)}'}), 400
+
+        modelo_nombre = (data.get('modelo_nombre') or data.get('modelo') or '').strip()
+        if not data.get('modelo_id') and not modelo_nombre:
+            return jsonify({'error': 'modelo_nombre es requerido'}), 400
         
         # Determinar sucursal_id
         sucursal_id = data.get('sucursal_id')
@@ -525,9 +529,28 @@ def create_reparacion():
         if not marca:
             return jsonify({'error': 'Marca no encontrada'}), 404
         
-        modelo = ModeloDispositivo.query.get(data['modelo_id'])
-        if not modelo:
-            return jsonify({'error': 'Modelo no encontrado'}), 404
+        modelo = None
+        if data.get('modelo_id'):
+            modelo = ModeloDispositivo.query.get(data['modelo_id'])
+            if not modelo:
+                return jsonify({'error': 'Modelo no encontrado'}), 404
+            if modelo.marca_id != data['marca_id']:
+                return jsonify({'error': 'El modelo no pertenece a la marca seleccionada'}), 400
+        else:
+            modelo = ModeloDispositivo.query.filter(
+                ModeloDispositivo.marca_id == data['marca_id'],
+                db.func.lower(ModeloDispositivo.nombre) == modelo_nombre.lower()
+            ).first()
+            if modelo:
+                if not modelo.is_active:
+                    modelo.is_active = True
+            else:
+                modelo = ModeloDispositivo(
+                    marca_id=data['marca_id'],
+                    nombre=modelo_nombre
+                )
+                db.session.add(modelo)
+                db.session.flush()
         
         tipo = TipoReparacion.query.get(data['tipo_reparacion_id'])
         if not tipo:
@@ -538,7 +561,7 @@ def create_reparacion():
             nombre_cliente=data['nombre_cliente'],
             telefono_cliente=data['telefono_cliente'],
             marca_id=data['marca_id'],
-            modelo_id=data['modelo_id'],
+            modelo_id=modelo.id,
             tipo_reparacion_id=data['tipo_reparacion_id'],
             costo=data['costo'],
             sucursal_id=sucursal_id,

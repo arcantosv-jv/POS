@@ -5676,17 +5676,14 @@ const ReparacionesView = {
                         </div>
                         <div class="form-group">
                             <label>Marca</label>
-                            <select v-model="formularioReparacion.marca_id" @change="cargarModelosDeMarcaReparacion" required>
+                            <select v-model="formularioReparacion.marca_id" @change="formularioReparacion.modelo_nombre = ''" required>
                                 <option value="">Selecciona una marca</option>
                                 <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Modelo</label>
-                            <select v-model="formularioReparacion.modelo_id" required>
-                                <option value="">Selecciona un modelo</option>
-                                <option v-for="modelo in modelosFiltrados" :key="modelo.id" :value="modelo.id">{{ modelo.nombre }}</option>
-                            </select>
+                            <input v-model.trim="formularioReparacion.modelo_nombre" type="text" placeholder="Ej: G9 Play" required>
                         </div>
                         <div class="form-group">
                             <label>Tipo de Reparación</label>
@@ -5829,7 +5826,7 @@ const ReparacionesView = {
                 nombre_cliente: '',
                 telefono_cliente: '',
                 marca_id: '',
-                modelo_id: '',
+                modelo_nombre: '',
                 tipo_reparacion_id: '',
                 costo: '',
                 sucursal_id: '',
@@ -6153,7 +6150,7 @@ const ReparacionesView = {
             this.cargarDatos();
         },
         async guardarReparacion() {
-            if (!this.formularioReparacion.nombre_cliente || !this.formularioReparacion.marca_id || !this.formularioReparacion.modelo_id || !this.formularioReparacion.tipo_reparacion_id) return;
+            if (!this.formularioReparacion.nombre_cliente || !this.formularioReparacion.marca_id || !this.formularioReparacion.modelo_nombre || !this.formularioReparacion.tipo_reparacion_id) return;
             
             // Validar que admin seleccione sucursal
             if (this.userRoleLocal === 'admin' && !this.formularioReparacion.sucursal_id) {
@@ -6164,6 +6161,7 @@ const ReparacionesView = {
             try {
                 const headers = { Authorization: `Bearer ${this.token}` };
                 const datos = { ...this.formularioReparacion };
+                delete datos.modelo_id;
                 
                 // Si es empleado, usar su sucursal_id; si es admin, ya está en el formulario
                 if (this.userRoleLocal === 'employee') {
@@ -6175,7 +6173,7 @@ const ReparacionesView = {
                 if (!datos.costo || datos.costo === '') {
                     const catalogoItem = this.catalogo.find(cat => 
                         cat.marca_id === this.formularioReparacion.marca_id &&
-                        cat.modelo_id === this.formularioReparacion.modelo_id &&
+                        cat.modelo_nombre?.toLowerCase() === this.formularioReparacion.modelo_nombre.toLowerCase() &&
                         cat.tipo_reparacion_id === this.formularioReparacion.tipo_reparacion_id
                     );
                     if (catalogoItem) {
@@ -6192,7 +6190,7 @@ const ReparacionesView = {
                     nombre_cliente: '',
                     telefono_cliente: '',
                     marca_id: '',
-                    modelo_id: '',
+                    modelo_nombre: '',
                     tipo_reparacion_id: '',
                     costo: '',
                     sucursal_id: '',
@@ -6219,7 +6217,7 @@ const ReparacionesView = {
                 nombre_cliente: rep.nombre_cliente,
                 telefono_cliente: rep.telefono_cliente,
                 marca_id: rep.marca_id,
-                modelo_id: rep.modelo_id,
+                modelo_nombre: rep.modelo_nombre,
                 tipo_reparacion_id: rep.tipo_reparacion_id,
                 costo: rep.costo,
                 sucursal_id: rep.sucursal_id,
@@ -6268,10 +6266,6 @@ const ReparacionesView = {
                 this.formularioCatalogo.modelo_id = '';
             }
             await this.cargarModelosPorMarca(this.formularioCatalogo.marca_id);
-        },
-        async cargarModelosDeMarcaReparacion() {
-            this.formularioReparacion.modelo_id = '';
-            await this.cargarModelosPorMarca(this.formularioReparacion.marca_id);
         },
         validarTelefono() {
             // Solo permite números y limita a 10 dígitos
