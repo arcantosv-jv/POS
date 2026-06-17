@@ -6122,10 +6122,10 @@ const ReparacionesView = {
                 this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
             }
         },
-        iniciarEdicionCatalogo(item) {
+        async iniciarEdicionCatalogo(item) {
             this.editandoCatalogoId = item.id;
             this.formularioCatalogo = { marca_id: item.marca_id, modelo_id: item.modelo_id, tipo_reparacion_id: item.tipo_reparacion_id, costo: item.costo };
-            this.cargarModelosDeMarca();
+            await this.cargarModelosDeMarca(false);
         },
         async guardarEdicionCatalogo() {
             if (!this.formularioCatalogo.marca_id || !this.formularioCatalogo.modelo_id || !this.formularioCatalogo.tipo_reparacion_id || !this.formularioCatalogo.costo) return;
@@ -6227,13 +6227,51 @@ const ReparacionesView = {
             };
             this.mostrarNuevaReparacion = true;
         },
-        cargarModelosDeMarca() {
-            this.modelosFiltrados = this.modelos.filter(m => m.marca_id === this.formularioCatalogo.marca_id);
-            this.formularioCatalogo.modelo_id = '';
+        async cargarModelosPorMarca(marcaId) {
+            if (!marcaId) {
+                this.modelosFiltrados = [];
+                return;
+            }
+
+            try {
+                const headers = { Authorization: `Bearer ${this.token}` };
+                const res = await axios.get(`/api/reparaciones/modelos`, {
+                    params: { marca_id: marcaId, page: 1, per_page: 100 },
+                    headers
+                });
+                const modelos = res.data.modelos || [];
+                const totalPages = res.data.pages || 1;
+
+                if (totalPages > 1) {
+                    const pageRequests = [];
+                    for (let page = 2; page <= totalPages; page++) {
+                        pageRequests.push(axios.get(`/api/reparaciones/modelos`, {
+                            params: { marca_id: marcaId, page, per_page: 100 },
+                            headers
+                        }));
+                    }
+
+                    const pages = await Promise.all(pageRequests);
+                    pages.forEach(pageRes => {
+                        modelos.push(...(pageRes.data.modelos || []));
+                    });
+                }
+
+                this.modelosFiltrados = modelos;
+            } catch (err) {
+                this.modelosFiltrados = [];
+                this.mostrarMensaje('Error al cargar modelos de la marca', 'error');
+            }
         },
-        cargarModelosDeMarcaReparacion() {
-            this.modelosFiltrados = this.modelos.filter(m => m.marca_id === this.formularioReparacion.marca_id);
+        async cargarModelosDeMarca(resetModelo = true) {
+            if (resetModelo) {
+                this.formularioCatalogo.modelo_id = '';
+            }
+            await this.cargarModelosPorMarca(this.formularioCatalogo.marca_id);
+        },
+        async cargarModelosDeMarcaReparacion() {
             this.formularioReparacion.modelo_id = '';
+            await this.cargarModelosPorMarca(this.formularioReparacion.marca_id);
         },
         validarTelefono() {
             // Solo permite números y limita a 10 dígitos
