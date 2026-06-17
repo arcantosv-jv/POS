@@ -7,8 +7,10 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import logging
+import time
 
 # Configurar logging
 logger = logging.getLogger(__name__)
@@ -33,6 +35,36 @@ CATEGORY_MAP = {
     'bateria': 'Bateria',
     'otro': 'Otro',
 }
+
+
+def _is_transient_ia_error(error_msg):
+    """Detecta errores temporales donde conviene reintentar o cambiar de modelo."""
+    error_msg = (error_msg or '').lower()
+    transient_markers = [
+        '503',
+        'unavailable',
+        'high demand',
+        'overloaded',
+        'temporarily',
+        'timeout',
+        '429',
+        'quota',
+        'rate limit'
+    ]
+    return any(marker in error_msg for marker in transient_markers)
+
+
+def _get_gemini_model_candidates():
+    """Modelos Gemini a intentar, en orden de preferencia."""
+    configured_models = os.getenv('GEMINI_FALLBACK_MODELS', GEMINI_MODEL)
+    fallback_models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+    models = [model.strip() for model in configured_models.split(',') if model.strip()]
+
+    for model in fallback_models:
+        if model not in models:
+            models.append(model)
+
+    return models
 
 
 def get_device_os_info(modelo):
@@ -218,34 +250,56 @@ Incluye:
 Mantén la respuesta técnica pero accesible.
 """
         
-        # Llamar a Google Generative AI con fallback de modelos
-        modelos_intentos = [GEMINI_MODEL, 'gemini-3.5-flash']
-        respuesta_obtenida = False
-        ultimo_error = None
-        
         if not genai_client:
             logger.error("Cliente de Google Generative AI no configurado")
             raise Exception("No hay clave API de Google configurada")
-        
-        for modelo_intento in modelos_intentos:
-            try:
-                logger.info(f"Intentando con modelo: {modelo_intento}")
-                response = genai_client.models.generate_content(
-                    model=modelo_intento,
-                    contents=prompt,
-                )
-                respuesta_obtenida = True
-                logger.info(f"✓ Respuesta obtenida con modelo: {modelo_intento}")
+
+        max_retries = int(os.getenv('GEMINI_MAX_RETRIES', '2'))
+        max_output_tokens = int(os.getenv('GEMINI_MAX_OUTPUT_TOKENS', '4096'))
+        generation_config = types.GenerateContentConfig(
+            response_mime_type='text/plain',
+            max_output_tokens=max_output_tokens,
+            temperature=0.4
+        )
+        ultimo_error = None
+        response = None
+
+        for modelo_intento in _get_gemini_model_candidates():
+            for intento in range(1, max_retries + 1):
+                try:
+                    logger.info(
+                        f"[GEMINI AYUDA] Intentando con {modelo_intento} "
+                        f"(intento {intento}/{max_retries})"
+                    )
+                    response = genai_client.models.generate_content(
+                        model=modelo_intento,
+                        contents=prompt,
+                        config=generation_config
+                    )
+
+                    if response and response.text:
+                        logger.info(f"[GEMINI AYUDA] ✓ Respuesta obtenida con {modelo_intento}")
+                        break
+
+                    raise Exception("Gemini regresó una respuesta vacía")
+                except Exception as model_error:
+                    ultimo_error = model_error
+                    error_msg = str(model_error)
+                    logger.warning(f"[GEMINI AYUDA] Error con {modelo_intento}: {error_msg[:200]}")
+
+                    if not _is_transient_ia_error(error_msg):
+                        break
+
+                    if intento < max_retries:
+                        time.sleep(2 ** (intento - 1))
+
+            if response and response.text:
                 break
-            except Exception as model_error:
-                logger.warning(f"Error con modelo {modelo_intento}: {str(model_error)}")
-                ultimo_error = model_error
-                continue
-        
-        if not respuesta_obtenida:
+
+        if not response or not response.text:
             logger.error(f"No se pudo obtener respuesta con ningún modelo. Último error: {str(ultimo_error)}")
             raise ultimo_error
-        
+
         solucion = response.text if response and response.text else "No se pudo generar una solución"
         
         return {

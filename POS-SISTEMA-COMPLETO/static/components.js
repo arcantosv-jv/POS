@@ -5535,31 +5535,30 @@ const ReparacionesView = {
                 </div>
 
                 <!-- Barra de búsqueda por modelo -->
-                <div style="padding: 1rem; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); display: flex; gap: 1rem; align-items: center;">
-                    <div style="flex: 1;">
+                <div class="catalog-search-bar">
+                    <div class="catalog-search-input">
                         <input 
                             v-model="searchModeloCatalogo"
                             @keyup.enter="buscarEnCatalogo"
                             type="text"
                             placeholder="🔍 Buscar por modelo..."
-                            style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
                         >
                     </div>
-                    <button 
-                        @click="buscarEnCatalogo"
-                        class="btn btn-primary btn-sm"
-                        style="white-space: nowrap;"
-                    >
-                        Buscar
-                    </button>
-                    <button 
-                        v-if="searchModeloCatalogo"
-                        @click="searchModeloCatalogo = ''; buscarEnCatalogo()"
-                        class="btn btn-secondary btn-sm"
-                        style="white-space: nowrap;"
-                    >
-                        Limpiar búsqueda
-                    </button>
+                    <div class="catalog-search-actions">
+                        <button 
+                            @click="buscarEnCatalogo"
+                            class="btn btn-primary btn-sm"
+                        >
+                            Buscar
+                        </button>
+                        <button 
+                            v-if="searchModeloCatalogo"
+                            @click="searchModeloCatalogo = ''; buscarEnCatalogo()"
+                            class="btn btn-secondary btn-sm"
+                        >
+                            Limpiar búsqueda
+                        </button>
+                    </div>
                 </div>
 
                 <div v-if="mostrarFormularioCatalogo && !editandoCatalogoId && userRoleLocal === 'admin'" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
