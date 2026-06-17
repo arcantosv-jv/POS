@@ -295,10 +295,17 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
     
     try:
         from google import genai
+        from google.genai import types
         
         # Usar la nueva API de google.genai
         client = genai.Client(api_key=api_key)
         max_retries = int(os.getenv('GEMINI_MAX_RETRIES', '2'))
+        max_output_tokens = int(os.getenv('GEMINI_MAX_OUTPUT_TOKENS', '4096'))
+        generation_config = types.GenerateContentConfig(
+            response_mime_type='application/json',
+            max_output_tokens=max_output_tokens,
+            temperature=0.4
+        )
         last_error = None
         content = ''
 
@@ -311,7 +318,8 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
                     )
                     response = client.models.generate_content(
                         model=modelo_gemini,
-                        contents=prompt
+                        contents=prompt,
+                        config=generation_config
                     )
                     logger.info(f"[GEMINI] Respuesta recibida de {modelo_gemini}")
 
@@ -325,10 +333,14 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
                     data = json.loads(content)
                     logger.info(f"[GEMINI] ✅ Éxito con {modelo_gemini} - Datos JSON válidos")
                     return data
-                except json.JSONDecodeError:
-                    logger.error(f"[GEMINI] ❌ JSON inválido con {modelo_gemini}")
-                    logger.error(f"[GEMINI] Contenido recibido: {content[:200]}")
-                    raise
+                except json.JSONDecodeError as json_error:
+                    last_error = json_error
+                    logger.warning(f"[GEMINI] JSON inválido con {modelo_gemini}: {str(json_error)}")
+                    logger.warning(f"[GEMINI] Contenido recibido: {content[:300]}")
+
+                    if intento < max_retries:
+                        time.sleep(2 ** (intento - 1))
+                    continue
                 except Exception as model_error:
                     last_error = model_error
                     error_msg = str(model_error)
