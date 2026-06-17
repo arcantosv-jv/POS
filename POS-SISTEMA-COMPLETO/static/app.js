@@ -39,6 +39,7 @@ createApp({
                 username: '',
                 password: ''
             },
+            showLoginPassword: false,
             loginError: '',
             loginLoading: false,
             
@@ -104,6 +105,7 @@ createApp({
                 
                 // Limpiar formulario
                 this.loginForm = { username: '', password: '' };
+                this.showLoginPassword = false;
             } catch (error) {
                 this.loginError = error.response?.data?.error || 'Error en autenticación';
                 console.error(error);
@@ -126,6 +128,7 @@ createApp({
                 this.userName = '';
                 this.userRole = '';
                 this.loginForm = { username: '', password: '' };
+                this.showLoginPassword = false;
                 this.currentView = 'login';
             }
         },

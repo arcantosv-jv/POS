@@ -8,6 +8,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 import requests
 import json
+import time
 from dotenv import load_dotenv
 import logging
 
@@ -24,6 +25,39 @@ def get_ia_provider():
     """Obtener el proveedor de IA configurado (OpenAI, Anthropic, etc)"""
     provider = os.getenv('IA_PROVIDER', 'gemini').lower()
     return provider
+
+
+def _is_transient_ia_error(error_msg):
+    """Detecta errores temporales donde conviene reintentar o cambiar de modelo."""
+    error_msg = (error_msg or '').lower()
+    transient_markers = [
+        '503',
+        'unavailable',
+        'high demand',
+        'overloaded',
+        'temporarily',
+        'timeout',
+        '429',
+        'quota',
+        'rate limit'
+    ]
+    return any(marker in error_msg for marker in transient_markers)
+
+
+def _get_gemini_model_candidates():
+    """Modelos Gemini a intentar, en orden de preferencia."""
+    configured_models = os.getenv(
+        'GEMINI_FALLBACK_MODELS',
+        os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
+    )
+    fallback_models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+    models = [model.strip() for model in configured_models.split(',') if model.strip()]
+
+    for model in fallback_models:
+        if model not in models:
+            models.append(model)
+
+    return models
 
 
 def get_compatibility_recommendation(modelo_celular):
@@ -264,28 +298,49 @@ Responde SOLO con el JSON, sin explicaciones adicionales. Asegúrate de que el a
         
         # Usar la nueva API de google.genai
         client = genai.Client(api_key=api_key)
-        
-        # Usar modelo disponible (gemini-3.5-flash con cuota disponible)
-        
-        modelo_gemini = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+        max_retries = int(os.getenv('GEMINI_MAX_RETRIES', '2'))
+        last_error = None
+        content = ''
 
-        response = client.models.generate_content(
-            model=modelo_gemini,
-            contents=prompt
-        )
-        logger.info(f"[GEMINI] Solicitando recomendación para modelo")
-        logger.info(f"[GEMINI] Respuesta recibida")
+        for modelo_gemini in _get_gemini_model_candidates():
+            for intento in range(1, max_retries + 1):
+                try:
+                    logger.info(
+                        f"[GEMINI] Solicitando recomendación con {modelo_gemini} "
+                        f"(intento {intento}/{max_retries})"
+                    )
+                    response = client.models.generate_content(
+                        model=modelo_gemini,
+                        contents=prompt
+                    )
+                    logger.info(f"[GEMINI] Respuesta recibida de {modelo_gemini}")
 
-        content = response.text.strip()
+                    content = response.text.strip()
 
-        if content.startswith("```json"):
-            content = content.replace("```json", "", 1).replace("```", "").strip()
-        elif content.startswith("```"):
-            content = content.replace("```", "").strip()
+                    if content.startswith("```json"):
+                        content = content.replace("```json", "", 1).replace("```", "").strip()
+                    elif content.startswith("```"):
+                        content = content.replace("```", "").strip()
 
-        data = json.loads(content)
-        logger.info(f"[GEMINI] ✅ Éxito - Datos JSON válidos")
-        return data
+                    data = json.loads(content)
+                    logger.info(f"[GEMINI] ✅ Éxito con {modelo_gemini} - Datos JSON válidos")
+                    return data
+                except json.JSONDecodeError:
+                    logger.error(f"[GEMINI] ❌ JSON inválido con {modelo_gemini}")
+                    logger.error(f"[GEMINI] Contenido recibido: {content[:200]}")
+                    raise
+                except Exception as model_error:
+                    last_error = model_error
+                    error_msg = str(model_error)
+                    logger.warning(f"[GEMINI] Error con {modelo_gemini}: {error_msg[:200]}")
+
+                    if not _is_transient_ia_error(error_msg):
+                        break
+
+                    if intento < max_retries:
+                        time.sleep(2 ** (intento - 1))
+
+        raise last_error
         
     except ImportError as e:
         logger.error(f"[GEMINI] ❌ Import Error: {str(e)}")
