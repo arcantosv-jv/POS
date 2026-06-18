@@ -2810,7 +2810,7 @@ const VentasSinStockView = {
                             v-model="filtros.fecha_inicio" 
                             type="date"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
-                            @change="cargarDatos"
+                            @change="cargarDatos(1)"
                         />
                     </div>
                     <div>
@@ -2821,7 +2821,7 @@ const VentasSinStockView = {
                             v-model="filtros.fecha_fin" 
                             type="date"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
-                            @change="cargarDatos"
+                            @change="cargarDatos(1)"
                         />
                     </div>
                     <button 
@@ -2890,22 +2890,21 @@ const VentasSinStockView = {
                 <strong>Total sin stock:</strong> \${{ totalSinStock.toFixed(2) }}
             </div>
 
-            <div v-if="pagination.pages > 1" style="padding: 1rem; display: flex; gap: 0.5rem; justify-content: center; border-top: 1px solid var(--gray-200);">
-                <button 
-                    v-for="page in pagination.pages" 
-                    :key="page"
-                    @click="irAPagina(page)"
-                    :style="{
-                        padding: '0.5rem 1rem',
-                        background: page === paginaActual ? '#2563eb' : 'var(--gray-300)',
-                        color: page === paginaActual ? 'white' : 'black',
-                        border: 'none',
-                        borderRadius: '0.375rem',
-                        cursor: 'pointer'
-                    }"
-                >
-                    {{ page }}
-                </button>
+            <div v-if="pagination.total > 0" style="padding: 1rem; display: flex; gap: 1rem; justify-content: center; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--gray-200);">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label style="font-size: 0.875rem; white-space: nowrap;">Mostrar:</label>
+                    <select v-model.number="pagination.per_page" @change="cambiarItemsPorPagina" style="padding: 0.375rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;">
+                        <option :value="5">5</option>
+                        <option :value="10">10</option>
+                        <option :value="15">15</option>
+                        <option :value="20">20</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button @click="irAPagina(paginaActual - 1)" :disabled="paginaActual === 1" class="btn btn-secondary btn-sm">← Anterior</button>
+                    <span style="min-width: 160px; text-align: center;">Página {{ paginaActual }} de {{ pagination.pages }} (Total: {{ pagination.total }})</span>
+                    <button @click="irAPagina(paginaActual + 1)" :disabled="paginaActual === pagination.pages" class="btn btn-secondary btn-sm">Siguiente →</button>
+                </div>
             </div>
         </div>
     `,
@@ -2919,7 +2918,7 @@ const VentasSinStockView = {
             },
             pagination: {
                 page: 1,
-                per_page: 50,
+                per_page: 5,
                 total: 0,
                 pages: 1
             },
@@ -2971,7 +2970,12 @@ const VentasSinStockView = {
             this.cargarDatos(1);
         },
         irAPagina(page) {
-            this.cargarDatos(page);
+            if (page >= 1 && page <= this.pagination.pages) {
+                this.cargarDatos(page);
+            }
+        },
+        cambiarItemsPorPagina() {
+            this.cargarDatos(1);
         }
     },
     mounted() {
@@ -5418,7 +5422,7 @@ const ReparacionesView = {
                         <label>Marca</label>
                         <select v-model="formularioModelo.marca_id" required>
                             <option value="">Selecciona una marca</option>
-                            <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                            <option v-for="marca in marcasDisponibles" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                         </select>
                         <label style="margin-top: 0.5rem;">Nombre del Modelo</label>
                         <input v-model="formularioModelo.nombre" type="text" placeholder="Ej: A32 4G" required>
@@ -5433,7 +5437,7 @@ const ReparacionesView = {
                         <label>Marca</label>
                         <select v-model="formularioModelo.marca_id" required>
                             <option value="">Selecciona una marca</option>
-                            <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                            <option v-for="marca in marcasDisponibles" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                         </select>
                         <label style="margin-top: 0.5rem;">Nombre del Modelo</label>
                         <input v-model="formularioModelo.nombre" type="text" placeholder="Ej: A32 4G" required>
@@ -5598,7 +5602,7 @@ const ReparacionesView = {
                     <label>Marca</label>
                     <select v-model="formularioCatalogo.marca_id" @change="cargarModelosDeMarca" required>
                         <option value="">Selecciona una marca</option>
-                        <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                        <option v-for="marca in marcasDisponibles" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                     </select>
                     <label style="margin-top: 0.5rem;">Modelo</label>
                     <select v-model="formularioCatalogo.modelo_id" required>
@@ -5623,7 +5627,7 @@ const ReparacionesView = {
                     <label>Marca</label>
                     <select v-model="formularioCatalogo.marca_id" @change="cargarModelosDeMarca" required>
                         <option value="">Selecciona una marca</option>
-                        <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                        <option v-for="marca in marcasDisponibles" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                     </select>
                     <label style="margin-top: 0.5rem;">Modelo</label>
                     <select v-model="formularioCatalogo.modelo_id" required>
@@ -5711,7 +5715,7 @@ const ReparacionesView = {
                             <label>Marca</label>
                             <select v-model="formularioReparacion.marca_id" @change="formularioReparacion.modelo_nombre = ''" required>
                                 <option value="">Selecciona una marca</option>
-                                <option v-for="marca in marcas" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
+                                <option v-for="marca in marcasDisponibles" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -5845,6 +5849,7 @@ const ReparacionesView = {
             tabs: ['Marcas', 'Modelos', 'Tipos'],
             tabActiva: 'Marcas',
             marcas: [],
+            marcasDisponibles: [],
             modelos: [],
             tipos: [],
             catalogo: [],
@@ -5941,6 +5946,31 @@ const ReparacionesView = {
                 console.error('Error al cargar perfil:', err);
             }
         },
+        async cargarMarcasDisponibles(headers) {
+            const res = await axios.get(`/api/reparaciones/marcas`, {
+                params: { page: 1, per_page: 100 },
+                headers
+            });
+            const marcas = res.data.marcas || [];
+            const totalPages = res.data.pages || 1;
+
+            if (totalPages > 1) {
+                const pageRequests = [];
+                for (let page = 2; page <= totalPages; page++) {
+                    pageRequests.push(axios.get(`/api/reparaciones/marcas`, {
+                        params: { page, per_page: 100 },
+                        headers
+                    }));
+                }
+
+                const pages = await Promise.all(pageRequests);
+                pages.forEach(pageRes => {
+                    marcas.push(...(pageRes.data.marcas || []));
+                });
+            }
+
+            this.marcasDisponibles = marcas;
+        },
         async cargarDatos() {
             try {
                 const headers = { Authorization: `Bearer ${this.token}` };
@@ -5976,7 +6006,8 @@ const ReparacionesView = {
                         },
                         headers 
                     }),
-                    axios.get(`/api/admin/sucursales-publico`, { headers })
+                    axios.get(`/api/admin/sucursales-publico`, { headers }),
+                    this.cargarMarcasDisponibles(headers)
                 ]);
                 
                 // Marcas

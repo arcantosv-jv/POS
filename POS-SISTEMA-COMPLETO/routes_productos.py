@@ -269,15 +269,22 @@ def search_productos():
         if not query or len(query) < 1:
             return jsonify({'error': 'Búsqueda requerida'}), 400
         
-        # Búsqueda parcial
-        search_term = f"%{query}%"
+        # Buscar cada palabra de forma independiente para permitir términos
+        # intermedios, por ejemplo: "mica iphone 17" -> "mica 9d iphone 17".
+        terms = list(dict.fromkeys(query.split()))
+        term_filters = []
+        for term in terms:
+            escaped_term = term.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+            search_term = f"%{escaped_term}%"
+            term_filters.append(or_(
+                Producto.nombre.ilike(search_term, escape='\\'),
+                Producto.codigo.ilike(search_term, escape='\\'),
+                Producto.codigo_barras.ilike(search_term, escape='\\')
+            ))
+
         productos = Producto.query.filter(
             Producto.is_active == True,
-            or_(
-                Producto.nombre.ilike(search_term),
-                Producto.codigo.ilike(search_term),
-                Producto.codigo_barras.ilike(search_term)
-            )
+            and_(*term_filters)
         ).limit(20).all()
         
         result = []
