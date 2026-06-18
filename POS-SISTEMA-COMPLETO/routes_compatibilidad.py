@@ -48,9 +48,9 @@ def _get_gemini_model_candidates():
     """Modelos Gemini a intentar, en orden de preferencia."""
     configured_models = os.getenv(
         'GEMINI_FALLBACK_MODELS',
-        os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
+        os.getenv('GEMINI_MODEL', 'gemini-3.1-flash-lite')
     )
-    fallback_models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+    fallback_models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite','gemini-3.5-flash']
     models = [model.strip() for model in configured_models.split(',') if model.strip()]
 
     for model in fallback_models:
@@ -75,7 +75,6 @@ def get_compatibility_recommendation(modelo_celular):
                 {
                     "modelo": str,
                     "marca": str,
-                    "razon": str,
                     "nivel_compatibilidad": "alta|media|baja"
                 }
             ],
@@ -136,7 +135,6 @@ FORMATO DE RESPUESTA (JSON):
         {{
             "modelo": "Nombre exacto del modelo",
             "marca": "Marca",
-            "razon": "Por qué es compatible (explicación breve técnica)",
             "nivel_compatibilidad": "alta|media|baja"
         }}
     ],
@@ -207,7 +205,6 @@ FORMATO DE RESPUESTA (JSON):
         {{
             "modelo": "Nombre exacto del modelo",
             "marca": "Marca",
-            "razon": "Por qué es compatible (explicación breve técnica)",
             "nivel_compatibilidad": "alta|media|baja"
         }}
     ],
@@ -266,9 +263,12 @@ Tu tarea es dar recomendaciones de micas COMPATIBLES para el modelo: {modelo_cel
 IMPORTANTE:
 - Es común que las micas de un modelo sirvan para otros modelos similares
 - Los modelos de la misma marca y generación similar suelen compartir dimensiones
-- Considera modelos recientes de la misma marca de un tamaño similar, por ejemplo al Samsung S25 FE le queda excelente el Samsung A37
+- Considera modelos recientes y de hasta 2 años anteriores de la misma marca de un tamaño similar, por ejemplo al Samsung S25 FE le queda excelente el Samsung A37
 - Considera principalmente modelos del mismo o un año anterior
-- Considera modelos de diferentes marcas que tengan tamaños de pantalla similares
+- Considera modelos de diferentes marcas que tengan tamaños de pantalla similares aunque tengan más de dos años de haber salido el modelo de otra marca
+- Considera que la mica de iPhone 11 también le queda al iPhone 12 y viceversa
+- Considera la mica de huawei y9 prime compatible con muchos modelos aunque tengan diferencia de tiempo de lanzamiento
+- Considera que las dimensiones no varien mucho, por ejemplo a un iphone 12 de 6.1", un iPhone 11 pro de 5.8" tiene de diferencia .3, lo que es mucho para adaptarla, queda mejor la del iPhone 11
 - Proporciona EXACTAMENTE 10 opciones de micas compatibles (incluye el modelo exacto y 9 alternativas)
 - Varía entre compatibilidad alta, media y baja
 - Proporciona modelos de diferentes marcas para dar más opciones
@@ -283,7 +283,6 @@ FORMATO DE RESPUESTA (JSON):
         {{
             "modelo": "Nombre exacto del modelo",
             "marca": "Marca",
-            "razon": "Por qué es compatible (explicación breve técnica)",
             "nivel_compatibilidad": "alta|media|baja"
         }}
     ],
@@ -394,61 +393,61 @@ def _get_generic_recommendation(modelo_celular):
                 {
                     'modelo': 'Motorola G9 Play',
                     'marca': 'Motorola',
-                    'razon': 'Modelo exacto - dimensiones 6.5" con notch en gota',
+                    # 'razon': 'Modelo exacto - dimensiones 6.5" con notch en gota',
                     'nivel_compatibilidad': 'alta'
                 },
                 {
                     'modelo': 'Motorola Moto G Power (2021)',
                     'marca': 'Motorola',
-                    'razon': 'Mismo tamaño de pantalla 6.5" y bisel similar',
+                    # 'razon': 'Mismo tamaño de pantalla 6.5" y bisel similar',
                     'nivel_compatibilidad': 'alta'
                 },
                 {
                     'modelo': 'Motorola G8 Play',
                     'marca': 'Motorola',
-                    'razon': 'Generación anterior, dimensiones muy similares',
+                    # 'razon': 'Generación anterior, dimensiones muy similares',
                     'nivel_compatibilidad': 'alta'
                 },
                 {
                     'modelo': 'Samsung Galaxy A11',
                     'marca': 'Samsung',
-                    'razon': 'Pantalla 6.5" con dimensiones similares',
+                    # 'razon': 'Pantalla 6.5" con dimensiones similares',
                     'nivel_compatibilidad': 'media'
                 },
                 {
                     'modelo': 'Samsung Galaxy A12',
                     'marca': 'Samsung',
-                    'razon': 'Pantalla 6.5" con mismo tamaño',
+                    # 'razon': 'Pantalla 6.5" con mismo tamaño',
                     'nivel_compatibilidad': 'media'
                 },
                 {
                     'modelo': 'Redmi Note 9',
                     'marca': 'Xiaomi',
-                    'razon': 'Pantalla 6.53" con biseles comparables',
+                    # 'razon': 'Pantalla 6.53" con biseles comparables',
                     'nivel_compatibilidad': 'media'
                 },
                 {
                     'modelo': 'Redmi Note 10',
                     'marca': 'Xiaomi',
-                    'razon': 'Pantalla 6.5" con marco similar',
+                    # 'razon': 'Pantalla 6.5" con marco similar',
                     'nivel_compatibilidad': 'media'
                 },
                 {
                     'modelo': 'TCL 30',
                     'marca': 'TCL',
-                    'razon': 'Pantalla 6.5" con dimensiones compatibles',
+                    # 'razon': 'Pantalla 6.5" con dimensiones compatibles',
                     'nivel_compatibilidad': 'media'
                 },
                 {
                     'modelo': 'Oppo A15',
                     'marca': 'Oppo',
-                    'razon': 'Pantalla 6.5" con bisel estándar',
+                    # 'razon': 'Pantalla 6.5" con bisel estándar',
                     'nivel_compatibilidad': 'baja'
                 },
                 {
                     'modelo': 'Vivo Y12',
                     'marca': 'Vivo',
-                    'razon': 'Pantalla 6.5" con dimensiones aproximadas',
+                    # 'razon': 'Pantalla 6.5" con dimensiones aproximadas',
                     'nivel_compatibilidad': 'baja'
                 }
             ],
@@ -469,7 +468,7 @@ def _get_generic_recommendation(modelo_celular):
                 {
                     'modelo': modelo_celular,
                     'marca': 'Desconocida',
-                    'razon': 'Modelo exacto - siempre la mejor opción',
+                    # 'razon': 'Modelo exacto - siempre la mejor opción',
                     'nivel_compatibilidad': 'alta'
                 }
             ],
@@ -509,6 +508,17 @@ def _ajustar_compatibilidad_por_notch(recomendaciones):
     return recomendaciones
 
 
+def _eliminar_razones(recomendaciones):
+    """Excluir la razón aunque el proveedor de IA la incluya en su respuesta."""
+    if not recomendaciones or 'compatibles' not in recomendaciones:
+        return recomendaciones
+
+    for mica in recomendaciones.get('compatibles', []):
+        mica.pop('razon', None)
+
+    return recomendaciones
+
+
 @compatibilidad_bp.route('/buscar', methods=['POST'])
 @jwt_required()
 def buscar_compatibilidad():
@@ -538,8 +548,9 @@ def buscar_compatibilidad():
         if 'error' in recomendaciones:
             return jsonify(recomendaciones), 503
         
-        # Post-procesamiento: Ajustar compatibilidad cuando solo difiere el notch
-        recomendaciones = _ajustar_compatibilidad_por_notch(recomendaciones)
+        # Desactivado al retirar "razon", ya que este ajuste analizaba ese texto:
+        # recomendaciones = _ajustar_compatibilidad_por_notch(recomendaciones)
+        recomendaciones = _eliminar_razones(recomendaciones)
         
         return jsonify({
             'exito': True,

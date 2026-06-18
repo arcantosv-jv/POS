@@ -5187,9 +5187,11 @@ const CompatibilidadView = {
                                     <p style="margin: 0.3rem 0; color: var(--gray-600);">
                                         <strong>Marca:</strong> {{ mica.marca }}
                                     </p>
+                                    <!-- Razón desactivada para simplificar los resultados.
                                     <p style="margin: 0.3rem 0; color: var(--gray-700);">
                                         <strong>Razón:</strong> {{ mica.razon }}
                                     </p>
+                                    -->
                                 </div>
                                 <div style="text-align: right;">
                                     <span :class="getNivelClase(mica.nivel_compatibilidad)">
