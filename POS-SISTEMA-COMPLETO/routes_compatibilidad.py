@@ -282,6 +282,7 @@ IMPORTANTE:
 - Considera que la mica de iPhone 11 también le queda al iPhone 12 y viceversa
 - Considera la mica de huawei y9 prime compatible con muchos modelos aunque tengan diferencia de tiempo de lanzamiento
 - Considera que las dimensiones no varien mucho, por ejemplo a un iphone 12 de 6.1", un iPhone 11 pro de 5.8" tiene de diferencia .3, lo que es mucho para adaptarla, queda mejor la del iPhone 11
+- Considera que al oppo reno 7 4g le queda bien motorola g31
 - Proporciona EXACTAMENTE 10 opciones de micas compatibles (incluye el modelo exacto y 9 alternativas)
 - Varía entre compatibilidad alta, media y baja
 - Proporciona modelos de diferentes marcas para dar más opciones

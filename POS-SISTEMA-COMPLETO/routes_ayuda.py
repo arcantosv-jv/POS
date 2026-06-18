@@ -26,8 +26,6 @@ genai_client = None
 if GEMINI_API_KEY:
     genai_client = genai.Client(api_key=GEMINI_API_KEY)
 
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash')
-
 CATEGORY_MAP = {
     'formateo': 'Formateo',
     'gmail': 'Gmail',
@@ -56,9 +54,25 @@ def _is_transient_ia_error(error_msg):
 
 def _get_gemini_model_candidates():
     """Modelos Gemini a intentar, en orden de preferencia."""
-    configured_models = os.getenv('GEMINI_FALLBACK_MODELS', GEMINI_MODEL)
-    fallback_models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
-    models = [model.strip() for model in configured_models.split(',') if model.strip()]
+    preferred_models = [
+        model.strip()
+        for model in os.getenv(
+            'GEMINI_PRIMARY_MODELS',
+            'gemini-3.1-flash-lite,gemini-2.5-flash'
+        ).split(',')
+        if model.strip()
+    ]
+    configured_models = os.getenv(
+        'GEMINI_FALLBACK_MODELS',
+        os.getenv('GEMINI_MODEL', '')
+    )
+    fallback_models = ['gemini-2.5-flash-lite', 'gemini-3.5-flash']
+    models = preferred_models
+
+    for model in configured_models.split(','):
+        model = model.strip()
+        if model and model not in models:
+            models.append(model)
 
     for model in fallback_models:
         if model not in models:
