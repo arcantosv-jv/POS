@@ -67,7 +67,8 @@ JWT_SECRET_KEY=tu_clave_jwt_nueva_y_segura_987654321
 TIMEZONE=America/Mexico_City
 IA_PROVIDER=gemini
 GEMINI_API_KEY=AIzaSy... (tu API key de Google Gemini)
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_PRIMARY_MODELS=gemini-3.1-flash-lite,gemini-2.5-flash
+GEMINI_FALLBACK_MODELS=gemini-2.5-flash-lite,gemini-3.5-flash
 ```
 
 ⚠️ **IMPORTANTE**: 
