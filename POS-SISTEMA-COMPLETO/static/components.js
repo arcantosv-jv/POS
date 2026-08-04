@@ -5892,7 +5892,7 @@ const ReparacionesView = {
             paginaReparaciones: 1,
             itemsPerPageMarcas: 5,
             itemsPerPageModelos: 5,
-            itemsPerPageTipos: 5,
+            itemsPerPageTipos: 100,
             itemsPerPageCatalogo: 5,
             itemsPerPageReparaciones: 5,
             searchModeloCatalogo: '',

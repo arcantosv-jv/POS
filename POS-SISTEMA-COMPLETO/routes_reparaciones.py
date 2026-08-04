@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import (db, User, MarcaDispositivo, ModeloDispositivo, 
                     TipoReparacion, CatalogoReparacion, Reparacion)
 from functools import wraps
-from config import get_cdmx_now
+from config import get_cdmx_now, CDMX_TZ
 from datetime import datetime
 
 reparaciones_bp = Blueprint('reparaciones', __name__, url_prefix='/api/reparaciones')

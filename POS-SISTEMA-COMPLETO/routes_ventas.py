@@ -4,7 +4,7 @@ from models import db, User, Venta, DetalleVenta, Producto, Stock, Sucursal, Pag
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 import uuid
-from config import get_cdmx_now
+from config import get_cdmx_now, CDMX_TZ
 
 ventas_bp = Blueprint('ventas', __name__, url_prefix='/api/ventas')
 
@@ -194,9 +194,14 @@ def get_ventas():
         
         # Filtrar por fechas
         if fecha_inicio:
-            query = query.filter(Venta.created_at >= datetime.fromisoformat(fecha_inicio))
+            # convertir fecha ISO a datetime en timezone CDMX
+            d = datetime.fromisoformat(fecha_inicio).date()
+            inicio = CDMX_TZ.localize(datetime.combine(d, datetime.min.time()))
+            query = query.filter(Venta.created_at >= inicio)
         if fecha_fin:
-            query = query.filter(Venta.created_at <= datetime.fromisoformat(fecha_fin))
+            d = datetime.fromisoformat(fecha_fin).date()
+            fin = CDMX_TZ.localize(datetime.combine(d, datetime.max.time()))
+            query = query.filter(Venta.created_at <= fin)
         
         ventas = query.order_by(Venta.created_at.desc()).paginate(
             page=page,
@@ -423,7 +428,7 @@ def get_cierre_caja_hoy():
         if user.role != 'employee':
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
-        hoy = date.today()
+        hoy = get_cdmx_now().date()
         
         # Obtener cierre existente o crear uno
         cierre = CierreCaja.query.filter_by(
@@ -441,8 +446,8 @@ def get_cierre_caja_hoy():
             db.session.add(cierre)
         
         # Calcular totales del día
-        hoy_inicio = datetime.combine(hoy, datetime.min.time())
-        hoy_fin = datetime.combine(hoy, datetime.max.time())
+        hoy_inicio = get_cdmx_now().replace(hour=0, minute=0, second=0, microsecond=0)
+        hoy_fin = hoy_inicio.replace(hour=23, minute=59, second=59, microsecond=999999)
         
         ventas_hoy = Venta.query.filter(
             Venta.cajero_id == user_id,
@@ -505,7 +510,7 @@ def crear_cierre_caja():
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
         data = request.get_json()
-        hoy = date.today()
+        hoy = get_cdmx_now().date()
         
         # Obtener cierre existente
         cierre = CierreCaja.query.filter_by(
@@ -677,7 +682,7 @@ def corregir_cierre_caja():
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
         data = request.get_json()
-        hoy = date.today()
+        hoy = get_cdmx_now().date()
         
         # Obtener cierre existente
         cierre = CierreCaja.query.filter_by(
@@ -738,9 +743,13 @@ def get_ventas_sin_stock():
         
         # Aplicar filtros
         if fecha_inicio:
-            query = query.filter(Venta.created_at >= datetime.fromisoformat(fecha_inicio))
+            d = datetime.fromisoformat(fecha_inicio).date()
+            inicio = CDMX_TZ.localize(datetime.combine(d, datetime.min.time()))
+            query = query.filter(Venta.created_at >= inicio)
         if fecha_fin:
-            query = query.filter(Venta.created_at <= datetime.fromisoformat(fecha_fin))
+            d = datetime.fromisoformat(fecha_fin).date()
+            fin = CDMX_TZ.localize(datetime.combine(d, datetime.max.time()))
+            query = query.filter(Venta.created_at <= fin)
         if sucursal_id:
             query = query.filter(Venta.sucursal_id == sucursal_id)
         

@@ -289,6 +289,7 @@ IMPORTANTE:
 - Considera modelos de marcas comerciales populares en Latinoamérica (Samsung, Xiaomi, Motorola, Apple, Oppo, Huawei,etc) para mayor relevancia 
 - Omite modelos de marcas no comerciales como vivo, realme, etc que no son comunes en la región
 - Omite el modelo solicitado en las recomendaciones, solo incluye alternativas compatibles
+- Para modelos curvos, considera solo micas curvas, para modelos planos solo micas planas, por ejemplo, al s25 ultra no le puede quedar la del s23 ultra porque el s23 ultra es curvo
 
 FORMATO DE RESPUESTA (JSON):
 {{

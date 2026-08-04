@@ -305,7 +305,7 @@ def exportar_inventario():
             csv_bytes,
             mimetype='text/csv',
             as_attachment=True,
-            download_name=f'inventario_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            download_name=f"inventario_{get_cdmx_now().strftime('%Y%m%d_%H%M%S')}.csv"
         ), 200
     
     except Exception as e:

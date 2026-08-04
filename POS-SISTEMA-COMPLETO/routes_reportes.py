@@ -4,7 +4,7 @@ from models import db, User, Venta, DetalleVenta, EntradaInventario, Sucursal, S
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from decimal import Decimal
-from config import get_cdmx_now
+from config import get_cdmx_now, CDMX_TZ
 
 reportes_bp = Blueprint('reportes', __name__, url_prefix='/api/reportes')
 
@@ -24,10 +24,13 @@ def reportes_ventas_diarias():
         
         fecha_obj = datetime.strptime(fecha, '%Y-%m-%d')
         fecha_siguiente = fecha_obj + timedelta(days=1)
-        
+
+        inicio = CDMX_TZ.localize(datetime.combine(fecha_obj.date(), datetime.min.time()))
+        fin = CDMX_TZ.localize(datetime.combine(fecha_siguiente.date(), datetime.min.time()))
+
         query = Venta.query.filter(
-            Venta.created_at >= fecha_obj,
-            Venta.created_at < fecha_siguiente
+            Venta.created_at >= inicio,
+            Venta.created_at < fin
         )
         
         # Filtrar por sucursal
@@ -86,10 +89,12 @@ def reportes_ventas_mensuales():
             fecha_fin = datetime(fecha_inicio.year + 1, 1, 1)
         else:
             fecha_fin = datetime(fecha_inicio.year, fecha_inicio.month + 1, 1)
-        
+        inicio = CDMX_TZ.localize(datetime.combine(fecha_inicio.date(), datetime.min.time()))
+        fin = CDMX_TZ.localize(datetime.combine(fecha_fin.date(), datetime.min.time()))
+
         query = Venta.query.filter(
-            Venta.created_at >= fecha_inicio,
-            Venta.created_at < fecha_fin
+            Venta.created_at >= inicio,
+            Venta.created_at < fin
         )
         
         # Filtrar por sucursal
@@ -159,10 +164,13 @@ def reportes_ventas_anuales():
         
         fecha_inicio = datetime(año, 1, 1)
         fecha_fin = datetime(año + 1, 1, 1)
-        
+
+        inicio = CDMX_TZ.localize(datetime.combine(fecha_inicio.date(), datetime.min.time()))
+        fin = CDMX_TZ.localize(datetime.combine(fecha_fin.date(), datetime.min.time()))
+
         query = Venta.query.filter(
-            Venta.created_at >= fecha_inicio,
-            Venta.created_at < fecha_fin
+            Venta.created_at >= inicio,
+            Venta.created_at < fin
         )
         
         # Filtrar por sucursal
@@ -236,9 +244,13 @@ def reportes_productos_vendidos():
         
         # Filtrar por fechas
         if fecha_inicio:
-            query = query.filter(Venta.created_at >= datetime.fromisoformat(fecha_inicio))
+            d = datetime.fromisoformat(fecha_inicio).date()
+            inicio = CDMX_TZ.localize(datetime.combine(d, datetime.min.time()))
+            query = query.filter(Venta.created_at >= inicio)
         if fecha_fin:
-            query = query.filter(Venta.created_at <= datetime.fromisoformat(fecha_fin))
+            d = datetime.fromisoformat(fecha_fin).date()
+            fin = CDMX_TZ.localize(datetime.combine(d, datetime.max.time()))
+            query = query.filter(Venta.created_at <= fin)
         
         detalles = query.all()
         
