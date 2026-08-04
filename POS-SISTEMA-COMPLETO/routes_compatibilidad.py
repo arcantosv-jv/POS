@@ -286,7 +286,7 @@ IMPORTANTE:
 - Proporciona EXACTAMENTE 10 opciones de micas compatibles (incluye el modelo exacto y 9 alternativas)
 - Varía entre compatibilidad alta, media y baja
 - Proporciona modelos de diferentes marcas para dar más opciones
-- Considera modelos de marcas comerciales populares en Latinoamérica (Samsung, Xiaomi, Motorola, Apple, Oppo, Huawei,etc) para mayor relevancia 
+- Considera modelos de marcas comerciales populares en Latinoamérica (Samsung, Motorola, Apple, Oppo, Huawei) para mayor relevancia 
 - Omite modelos de marcas no comerciales como vivo, realme, etc que no son comunes en la región
 - Omite el modelo solicitado en las recomendaciones, solo incluye alternativas compatibles
 - Para modelos curvos, considera solo micas curvas, para modelos planos solo micas planas, por ejemplo, al s25 ultra no le puede quedar la del s23 ultra porque el s23 ultra es curvo
