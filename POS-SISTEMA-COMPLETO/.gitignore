@@ -56,9 +56,6 @@ postgres_data/
 *.log
 logs/
 
-# Migraciones
-migrations/
-
 # Archivos de temporal
 *.tmp
 *.temp
