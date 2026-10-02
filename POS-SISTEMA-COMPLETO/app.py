@@ -23,6 +23,18 @@ def create_app(config_name=None):
     db.init_app(app)
     CORS(app, resources={r"/api/*": {"origins": "*"}})
     jwt = JWTManager(app)
+
+    @jwt.user_lookup_loader
+    def load_user_from_jwt(_jwt_header, jwt_data):
+        user = db.session.get(User, jwt_data.get('sub'))
+        return user if user and user.is_active else None
+
+    @jwt.user_lookup_error_loader
+    def handle_missing_jwt_user(_jwt_header, _jwt_data):
+        return jsonify({
+            'error': 'La sesión ya no pertenece a un usuario activo. Inicia sesión nuevamente.'
+        }), 401
+
     migrate = Migrate(app, db)
     
     # Registrar blueprints

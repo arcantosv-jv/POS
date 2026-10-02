@@ -5,6 +5,7 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 from decimal import Decimal
 from config import get_cdmx_now, CDMX_TZ
+import os
 
 reportes_bp = Blueprint('reportes', __name__, url_prefix='/api/reportes')
 
@@ -359,6 +360,244 @@ def reporte_consolidado():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def _dashboard_date_range(fecha_inicio_value, fecha_fin_value):
+    """Parsea fechas inclusivas para reportes del dashboard."""
+    hoy = get_cdmx_now().date()
+    fecha_fin = datetime.strptime(fecha_fin_value, '%Y-%m-%d').date() if fecha_fin_value else hoy
+    fecha_inicio = (
+        datetime.strptime(fecha_inicio_value, '%Y-%m-%d').date()
+        if fecha_inicio_value
+        else fecha_fin - timedelta(days=29)
+    )
+
+    if fecha_inicio > fecha_fin:
+        raise ValueError('La fecha inicial no puede ser posterior a la fecha final')
+    if (fecha_fin - fecha_inicio).days > 365:
+        raise ValueError('El rango máximo del dashboard es de 366 días')
+
+    return fecha_inicio, fecha_fin
+
+
+def _dashboard_period_summary(fecha_inicio, fecha_fin_exclusiva, sucursal_id=None):
+    inicio = CDMX_TZ.localize(datetime.combine(fecha_inicio, datetime.min.time()))
+    fin = CDMX_TZ.localize(datetime.combine(fecha_fin_exclusiva, datetime.min.time()))
+    query = db.session.query(
+        func.count(Venta.id),
+        func.coalesce(func.sum(Venta.total), 0),
+        func.coalesce(func.sum(Venta.total_impuestos), 0),
+        func.coalesce(func.avg(Venta.total), 0)
+    ).filter(Venta.created_at >= inicio, Venta.created_at < fin)
+    if sucursal_id:
+        query = query.filter(Venta.sucursal_id == sucursal_id)
+
+    cantidad, total, impuestos, promedio = query.one()
+    return {
+        'cantidad_ventas': int(cantidad or 0),
+        'total_ventas': float(total or 0),
+        'total_impuestos': float(impuestos or 0),
+        'promedio_venta': float(promedio or 0)
+    }
+
+
+def _build_sales_dashboard(fecha_inicio, fecha_fin, sucursal_id=None):
+    inicio = CDMX_TZ.localize(datetime.combine(fecha_inicio, datetime.min.time()))
+    fin_exclusiva = CDMX_TZ.localize(datetime.combine(fecha_fin + timedelta(days=1), datetime.min.time()))
+    resumen = _dashboard_period_summary(fecha_inicio, fecha_fin + timedelta(days=1), sucursal_id)
+    diarios = db.session.query(
+        func.date(Venta.created_at),
+        func.coalesce(func.sum(Venta.total), 0),
+        func.count(Venta.id)
+    ).filter(Venta.created_at >= inicio, Venta.created_at < fin_exclusiva)
+    sucursales_query = db.session.query(
+        Venta.sucursal_id,
+        Sucursal.nombre,
+        func.coalesce(func.sum(Venta.total), 0),
+        func.count(Venta.id)
+    ).join(Sucursal, Sucursal.id == Venta.sucursal_id).filter(
+        Venta.created_at >= inicio,
+        Venta.created_at < fin_exclusiva
+    )
+    if sucursal_id:
+        diarios = diarios.filter(Venta.sucursal_id == sucursal_id)
+        sucursales_query = sucursales_query.filter(Venta.sucursal_id == sucursal_id)
+
+    diarios = diarios.group_by(func.date(Venta.created_at)).order_by(func.date(Venta.created_at)).all()
+    por_fecha = {str(dia)[:10]: {'total': float(total), 'cantidad': int(cantidad)} for dia, total, cantidad in diarios}
+    por_mes = {}
+    for dia, datos in por_fecha.items():
+        mes = dia[:7]
+        if mes not in por_mes:
+            por_mes[mes] = {'total': 0.0, 'cantidad': 0}
+        por_mes[mes]['total'] += datos['total']
+        por_mes[mes]['cantidad'] += datos['cantidad']
+
+    granularidad = 'dia' if (fecha_fin - fecha_inicio).days < 90 else 'mes'
+    serie_origen = por_fecha if granularidad == 'dia' else por_mes
+    serie = [{'periodo': periodo, **datos} for periodo, datos in sorted(serie_origen.items())]
+
+    sucursales_raw = sucursales_query.group_by(Venta.sucursal_id, Sucursal.nombre).all()
+    ventas_por_sucursal = [
+        {
+            'sucursal_id': branch_id,
+            'sucursal': branch_name,
+            'total_ventas': float(total),
+            'cantidad_ventas': int(cantidad),
+            'promedio_venta': float(total / cantidad) if cantidad else 0
+        }
+        for branch_id, branch_name, total, cantidad in sucursales_raw
+    ]
+    ventas_por_sucursal.sort(key=lambda item: item['total_ventas'], reverse=True)
+
+    detalles_agregados = db.session.query(
+        Venta.sucursal_id,
+        Sucursal.nombre,
+        Producto.id,
+        Producto.codigo,
+        Producto.nombre,
+        func.coalesce(func.sum(DetalleVenta.cantidad), 0),
+        func.coalesce(func.sum(DetalleVenta.subtotal), 0)
+    ).join(Venta, Venta.id == DetalleVenta.venta_id)\
+     .join(Producto, Producto.id == DetalleVenta.producto_id)\
+     .join(Sucursal, Sucursal.id == Venta.sucursal_id)\
+     .filter(Venta.created_at >= inicio, Venta.created_at < fin_exclusiva)
+    if sucursal_id:
+        detalles_agregados = detalles_agregados.filter(Venta.sucursal_id == sucursal_id)
+    detalles_agregados = detalles_agregados.group_by(
+        Venta.sucursal_id, Sucursal.nombre, Producto.id, Producto.codigo, Producto.nombre
+    ).all()
+
+    productos_por_sucursal = {}
+    productos_generales = {}
+    for branch_id, branch_name, product_id, code, name, quantity, revenue in detalles_agregados:
+        product = {
+            'producto_id': product_id,
+            'codigo': code,
+            'producto': name,
+            'unidades': int(quantity),
+            'ingresos_brutos': float(revenue)
+        }
+        branch_products = productos_por_sucursal.setdefault(branch_id, {
+            'sucursal_id': branch_id,
+            'sucursal': branch_name,
+            'productos': []
+        })['productos']
+        branch_products.append(product)
+
+        overall = productos_generales.setdefault(product_id, {**product, 'ingresos_brutos': 0.0, 'unidades': 0})
+        overall['unidades'] += int(quantity)
+        overall['ingresos_brutos'] += float(revenue)
+
+    for branch in productos_por_sucursal.values():
+        branch['productos'].sort(key=lambda item: item['unidades'], reverse=True)
+        branch['productos'] = branch['productos'][:5]
+    top_products = sorted(productos_generales.values(), key=lambda item: item['unidades'], reverse=True)[:10]
+
+    duracion = (fecha_fin - fecha_inicio).days + 1
+    fecha_anterior_inicio = fecha_inicio - timedelta(days=duracion)
+    resumen_anterior = _dashboard_period_summary(fecha_anterior_inicio, fecha_inicio, sucursal_id)
+    variacion = {}
+    for key in ('total_ventas', 'cantidad_ventas', 'promedio_venta'):
+        actual = resumen[key]
+        previo = resumen_anterior[key]
+        variacion[key] = ((actual - previo) / previo * 100) if previo else None
+
+    return {
+        'periodo': {'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat()},
+        'granularidad': granularidad,
+        'sucursal_id': sucursal_id,
+        'resumen': resumen,
+        'comparacion': {
+            'periodo_anterior': {
+                'fecha_inicio': fecha_anterior_inicio.isoformat(),
+                'fecha_fin': (fecha_inicio - timedelta(days=1)).isoformat(),
+                **resumen_anterior
+            },
+            'variacion_porcentual': variacion
+        },
+        'ventas_en_el_tiempo': serie,
+        'ventas_por_sucursal': ventas_por_sucursal,
+        'productos_mas_vendidos': top_products,
+        'productos_por_sucursal': sorted(productos_por_sucursal.values(), key=lambda item: item['sucursal']),
+        'nota_productos': 'Las unidades e ingresos de productos reflejan los detalles de venta originales; las devoluciones no se restan por producto.'
+    }
+
+
+def _get_dashboard_payload(data):
+    fecha_inicio, fecha_fin = _dashboard_date_range(data.get('fecha_inicio'), data.get('fecha_fin'))
+    sucursal_id = data.get('sucursal_id') or None
+    if sucursal_id and not Sucursal.query.get(sucursal_id):
+        raise LookupError('Sucursal no encontrada')
+    return _build_sales_dashboard(fecha_inicio, fecha_fin, sucursal_id)
+
+
+@reportes_bp.route('/dashboard-ventas', methods=['GET'])
+@jwt_required()
+def dashboard_ventas():
+    """Métricas agregadas de ventas, sucursales y productos para administración."""
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Solo administradores pueden consultar el dashboard'}), 403
+
+    try:
+        data = _get_dashboard_payload(request.args)
+        return jsonify(data), 200
+    except ValueError as error:
+        return jsonify({'error': str(error) if str(error).startswith('La fecha') or str(error).startswith('El rango') else 'Formato de fecha inválido (use YYYY-MM-DD)'}), 400
+    except LookupError as error:
+        return jsonify({'error': str(error)}), 404
+    except Exception as error:
+        return jsonify({'error': str(error)}), 500
+
+
+@reportes_bp.route('/dashboard-ventas/analisis-ia', methods=['POST'])
+@jwt_required()
+def analizar_dashboard_ventas():
+    """Genera hallazgos narrativos con Gemini sobre métricas ya calculadas."""
+    user = User.query.get(get_jwt_identity())
+    if not user or user.role != 'admin':
+        return jsonify({'error': 'Solo administradores pueden generar análisis'}), 403
+
+    try:
+        from google import genai
+        from google.genai import types
+        import json
+
+        data = request.get_json(silent=True) or {}
+        dashboard = _get_dashboard_payload(data)
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'Configura GEMINI_API_KEY para habilitar el análisis con IA'}), 503
+
+        prompt = f"""Actúas como analista comercial para una cadena pequeña de tiendas.
+Analiza exclusivamente los datos JSON adjuntos. Los valores monetarios están expresados en MXN.
+No inventes causas, cifras, metas ni predicciones. Distingue observaciones de hipótesis y señala cuando no haya datos suficientes.
+Compara el periodo actual con el periodo anterior equivalente; identifica sucursales y productos destacados, y propone acciones concretas que un gerente pueda comprobar.
+No repitas información personal: no se envían nombres de empleados ni números de venta.
+Responde únicamente JSON válido con estas claves: resumen (string), hallazgos (array de strings, máximo 5), recomendaciones (array de strings, máximo 4), advertencias (array de strings, máximo 3).
+
+Datos agregados:
+{json.dumps(dashboard, ensure_ascii=False)}"""
+
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=os.getenv('GEMINI_DASHBOARD_MODEL', 'gemini-3.1-flash-lite'),
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type='application/json',
+                max_output_tokens=1400,
+                temperature=0.2
+            )
+        )
+        analysis = json.loads(response.text or '{}')
+        if not isinstance(analysis, dict) or not isinstance(analysis.get('hallazgos'), list):
+            raise ValueError('La IA devolvió un formato de análisis inválido')
+        return jsonify({'proveedor': 'Gemini', 'modelo': os.getenv('GEMINI_DASHBOARD_MODEL', 'gemini-3.1-flash-lite'), 'analisis': analysis}), 200
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    except Exception as error:
+        return jsonify({'error': f'No se pudo generar el análisis con Gemini: {str(error)}'}), 502
 
 
 @reportes_bp.route('/productos-bajo-stock', methods=['GET'])

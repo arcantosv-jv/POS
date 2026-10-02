@@ -618,6 +618,9 @@ const ProductosView = {
                         <button @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
                             {{ mostrarFormulario ? '← Ocultar' : '+ Nuevo Producto' }}
                         </button>
+                        <button @click="abrirModalExportacion" class="btn btn-secondary" :disabled="loading || productos.length === 0">
+                            📥 Exportar CSV
+                        </button>
                         <button @click="mostrarImportacion = !mostrarImportacion" class="btn btn-success">
                             📤 Importar Excel/CSV
                         </button>
@@ -808,6 +811,42 @@ const ProductosView = {
                     </table>
                 </div>
                 
+                <!-- Modal para exportar productos -->
+                <div v-if="mostrarModalExportacion" class="modal-overlay" @click.self="mostrarModalExportacion = false">
+                    <div class="modal" style="max-width: 640px; max-height: 90vh; overflow-y: auto;" role="dialog" aria-modal="true" aria-labelledby="modal-exportar-productos-titulo">
+                        <div class="modal-header">
+                            <h2 id="modal-exportar-productos-titulo">Exportar productos</h2>
+                            <button class="modal-close" type="button" @click="mostrarModalExportacion = false" aria-label="Cerrar">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Selecciona los campos que quieres incluir en el archivo CSV.</p>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; font-weight: 600;">
+                                <input
+                                    type="checkbox"
+                                    :checked="camposExportacion.length === camposExportables.length"
+                                    @change="alternarTodosCampos($event.target.checked)"
+                                >
+                                Todos los campos
+                            </label>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.75rem;">
+                                <label v-for="campo in camposExportables" :key="campo.key" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" v-model="camposExportacion" :value="campo.key">
+                                    {{ campo.label }}
+                                </label>
+                            </div>
+                            <p style="margin: 1rem 0 0; color: var(--gray-600);">
+                                {{ productos.length }} productos · {{ camposExportacion.length }} campos seleccionados
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" type="button" @click="mostrarModalExportacion = false">Cancelar</button>
+                            <button class="btn btn-primary" type="button" @click="exportarProductosCsv" :disabled="camposExportacion.length === 0">
+                                Descargar CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Modal para agregar precio -->
                 <div v-if="mostrarModalPrecio" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
                     <div style="background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; width: 90%;">
@@ -876,7 +915,21 @@ const ProductosView = {
             tipoMensajeImportacion: 'success',
             mostrarModalPrecio: false,
             productoParaPrecio: null,
-            precioIngresado: 0
+            precioIngresado: 0,
+            mostrarModalExportacion: false,
+            camposExportables: [
+                { key: 'id', label: 'ID' },
+                { key: 'codigo', label: 'Código' },
+                { key: 'nombre', label: 'Nombre' },
+                { key: 'descripcion', label: 'Descripción' },
+                { key: 'precio', label: 'Precio' },
+                { key: 'impuesto', label: 'Impuesto (%)' },
+                { key: 'codigo_barras', label: 'Código de barras' },
+                { key: 'categoria', label: 'Categoría' },
+                { key: 'subcategoria', label: 'Subcategoría' },
+                { key: 'activo', label: 'Estado' }
+            ],
+            camposExportacion: []
         };
     },
     computed: {
@@ -904,6 +957,44 @@ const ProductosView = {
         }
     },
     methods: {
+        abrirModalExportacion() {
+            this.camposExportacion = this.camposExportables.map(campo => campo.key);
+            this.mostrarModalExportacion = true;
+        },
+        alternarTodosCampos(seleccionarTodos) {
+            this.camposExportacion = seleccionarTodos
+                ? this.camposExportables.map(campo => campo.key)
+                : [];
+        },
+        exportarProductosCsv() {
+            const campos = this.camposExportables.filter(campo => this.camposExportacion.includes(campo.key));
+            if (campos.length === 0 || this.productos.length === 0) return;
+
+            const obtenerValor = (producto, campo) => {
+                if (campo === 'categoria') return this.obtenerCategoria(producto);
+                if (campo === 'subcategoria') return this.obtenerSubcategoria(producto);
+                if (campo === 'activo') return producto.is_active ? 'Activo' : 'Inactivo';
+                return producto[campo] ?? '';
+            };
+            const filas = [
+                campos.map(campo => campo.label),
+                ...this.productos.map(producto => campos.map(campo => obtenerValor(producto, campo.key)))
+            ];
+            const contenidoCsv = '\uFEFF' + filas.map(fila => fila.map(valor => {
+                const texto = String(valor ?? '');
+                return `"${texto.replace(/"/g, '""')}"`;
+            }).join(',')).join('\r\n');
+            const archivo = new Blob([contenidoCsv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(archivo);
+            const enlace = document.createElement('a');
+            enlace.href = url;
+            enlace.download = `productos_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+            this.mostrarModalExportacion = false;
+        },
         async cargarProductos() {
             try {
                 const res = await axios.get(
@@ -4298,33 +4389,50 @@ const ReportesVentasView = {
                     <h6 class="mb-3 text-muted fw-bold">🔍 Filtros de Búsqueda</h6>
                     <div class="row g-2 g-md-3">
                         <!-- Fecha Inicio -->
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label small fw-500 text-secondary">📅 Fecha Inicio</label>
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <label class="form-label small fw-500 text-secondary">📅 Desde</label>
                             <input 
                                 v-model="filtros.fecha_inicio" 
                                 type="date" 
                                 class="form-control form-control-fecha"
+                                @input="filtros.mes = ''"
                             >
                         </div>
                         <!-- Fecha Fin -->
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label class="form-label small fw-500 text-secondary">📅 Fecha Fin</label>
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <label class="form-label small fw-500 text-secondary">📅 Hasta</label>
                             <input 
                                 v-model="filtros.fecha_fin" 
                                 type="date" 
                                 class="form-control form-control-fecha"
+                                @input="filtros.mes = ''"
                             >
                         </div>
+                        <!-- Mes completo -->
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <label class="form-label small fw-500 text-secondary">📆 Mes completo</label>
+                            <input v-model="filtros.mes" type="month" class="form-control form-control-fecha" @change="aplicarMes">
+                        </div>
                         <!-- Tipo Reporte -->
-                        <div class="col-12 col-md-6 col-lg-3">
+                        <div class="col-12 col-md-6 col-lg-2">
                             <label class="form-label small fw-500 text-secondary">📋 Tipo de Reporte</label>
                             <select v-model="tipoReporte" class="form-select form-control-fecha">
                                 <option value="ventas">Ventas por Día</option>
                                 <option value="cierres">Cierres de Caja</option>
                             </select>
                         </div>
+                        <!-- Sucursal -->
+                        <div class="col-12 col-md-6 col-lg-2">
+                            <label class="form-label small fw-500 text-secondary">Sucursal</label>
+                            <select v-model="filtros.sucursal_id" class="form-select form-control-fecha">
+                                <option value="">Todas las sucursales</option>
+                                <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">
+                                    {{ sucursal.nombre }}
+                                </option>
+                            </select>
+                        </div>
                         <!-- Botón -->
-                        <div class="col-12 col-md-6 col-lg-3 d-flex align-items-end">
+                        <div class="col-12 col-md-6 col-lg-2 d-flex align-items-end">
                             <button 
                                 @click="cargarReporte" 
                                 class="btn btn-primary w-100"
@@ -4352,6 +4460,137 @@ const ReportesVentasView = {
                         <span class="visually-hidden">Cargando...</span>
                     </div>
                 </div>
+
+                <!-- Dashboard analítico -->
+                <section v-if="tipoReporte === 'ventas'" class="mt-4" aria-labelledby="dashboard-ventas-titulo">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div>
+                            <h5 id="dashboard-ventas-titulo" class="mb-1">Dashboard de ventas</h5>
+                            <small v-if="dashboardData" class="text-muted">
+                                {{ dashboardData.periodo.fecha_inicio }} al {{ dashboardData.periodo.fecha_fin }}
+                                <span v-if="filtros.sucursal_id">· {{ nombreSucursalSeleccionada }}</span>
+                            </small>
+                        </div>
+                        <button class="btn btn-outline-primary" type="button" @click="exportarDashboardHtml" :disabled="!dashboardData || dashboardLoading">
+                            ⇩ Descargar reporte HTML
+                        </button>
+                    </div>
+
+                    <div v-if="dashboardLoading" class="text-center py-4">
+                        <span class="spinner-border spinner-border-sm text-info" role="status"></span>
+                        <span class="ms-2">Calculando indicadores...</span>
+                    </div>
+                    <div v-else-if="dashboardError" class="alert alert-danger">{{ dashboardError }}</div>
+
+                    <div v-if="dashboardData" class="dashboard-content">
+                        <div class="row g-3 mb-4">
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <div class="p-3 border rounded h-100">
+                                    <small class="text-muted">Ventas netas</small>
+                                    <div class="h4 mb-1">{{ formatoMonedaDashboard(dashboardData.resumen.total_ventas) }}</div>
+                                    <small :class="claseVariacion(dashboardData.comparacion.variacion_porcentual.total_ventas)">
+                                        {{ textoVariacion(dashboardData.comparacion.variacion_porcentual.total_ventas) }} vs. periodo anterior
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <div class="p-3 border rounded h-100">
+                                    <small class="text-muted">Transacciones</small>
+                                    <div class="h4 mb-1">{{ dashboardData.resumen.cantidad_ventas }}</div>
+                                    <small :class="claseVariacion(dashboardData.comparacion.variacion_porcentual.cantidad_ventas)">
+                                        {{ textoVariacion(dashboardData.comparacion.variacion_porcentual.cantidad_ventas) }} vs. periodo anterior
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <div class="p-3 border rounded h-100">
+                                    <small class="text-muted">Ticket promedio</small>
+                                    <div class="h4 mb-1">{{ formatoMonedaDashboard(dashboardData.resumen.promedio_venta) }}</div>
+                                    <small :class="claseVariacion(dashboardData.comparacion.variacion_porcentual.promedio_venta)">
+                                        {{ textoVariacion(dashboardData.comparacion.variacion_porcentual.promedio_venta) }} vs. periodo anterior
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <div class="p-3 border rounded h-100">
+                                    <small class="text-muted">Sucursal líder</small>
+                                    <div class="h5 mb-1">{{ dashboardData.ventas_por_sucursal[0]?.sucursal || 'Sin ventas' }}</div>
+                                    <small class="text-muted">{{ dashboardData.ventas_por_sucursal[0] ? formatoMonedaDashboard(dashboardData.ventas_por_sucursal[0].total_ventas) : 'Sin datos en el periodo' }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-12 col-xl-8">
+                                <section class="p-3 rounded-3 h-100" style="background: #0b1722; border: 1px solid #203442; color: #edf6f7;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div><small style="color: #61d9cb;">01 / TENDENCIA</small><h6 class="mt-1 mb-0">Ventas por {{ dashboardData.granularidad === 'dia' ? 'día' : 'mes' }}</h6></div>
+                                        <small style="color: #8ca5b2;">MXN</small>
+                                    </div>
+                                    <div style="height: 290px; position: relative;"><canvas ref="dashboardChartVentas" aria-label="Gráfica de ventas por periodo"></canvas></div>
+                                </section>
+                            </div>
+                            <div class="col-12 col-xl-4">
+                                <section class="p-3 rounded-3 h-100" style="background: #0b1722; border: 1px solid #203442; color: #edf6f7;">
+                                    <div class="mb-2"><small style="color: #61d9cb;">02 / RED COMERCIAL</small><h6 class="mt-1 mb-0">Ventas por sucursal</h6></div>
+                                    <div style="height: 290px; position: relative;"><canvas ref="dashboardChartSucursales" aria-label="Gráfica comparativa de sucursales"></canvas></div>
+                                </section>
+                            </div>
+                            <div class="col-12 col-xl-5">
+                                <section class="p-3 rounded-3 h-100" style="background: #0b1722; border: 1px solid #203442; color: #edf6f7;">
+                                    <div class="mb-2"><small style="color: #f2bd70;">03 / MIX DE PRODUCTO</small><h6 class="mt-1 mb-0">Productos líderes por unidades</h6></div>
+                                    <div style="height: 310px; position: relative;"><canvas ref="dashboardChartProductos" aria-label="Gráfica de productos más vendidos"></canvas></div>
+                                </section>
+                            </div>
+                            <div class="col-12 col-xl-7">
+                                <section class="p-3 rounded-3 h-100" style="background: #0b1722; border: 1px solid #203442; color: #edf6f7;">
+                                    <div class="mb-2"><small style="color: #ef8f79;">04 / COMPARATIVO</small><h6 class="mt-1 mb-0">Productos líderes por sucursal</h6></div>
+                                    <div style="height: 310px; position: relative;"><canvas ref="dashboardChartProductosSucursal" aria-label="Gráfica de productos por sucursal"></canvas></div>
+                                </section>
+                            </div>
+                        </div>
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-12 col-xl-5">
+                                <h6>Productos más vendidos</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos brutos</th></tr></thead>
+                                        <tbody>
+                                            <tr v-for="producto in dashboardData.productos_mas_vendidos" :key="producto.producto_id">
+                                                <td>{{ producto.producto }}<small class="d-block text-muted">{{ producto.codigo }}</small></td>
+                                                <td>{{ producto.unidades }}</td>
+                                                <td>{{ formatoMonedaDashboard(producto.ingresos_brutos) }}</td>
+                                            </tr>
+                                            <tr v-if="!dashboardData.productos_mas_vendidos.length"><td colspan="3" class="text-muted">Sin productos vendidos.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-12 col-xl-7">
+                                <h6>Productos más vendidos por sucursal</h6>
+                                <div v-for="grupo in dashboardData.productos_por_sucursal" :key="grupo.sucursal_id" class="mb-3">
+                                    <strong>{{ grupo.sucursal }}</strong>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm mb-2">
+                                            <thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos brutos</th></tr></thead>
+                                            <tbody>
+                                                <tr v-for="producto in grupo.productos" :key="producto.producto_id">
+                                                    <td>{{ producto.producto }}</td><td>{{ producto.unidades }}</td><td>{{ formatoMonedaDashboard(producto.ingresos_brutos) }}</td>
+                                                </tr>
+                                                <tr v-if="!grupo.productos.length"><td colspan="3" class="text-muted">Sin productos vendidos.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <p v-if="!dashboardData.productos_por_sucursal.length" class="text-muted">Sin productos vendidos por sucursal.</p>
+                            </div>
+                        </div>
+
+                        <p class="small text-muted">{{ dashboardData.nota_productos }}</p>
+
+                    </div>
+                </section>
 
                 <!-- Reporte de Ventas -->
                 <div v-if="!loading && tipoReporte === 'ventas' && totales" class="mt-4">
@@ -4426,7 +4665,7 @@ const ReportesVentasView = {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="venta in ventas" :key="venta.id">
+                                <tr v-for="venta in ventasPaginadas" :key="venta.id">
                                     <td><small>{{ venta.numero_venta }}</small></td>
                                     <td><small>{{ formatoFecha(venta.created_at) }}</small></td>
                                     <td><small>{{ venta.sucursal_nombre }}</small></td>
@@ -4452,6 +4691,26 @@ const ReportesVentasView = {
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label for="ventas-detalle-tamano-pagina" class="form-label mb-0 small">Filas por página</label>
+                            <select id="ventas-detalle-tamano-pagina" v-model.number="ventasPorPagina" @change="paginaVentas = 1" class="form-select form-select-sm" style="width: auto; min-width: 76px;">
+                                <option :value="5">5</option>
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="20">20</option>
+                                <option :value="25">25</option>
+                            </select>
+                            <small class="text-muted">Mostrando {{ rangoInicioVentas }}–{{ rangoFinVentas }} de {{ ventas.length }}</small>
+                        </div>
+                        <nav aria-label="Paginación de ventas">
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="paginaVentas = Math.max(1, paginaVentas - 1)" :disabled="paginaVentas <= 1">Anterior</button>
+                                <small class="text-muted">{{ paginaVentas }} / {{ totalPaginasVentas }}</small>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="paginaVentas = Math.min(totalPaginasVentas, paginaVentas + 1)" :disabled="paginaVentas >= totalPaginasVentas">Siguiente</button>
+                            </div>
+                        </nav>
                     </div>
                 </div>
 
@@ -4527,18 +4786,61 @@ const ReportesVentasView = {
             tipoReporte: 'ventas',
             filtros: {
                 fecha_inicio: '',
-                fecha_fin: ''
+                fecha_fin: '',
+                sucursal_id: '',
+                mes: ''
             },
+            sucursales: [],
             ventas: [],
+            ventasPorPagina: 5,
+            paginaVentas: 1,
             cierres: [],
             totales: null,
             loading: false,
             error: '',
+            dashboardData: null,
+            dashboardLoading: false,
+            dashboardError: '',
+            dashboardChartInstances: [],
             chartVentasInstance: null,
             chartPagoInstance: null
         };
     },
+    computed: {
+        ventasPaginadas() {
+            const inicio = (this.paginaVentas - 1) * this.ventasPorPagina;
+            return this.ventas.slice(inicio, inicio + this.ventasPorPagina);
+        },
+        totalPaginasVentas() {
+            return Math.max(1, Math.ceil(this.ventas.length / this.ventasPorPagina));
+        },
+        rangoInicioVentas() {
+            return this.ventas.length ? (this.paginaVentas - 1) * this.ventasPorPagina + 1 : 0;
+        },
+        rangoFinVentas() {
+            return Math.min(this.paginaVentas * this.ventasPorPagina, this.ventas.length);
+        }
+    },
     methods: {
+        aplicarMes() {
+            if (!this.filtros.mes) return;
+            const [año, mes] = this.filtros.mes.split('-').map(Number);
+            const mesTexto = String(mes).padStart(2, '0');
+            const ultimoDia = new Date(año, mes, 0).getDate();
+            this.filtros.fecha_inicio = `${año}-${mesTexto}-01`;
+            this.filtros.fecha_fin = `${año}-${mesTexto}-${String(ultimoDia).padStart(2, '0')}`;
+        },
+        cargarSucursales() {
+            axios.get(`${window.location.origin}/api/admin/sucursales-publico`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            })
+            .then(response => {
+                this.sucursales = Array.isArray(response.data) ? response.data : [];
+            })
+            .catch(err => {
+                console.error('Error cargando sucursales:', err);
+            });
+        },
         cargarReporte() {
             if (!this.filtros.fecha_inicio || !this.filtros.fecha_fin) {
                 this.error = 'Debes seleccionar ambas fechas';
@@ -4549,22 +4851,288 @@ const ReportesVentasView = {
             this.error = '';
             
             if (this.tipoReporte === 'ventas') {
+                this.cargarDashboard();
                 this.cargarReporteVentas();
             } else {
                 this.cargarReporteCierres();
             }
         },
+        cargarDashboard() {
+            this.dashboardLoading = true;
+            this.dashboardError = '';
+            this.destruirGraficasDashboard();
+            this.dashboardData = null;
+            axios.get(`${window.location.origin}/api/reportes/dashboard-ventas`, {
+                params: {
+                    fecha_inicio: this.filtros.fecha_inicio,
+                    fecha_fin: this.filtros.fecha_fin,
+                    sucursal_id: this.filtros.sucursal_id || undefined
+                },
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            })
+            .then(response => {
+                this.dashboardData = response.data;
+                this.$nextTick(() => this.generarGraficasDashboard());
+            })
+            .catch(err => {
+                this.dashboardError = err.response?.data?.error || 'Error cargando el dashboard';
+            })
+            .finally(() => {
+                this.dashboardLoading = false;
+            });
+        },
+        destruirGraficasDashboard() {
+            this.dashboardChartInstances.forEach(chart => chart.destroy());
+            this.dashboardChartInstances = [];
+        },
+        generarGraficasDashboard() {
+            if (!this.dashboardData || typeof Chart === 'undefined') return;
+            const refs = this.$refs;
+            if (!refs.dashboardChartVentas || !refs.dashboardChartSucursales || !refs.dashboardChartProductos || !refs.dashboardChartProductosSucursal) return;
+
+            this.destruirGraficasDashboard();
+            const dashboard = this.dashboardData;
+            const colores = ['#52decf', '#88d498', '#f2bd70', '#ef8f79', '#71b7ec', '#b6c87b', '#e8a5bd', '#9ac8d8'];
+            const ticks = { color: '#9db1bd', font: { family: 'Avenir Next, sans-serif', size: 10 } };
+            const grid = { color: 'rgba(147, 174, 188, 0.12)' };
+            const ventasTiempo = dashboard.ventas_en_el_tiempo || [];
+            const labelsTiempo = ventasTiempo.length ? ventasTiempo.map(punto => punto.periodo) : ['Sin datos'];
+            const valoresTiempo = ventasTiempo.length ? ventasTiempo.map(punto => punto.total) : [0];
+            this.dashboardChartInstances.push(new Chart(refs.dashboardChartVentas, {
+                type: 'line',
+                data: {
+                    labels: labelsTiempo,
+                    datasets: [{
+                        label: 'Ventas netas',
+                        data: valoresTiempo,
+                        borderColor: colores[0],
+                        backgroundColor: 'rgba(82, 222, 207, 0.12)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.32,
+                        pointRadius: ventasTiempo.length > 45 ? 0 : 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => this.formatoMonedaDashboard(context.parsed.y) } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { ...ticks, maxTicksLimit: 10, maxRotation: 0 } },
+                        y: { beginAtZero: true, grid, ticks: { ...ticks, callback: value => this.formatoMonedaCompacta(value) } }
+                    }
+                }
+            }));
+
+            const sucursales = dashboard.ventas_por_sucursal || [];
+            this.dashboardChartInstances.push(new Chart(refs.dashboardChartSucursales, {
+                type: 'bar',
+                data: {
+                    labels: sucursales.length ? sucursales.map(sucursal => sucursal.sucursal) : ['Sin ventas'],
+                    datasets: [{
+                        label: 'Ventas netas',
+                        data: sucursales.length ? sucursales.map(sucursal => sucursal.total_ventas) : [0],
+                        backgroundColor: sucursales.map((_, index) => colores[index % colores.length]),
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => this.formatoMonedaDashboard(context.parsed.x) } } },
+                    scales: {
+                        x: { beginAtZero: true, grid, ticks: { ...ticks, callback: value => this.formatoMonedaCompacta(value) } },
+                        y: { grid: { display: false }, ticks }
+                    }
+                }
+            }));
+
+            const productos = dashboard.productos_mas_vendidos || [];
+            this.dashboardChartInstances.push(new Chart(refs.dashboardChartProductos, {
+                type: 'bar',
+                data: {
+                    labels: productos.length ? productos.slice(0, 8).map(producto => producto.producto) : ['Sin ventas'],
+                    datasets: [{
+                        label: 'Unidades',
+                        data: productos.length ? productos.slice(0, 8).map(producto => producto.unidades) : [0],
+                        backgroundColor: 'rgba(242, 189, 112, 0.86)',
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid, ticks },
+                        y: { grid: { display: false }, ticks }
+                    }
+                }
+            }));
+
+            const productosPorSucursal = (dashboard.productos_por_sucursal || []).slice(0, 8);
+            const clavesProducto = [...new Map(productosPorSucursal.flatMap(grupo => grupo.productos || []).map(producto => [producto.producto_id, producto])).values()].slice(0, 8);
+            const hayProductos = clavesProducto.length > 0;
+            this.dashboardChartInstances.push(new Chart(refs.dashboardChartProductosSucursal, {
+                type: 'bar',
+                data: {
+                    labels: hayProductos ? clavesProducto.map(producto => producto.producto) : ['Sin productos'],
+                    datasets: productosPorSucursal.length && hayProductos
+                        ? productosPorSucursal.map((grupo, index) => ({
+                            label: grupo.sucursal,
+                            data: clavesProducto.map(producto => (grupo.productos || []).find(item => item.producto_id === producto.producto_id)?.unidades || 0),
+                            backgroundColor: colores[index % colores.length],
+                            borderRadius: 3,
+                            borderSkipped: false
+                        }))
+                        : [{ label: 'Unidades', data: [0], backgroundColor: colores[0], borderRadius: 3 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: { legend: { display: productosPorSucursal.length > 1, position: 'bottom', labels: { color: '#b5c6ce', boxWidth: 9, padding: 14 } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { ...ticks, maxRotation: 25, minRotation: 0 } },
+                        y: { beginAtZero: true, grid, ticks }
+                    }
+                }
+            }));
+        },
+        exportarDashboardHtml() {
+            const dashboard = this.dashboardData;
+            if (!dashboard) return;
+
+            const escaparHtml = valor => String(valor ?? '').replace(/[&<>"']/g, caracter => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[caracter]);
+            const canvasRefs = [
+                ['dashboardChartVentas', 'Tendencia de ventas'],
+                ['dashboardChartSucursales', 'Ventas por sucursal'],
+                ['dashboardChartProductos', 'Productos líderes por unidades'],
+                ['dashboardChartProductosSucursal', 'Productos líderes por sucursal']
+            ];
+            const graficas = {};
+            for (const [ref, alt] of canvasRefs) {
+                const canvas = this.$refs[ref];
+                if (!canvas) {
+                    this.dashboardError = 'Espera a que terminen de dibujarse las gráficas e inténtalo de nuevo.';
+                    return;
+                }
+                graficas[ref] = `<img class="chart-image" src="${canvas.toDataURL('image/png')}" alt="${escaparHtml(alt)}">`;
+            }
+
+            const sucursal = this.sucursales.find(item => item.id === this.filtros.sucursal_id);
+            const nombreFiltro = sucursal ? sucursal.nombre : 'Todas las sucursales';
+            const periodo = dashboard.periodo.fecha_inicio + ' — ' + dashboard.periodo.fecha_fin;
+            const variacionVentas = this.textoVariacion(dashboard.comparacion.variacion_porcentual.total_ventas);
+            const variacionTransacciones = this.textoVariacion(dashboard.comparacion.variacion_porcentual.cantidad_ventas);
+            const variacionTicket = this.textoVariacion(dashboard.comparacion.variacion_porcentual.promedio_venta);
+            const sucursalLider = dashboard.ventas_por_sucursal[0];
+            const sucursalRows = dashboard.ventas_por_sucursal.map((item, index) =>
+                '<tr><td>' + (index + 1) + '</td><td>' + escaparHtml(item.sucursal) + '</td><td class="numeric">' + escaparHtml(this.formatoMonedaDashboard(item.total_ventas)) + '</td><td class="numeric">' + Number(item.cantidad_ventas || 0).toLocaleString('es-MX') + '</td><td class="numeric">' + escaparHtml(this.formatoMonedaDashboard(item.promedio_venta)) + '</td></tr>'
+            ).join('') || '<tr><td colspan="5">Sin ventas registradas en el periodo.</td></tr>';
+            const productosRows = dashboard.productos_mas_vendidos.map(producto =>
+                '<tr><td>' + escaparHtml(producto.producto) + '</td><td>' + escaparHtml(producto.codigo) + '</td><td class="numeric">' + Number(producto.unidades || 0).toLocaleString('es-MX') + '</td><td class="numeric">' + escaparHtml(this.formatoMonedaDashboard(producto.ingresos_brutos)) + '</td></tr>'
+            ).join('') || '<tr><td colspan="4">Sin productos vendidos en el periodo.</td></tr>';
+            const productosSucursalHtml = dashboard.productos_por_sucursal.map(grupo => {
+                const rows = grupo.productos.map(producto =>
+                    '<tr><td>' + escaparHtml(producto.producto) + '</td><td>' + escaparHtml(producto.codigo) + '</td><td class="numeric">' + Number(producto.unidades || 0).toLocaleString('es-MX') + '</td><td class="numeric">' + escaparHtml(this.formatoMonedaDashboard(producto.ingresos_brutos)) + '</td></tr>'
+                ).join('') || '<tr><td colspan="4">Sin productos vendidos.</td></tr>';
+                return '<section class="branch-block"><h3>' + escaparHtml(grupo.sucursal) + '</h3><div class="table-wrap"><table><thead><tr><th>Producto</th><th>Código</th><th class="numeric">Unidades</th><th class="numeric">Ingresos brutos</th></tr></thead><tbody>' + rows + '</tbody></table></div></section>';
+            }).join('') || '<p class="note">Sin productos vendidos por sucursal en este periodo.</p>';
+            const html = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informe ejecutivo de ventas · ${escaparHtml(periodo)}</title>
+<style>
+:root{color-scheme:dark;--ink:#edf5f4;--muted:#91a8b4;--base:#07131d;--panel:#0d1c28;--line:#203442;--mint:#52decf;--green:#88d498;--amber:#f2bd70;--coral:#ef8f79;--blue:#71b7ec}
+*{box-sizing:border-box}body{margin:0;background-color:var(--base);background-image:linear-gradient(rgba(135,174,190,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(135,174,190,.035) 1px,transparent 1px);background-size:32px 32px;color:var(--ink);font-family:'Avenir Next','Segoe UI',sans-serif;line-height:1.5}.report{max-width:1440px;margin:0 auto;padding:36px clamp(18px,4vw,56px) 52px}.topline{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:14px;color:var(--muted);font:600 11px 'SFMono-Regular',Consolas,monospace;letter-spacing:1.2px;text-transform:uppercase}.signal{color:var(--mint)}header{padding:30px 0 26px}h1{font-size:clamp(30px,4vw,48px);line-height:1.05;margin:0 0 12px;letter-spacing:0;font-weight:650}.subtitle{color:var(--muted);margin:0}.filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.filter{border:1px solid var(--line);padding:7px 10px;border-radius:5px;color:#c2d1d6;font:12px 'SFMono-Regular',Consolas,monospace}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:8px 0 24px}.kpi,.panel{background:rgba(13,28,40,.94);border:1px solid var(--line);border-radius:7px}.kpi{padding:17px 18px;border-top:2px solid var(--mint)}.kpi:nth-child(2){border-top-color:var(--blue)}.kpi:nth-child(3){border-top-color:var(--amber)}.kpi:nth-child(4){border-top-color:var(--coral)}.label{font:600 10px 'SFMono-Regular',Consolas,monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}.value{font-size:clamp(22px,2.5vw,32px);font-weight:650;margin:8px 0 5px;overflow-wrap:anywhere}.delta{font-size:12px;color:var(--muted)}.chart-grid{display:grid;grid-template-columns:1.65fr 1fr;gap:12px;margin-bottom:12px}.chart-grid.secondary{grid-template-columns:1fr 1.4fr}.panel{padding:17px;min-width:0}.panel-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:12px}.eyebrow{color:var(--mint);font:600 10px 'SFMono-Regular',Consolas,monospace;letter-spacing:1px;text-transform:uppercase}.panel h2{font-size:16px;margin:4px 0 0;font-weight:600}.chart{height:300px;position:relative}.chart.tall{height:330px}.chart-image{display:block;width:100%;height:100%;object-fit:contain}.section-title{font-size:17px;margin:28px 0 12px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}table{width:100%;border-collapse:collapse;min-width:520px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12px}th{color:var(--muted);font:600 10px 'SFMono-Regular',Consolas,monospace;text-transform:uppercase;letter-spacing:.6px}td.numeric,th.numeric{text-align:right;font-variant-numeric:tabular-nums}.branch-block{margin:14px 0 20px}.branch-block h3{font-size:14px;margin:0 0 8px}.note{margin:18px 0;color:var(--muted);font-size:11px}.footer{border-top:1px solid var(--line);padding-top:14px;color:var(--muted);font:10px 'SFMono-Regular',Consolas,monospace;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}@media(max-width:850px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.chart-grid,.chart-grid.secondary{grid-template-columns:1fr}}@media(max-width:480px){.report{padding:22px 14px 32px}.kpis{gap:8px}.kpi{padding:13px}.value{font-size:21px}.chart{height:260px}.chart.tall{height:290px}}@media print{body{background:#fff;color:#15232c}.report{max-width:none;padding:0}.panel,.kpi{background:#fff;color:#15232c;break-inside:avoid}.label,.subtitle,.delta,.note,.footer{color:#52646f}.filter{color:#263942}.chart-grid,.chart-grid.secondary{break-inside:avoid}}
+</style>
+</head>
+<body><main class="report">
+<div class="topline"><span><span class="signal">POS / INTELLIGENCE</span> · INFORME DE DESEMPEÑO</span><span>GENERADO ${escaparHtml(new Date().toLocaleString('es-MX'))}</span></div>
+<header><h1>Panorama de ventas</h1><p class="subtitle">Lectura ejecutiva del desempeño comercial, sucursales y productos.</p><div class="filters"><span class="filter">PERIODO · ${escaparHtml(periodo)}</span><span class="filter">FILTRO · ${escaparHtml(nombreFiltro)}</span><span class="filter">AGRUPACIÓN · ${dashboard.granularidad === 'dia' ? 'DIARIA' : 'MENSUAL'}</span></div></header>
+<section class="kpis">
+<article class="kpi"><div class="label">Ventas netas · MXN</div><div class="value">${escaparHtml(this.formatoMonedaDashboard(dashboard.resumen.total_ventas))}</div><div class="delta">${escaparHtml(variacionVentas)} vs. periodo anterior</div></article>
+<article class="kpi"><div class="label">Transacciones</div><div class="value">${escaparHtml(dashboard.resumen.cantidad_ventas)}</div><div class="delta">${escaparHtml(variacionTransacciones)} vs. periodo anterior</div></article>
+<article class="kpi"><div class="label">Ticket promedio</div><div class="value">${escaparHtml(this.formatoMonedaDashboard(dashboard.resumen.promedio_venta))}</div><div class="delta">${escaparHtml(variacionTicket)} vs. periodo anterior</div></article>
+<article class="kpi"><div class="label">Sucursal líder</div><div class="value">${escaparHtml(sucursalLider ? sucursalLider.sucursal : 'Sin ventas')}</div><div class="delta">${escaparHtml(sucursalLider ? this.formatoMonedaDashboard(sucursalLider.total_ventas) : 'Sin actividad en el periodo')}</div></article>
+</section>
+<section class="chart-grid"><article class="panel"><div class="panel-head"><div><div class="eyebrow">01 / Tendencia</div><h2>Ventas por ${dashboard.granularidad === 'dia' ? 'día' : 'mes'}</h2></div><span class="label">MXN</span></div><div class="chart">${graficas.dashboardChartVentas}</div></article><article class="panel"><div class="panel-head"><div><div class="eyebrow">02 / Red comercial</div><h2>Ventas por sucursal</h2></div></div><div class="chart">${graficas.dashboardChartSucursales}</div></article></section>
+<section class="chart-grid secondary"><article class="panel"><div class="panel-head"><div><div class="eyebrow" style="color:var(--amber)">03 / Mix de producto</div><h2>Productos líderes por unidades</h2></div></div><div class="chart tall">${graficas.dashboardChartProductos}</div></article><article class="panel"><div class="panel-head"><div><div class="eyebrow" style="color:var(--coral)">04 / Comparativo</div><h2>Productos líderes por sucursal</h2></div></div><div class="chart tall">${graficas.dashboardChartProductosSucursal}</div></article></section>
+<h2 class="section-title">Productos más vendidos</h2><div class="table-wrap"><table><thead><tr><th>Producto</th><th>Código</th><th class="numeric">Unidades</th><th class="numeric">Ingresos brutos</th></tr></thead><tbody>${productosRows}</tbody></table></div>
+<h2 class="section-title">Rendimiento por sucursal</h2><div class="table-wrap"><table><thead><tr><th>#</th><th>Sucursal</th><th class="numeric">Ventas</th><th class="numeric">Transacciones</th><th class="numeric">Ticket promedio</th></tr></thead><tbody>${sucursalRows}</tbody></table></div>
+<h2 class="section-title">Productos por sucursal</h2><div>${productosSucursalHtml}</div>
+<p class="note">${escaparHtml(dashboard.nota_productos || '')}</p><footer class="footer"><span>POS · ANALÍTICA COMERCIAL</span><span>Las gráficas usan datos del periodo seleccionado. Verifique cifras y criterios antes de decisiones comerciales.</span></footer>
+</main>
+</body></html>`;
+
+            const archivo = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(archivo);
+            const enlace = document.createElement('a');
+            enlace.href = url;
+            enlace.download = `reporte_ventas_${dashboard.periodo.fecha_inicio}_${dashboard.periodo.fecha_fin}.html`;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        },
+        formatoMonedaDashboard(valor) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(valor || 0);
+        },
+        formatoMonedaCompacta(valor) {
+            const numero = Number(valor) || 0;
+            if (numero >= 1000000) return `$${(numero / 1000000).toFixed(1)} M`;
+            if (numero >= 1000) return `$${(numero / 1000).toFixed(1)} mil`;
+            return `$${numero.toFixed(0)}`;
+        },
+        alturaBarra(valor, valores) {
+            const maximo = Math.max(...valores.map(item => item.total), 0);
+            if (!maximo) return '0%';
+            return `${Math.max(4, Number(valor) / maximo * 100)}%`;
+        },
+        anchoBarra(valor, valores) {
+            const maximo = Math.max(...valores.map(item => item.total_ventas), 0);
+            if (!maximo) return 0;
+            return Math.max(1, Number(valor) / maximo * 100);
+        },
+        textoVariacion(valor) {
+            if (valor === null || valor === undefined) return 'Sin base para comparar';
+            return `${valor > 0 ? '+' : ''}${Number(valor).toFixed(1)}%`;
+        },
+        claseVariacion(valor) {
+            if (valor === null || valor === undefined) return 'text-muted';
+            return valor > 0 ? 'text-success' : valor < 0 ? 'text-danger' : 'text-muted';
+        },
+        etiquetaPeriodo(periodo, granularidad) {
+            return granularidad === 'mes' ? periodo.slice(2) : periodo.slice(5);
+        },
         cargarReporteVentas() {
             axios.get(`${window.location.origin}/api/ventas/reportes/por-fecha`, {
                 params: {
                     fecha_inicio: this.filtros.fecha_inicio,
-                    fecha_fin: this.filtros.fecha_fin
+                    fecha_fin: this.filtros.fecha_fin,
+                    sucursal_id: this.filtros.sucursal_id || undefined
                 },
                 headers: { 'Authorization': `Bearer ${this.token}` }
             })
             .then(response => {
                 this.ventas = response.data.ventas;
                 this.totales = response.data.totales;
+                this.paginaVentas = 1;
                 // Generar gráficas después de obtener datos con tiempo suficiente
                 this.$nextTick(() => {
                     setTimeout(() => {
@@ -4678,7 +5246,8 @@ const ReportesVentasView = {
             axios.get(`${window.location.origin}/api/ventas/reportes/cierres-caja`, {
                 params: {
                     fecha_inicio: this.filtros.fecha_inicio,
-                    fecha_fin: this.filtros.fecha_fin
+                    fecha_fin: this.filtros.fecha_fin,
+                    sucursal_id: this.filtros.sucursal_id || undefined
                 },
                 headers: { 'Authorization': `Bearer ${this.token}` }
             })
@@ -4717,6 +5286,181 @@ const ReportesVentasView = {
         const hoy = new Date().toISOString().split('T')[0];
         this.filtros.fecha_inicio = hoy;
         this.filtros.fecha_fin = hoy;
+        this.cargarSucursales();
+    }
+};
+
+const CierresCajaAdminView = {
+    props: ['token'],
+    template: `
+        <section class="cash-close-view">
+            <header class="cash-close-header">
+                <div>
+                    <div class="cash-close-eyebrow">Control financiero</div>
+                    <h2>Cierres de Caja</h2>
+                    <p>Consulta los cierres confirmados y revisa las ventas y productos incluidos.</p>
+                </div>
+                <button class="btn btn-primary cash-close-submit" type="button" @click="cargarCierres" :disabled="loading || !fechaInicio || !fechaFin">
+                    <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    {{ loading ? 'Consultando...' : 'Consultar cierres' }}
+                </button>
+            </header>
+
+            <div class="cash-close-filters">
+                <div class="cash-close-field">
+                    <label for="cierres-fecha-inicio">Fecha desde</label>
+                    <input id="cierres-fecha-inicio" v-model="fechaInicio" type="date">
+                </div>
+                <div class="cash-close-field">
+                    <label for="cierres-fecha-fin">Fecha hasta</label>
+                    <input id="cierres-fecha-fin" v-model="fechaFin" type="date">
+                </div>
+                <div class="cash-close-filter-note">
+                    Los productos se agrupan por cierre, empleado, sucursal y día.
+                </div>
+            </div>
+
+            <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
+
+            <div v-if="cierres.length" class="cash-close-summary">
+                <div class="cash-close-summary-item">
+                    <div class="cash-close-meta">Cierres confirmados</div>
+                    <div class="cash-close-summary-value">{{ cierres.length }}</div>
+                </div>
+                <div class="cash-close-summary-item">
+                    <div class="cash-close-meta">Transacciones</div>
+                    <div class="cash-close-summary-value">{{ totalTransacciones }}</div>
+                </div>
+                <div class="cash-close-summary-item">
+                    <div class="cash-close-meta">Total vendido</div>
+                    <div class="cash-close-summary-value">{{ formatoMoneda(totalVendido) }}</div>
+                </div>
+            </div>
+
+            <div v-if="!loading && consultado && !cierres.length" class="alert alert-info">
+                No se encontraron cierres confirmados en el rango seleccionado.
+            </div>
+
+            <article v-for="cierre in cierres" :key="cierre.id" class="cash-close-card">
+                <div class="cash-close-card-head">
+                    <div class="cash-close-fact">
+                        <div class="cash-close-meta">Fecha del cierre</div>
+                        <strong>{{ formatoFechaCorta(cierre.fecha) }}</strong>
+                    </div>
+                    <div class="cash-close-fact">
+                        <div class="cash-close-meta">Hora de confirmación</div>
+                        <strong>{{ cierre.closed_at ? formatoHora(cierre.closed_at) : 'No registrada' }}</strong>
+                    </div>
+                    <div class="cash-close-fact">
+                        <div class="cash-close-meta">Sucursal · empleado</div>
+                        <strong>{{ cierre.sucursal_nombre }} · {{ cierre.empleado_nombre }}</strong>
+                    </div>
+                    <div class="cash-close-total">
+                        <div class="cash-close-meta">{{ cierre.cantidad_ventas }} ventas</div>
+                        <strong>{{ formatoMoneda(cierre.total_vendido) }}</strong>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm cash-close-expand" type="button" @click="alternarDetalle(cierre.id)" :aria-expanded="cierreExpandidoId === cierre.id">
+                        {{ cierreExpandidoId === cierre.id ? 'Ocultar detalle' : 'Ver detalle' }}
+                    </button>
+                </div>
+
+                <div v-if="cierreExpandidoId === cierre.id" class="cash-close-detail">
+                    <div class="cash-close-payments">
+                        <span><strong>Efectivo:</strong> {{ formatoMoneda(cierre.total_efectivo) }}</span>
+                        <span><strong>Tarjeta:</strong> {{ formatoMoneda(cierre.total_tarjeta) }}</span>
+                        <span><strong>Transferencia:</strong> {{ formatoMoneda(cierre.total_transferencia) }}</span>
+                        <span v-if="cierre.diferencia !== null"><strong>Diferencia:</strong> {{ formatoMoneda(cierre.diferencia) }}</span>
+                    </div>
+                    <h3>Productos vendidos</h3>
+                    <div v-if="cierre.productos.length" class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr><th>Producto</th><th>Código</th><th class="text-end">Unidades</th><th class="text-end">Ingresos brutos</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="producto in cierre.productos" :key="producto.producto_id">
+                                    <td>{{ producto.producto }}</td>
+                                    <td>{{ producto.codigo }}</td>
+                                    <td class="text-end">{{ producto.unidades }}</td>
+                                    <td class="text-end">{{ formatoMoneda(producto.ingresos_brutos) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p v-else class="text-muted mb-1">Este cierre no tiene productos asociados a sus ventas.</p>
+                    <p class="cash-close-footnote">El total vendido es neto según las ventas; ingresos por producto son brutos y no descuentan devoluciones.</p>
+                </div>
+            </article>
+            </article>
+        </section>
+    `,
+    data() {
+        const hoy = new Date();
+        const hace30Dias = new Date(hoy);
+        hace30Dias.setDate(hoy.getDate() - 29);
+        const formatoFechaInput = fecha => {
+            const año = fecha.getFullYear();
+            const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+            const dia = String(fecha.getDate()).padStart(2, '0');
+            return `${año}-${mes}-${dia}`;
+        };
+        return {
+            fechaInicio: formatoFechaInput(hace30Dias),
+            fechaFin: formatoFechaInput(hoy),
+            cierres: [],
+            cierreExpandidoId: null,
+            loading: false,
+            consultado: false,
+            error: ''
+        };
+    },
+    computed: {
+        totalVendido() {
+            return this.cierres.reduce((total, cierre) => total + Number(cierre.total_vendido || 0), 0);
+        },
+        totalTransacciones() {
+            return this.cierres.reduce((total, cierre) => total + Number(cierre.cantidad_ventas || 0), 0);
+        }
+    },
+    methods: {
+        async cargarCierres() {
+            this.loading = true;
+            this.error = '';
+            this.consultado = false;
+            this.cierreExpandidoId = null;
+            try {
+                const respuesta = await axios.get(`${window.location.origin}/api/ventas/reportes/cierres-caja-detalle`, {
+                    params: { fecha_inicio: this.fechaInicio, fecha_fin: this.fechaFin },
+                    headers: { Authorization: `Bearer ${this.token}` }
+                });
+                this.cierres = respuesta.data.cierres || [];
+                this.consultado = true;
+            } catch (err) {
+                this.error = err.response?.data?.error || 'No se pudieron cargar los cierres de caja';
+            } finally {
+                this.loading = false;
+            }
+        },
+        alternarDetalle(cierreId) {
+            this.cierreExpandidoId = this.cierreExpandidoId === cierreId ? null : cierreId;
+        },
+        formatoMoneda(valor) {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(valor) || 0);
+        },
+        formatoFechaCorta(fecha) {
+            return new Date(`${fecha}T12:00:00`).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' });
+        },
+        formatoHora(fecha) {
+            return new Date(fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        }
+    },
+    mounted() {
+        this.cargarCierres();
+    },
+    watch: {
+        token(nuevoToken) {
+            if (nuevoToken) this.cargarCierres();
+        }
     }
 };
 

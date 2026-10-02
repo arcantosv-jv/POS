@@ -527,6 +527,7 @@ def crear_cierre_caja():
         cierre.diferencia = efectivo_reportado - cierre.total_efectivo
         cierre.observaciones = data.get('observaciones', '')
         cierre.estado = 'cerrado'
+        cierre.closed_at = get_cdmx_now()
         
         db.session.commit()
         
@@ -670,6 +671,83 @@ def reportes_cierres_caja():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@ventas_bp.route('/reportes/cierres-caja-detalle', methods=['GET'])
+@jwt_required()
+def reportes_cierres_caja_detalle():
+    """Consultar cierres confirmados y productos vendidos por empleado/caja."""
+    try:
+        user = User.query.get(get_jwt_identity())
+        if not user or user.role != 'admin':
+            return jsonify({'error': 'Solo administradores pueden consultar cierres de caja'}), 403
+
+        fecha_inicio_str = request.args.get('fecha_inicio')
+        fecha_fin_str = request.args.get('fecha_fin')
+        if not fecha_inicio_str or not fecha_fin_str:
+            return jsonify({'error': 'Debe proporcionar fecha_inicio y fecha_fin'}), 400
+
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'error': 'Formato de fecha inválido (use YYYY-MM-DD)'}), 400
+
+        if fecha_inicio > fecha_fin:
+            return jsonify({'error': 'La fecha inicial no puede ser posterior a la fecha final'}), 400
+        if (fecha_fin - fecha_inicio).days > 365:
+            return jsonify({'error': 'El rango máximo es de 366 días'}), 400
+
+        cierres = CierreCaja.query.filter(
+            CierreCaja.estado == 'cerrado',
+            CierreCaja.fecha >= fecha_inicio,
+            CierreCaja.fecha <= fecha_fin
+        ).order_by(CierreCaja.fecha.desc(), CierreCaja.closed_at.desc()).all()
+
+        resultado = []
+        for cierre in cierres:
+            inicio_dia = CDMX_TZ.localize(datetime.combine(cierre.fecha, datetime.min.time()))
+            fin_dia = inicio_dia + timedelta(days=1)
+            ventas = Venta.query.filter(
+                Venta.cajero_id == cierre.empleado_id,
+                Venta.sucursal_id == cierre.sucursal_id,
+                Venta.created_at >= inicio_dia,
+                Venta.created_at < fin_dia
+            ).order_by(Venta.created_at.desc()).all()
+
+            productos = {}
+            for venta in ventas:
+                for detalle in venta.detalles:
+                    producto = productos.setdefault(detalle.producto_id, {
+                        'producto_id': detalle.producto_id,
+                        'codigo': detalle.producto.codigo,
+                        'producto': detalle.producto.nombre,
+                        'unidades': 0,
+                        'ingresos_brutos': Decimal('0.00')
+                    })
+                    producto['unidades'] += detalle.cantidad
+                    producto['ingresos_brutos'] += detalle.subtotal
+
+            datos_cierre = cierre.to_dict()
+            datos_cierre.update({
+                'cantidad_ventas': len(ventas),
+                'total_vendido': float(sum((venta.total for venta in ventas), Decimal('0.00'))),
+                'productos': [
+                    {**producto, 'ingresos_brutos': float(producto['ingresos_brutos'])}
+                    for producto in sorted(productos.values(), key=lambda item: item['unidades'], reverse=True)
+                ]
+            })
+            resultado.append(datos_cierre)
+
+        return jsonify({
+            'fecha_inicio': fecha_inicio.isoformat(),
+            'fecha_fin': fecha_fin.isoformat(),
+            'cantidad': len(resultado),
+            'cierres': resultado
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @ventas_bp.route('/cierre-caja/corregir', methods=['POST'])
 @jwt_required()
 def corregir_cierre_caja():
@@ -699,6 +777,7 @@ def corregir_cierre_caja():
         cierre.diferencia = efectivo_reportado - cierre.total_efectivo
         cierre.observaciones = data.get('observaciones', '')
         cierre.estado = 'cerrado'
+        cierre.closed_at = get_cdmx_now()
         
         db.session.commit()
         

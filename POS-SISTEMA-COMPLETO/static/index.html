@@ -1041,6 +1041,236 @@
                 width: 100%;
             }
         }
+
+        /* Cierres de caja: layout independiente de utilidades Bootstrap */
+        .cash-close-view {
+            width: min(100% - 2rem, 1440px);
+            margin: 0 auto;
+            padding: 1.5rem 0 3rem;
+            scroll-margin-top: 96px;
+        }
+
+        .cash-close-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 1.5rem;
+            margin: 0 0 1.5rem;
+        }
+
+        .cash-close-eyebrow,
+        .cash-close-meta {
+            color: var(--gray-600);
+            font-size: 0.8rem;
+        }
+
+        .cash-close-eyebrow {
+            color: #0f766e;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .cash-close-header h2 {
+            margin: 0.2rem 0 0.4rem;
+            color: var(--gray-900);
+            font-size: clamp(1.65rem, 3vw, 2rem);
+            line-height: 1.2;
+        }
+
+        .cash-close-header p {
+            margin: 0;
+            color: var(--gray-600);
+        }
+
+        .cash-close-submit {
+            flex: 0 0 auto;
+            min-height: 44px;
+        }
+
+        .cash-close-filters {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(190px, 240px)) minmax(240px, 1fr);
+            align-items: end;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+        }
+
+        .cash-close-field label {
+            display: block;
+            margin-bottom: 0.4rem;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .cash-close-field input {
+            width: 100%;
+            min-height: 44px;
+            padding: 0.55rem 0.7rem;
+            color: var(--gray-900);
+            background: white;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.375rem;
+            font: inherit;
+        }
+
+        .cash-close-field input:focus {
+            outline: 2px solid rgba(37, 99, 235, 0.2);
+            border-color: var(--primary);
+        }
+
+        .cash-close-filter-note {
+            padding: 0.65rem 0;
+            color: var(--gray-600);
+            font-size: 0.85rem;
+        }
+
+        .cash-close-summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .cash-close-summary-item {
+            min-width: 0;
+            padding: 1rem 1.2rem;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+        }
+
+        .cash-close-summary-value {
+            margin-top: 0.25rem;
+            color: var(--gray-900);
+            font-size: 1.45rem;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .cash-close-card {
+            margin-bottom: 1rem;
+            overflow: hidden;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+        }
+
+        .cash-close-card-head {
+            display: grid;
+            grid-template-columns: minmax(125px, 0.8fr) minmax(140px, 0.8fr) minmax(220px, 1.5fr) minmax(130px, 0.8fr) auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.2rem;
+        }
+
+        .cash-close-fact,
+        .cash-close-total {
+            min-width: 0;
+        }
+
+        .cash-close-fact strong,
+        .cash-close-total strong {
+            display: block;
+            margin-top: 0.2rem;
+            color: var(--gray-900);
+            overflow-wrap: anywhere;
+        }
+
+        .cash-close-total {
+            text-align: right;
+        }
+
+        .cash-close-expand {
+            white-space: nowrap;
+        }
+
+        .cash-close-detail {
+            padding: 1rem 1.2rem 1.25rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .cash-close-payments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        .cash-close-detail h3 {
+            margin: 0 0 0.75rem;
+            font-size: 1rem;
+        }
+
+        .cash-close-footnote {
+            margin: 0.75rem 0 0;
+            color: var(--gray-600);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 900px) {
+            .cash-close-card-head {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .cash-close-total {
+                text-align: left;
+            }
+
+            .cash-close-expand {
+                justify-self: start;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .cash-close-view {
+                width: calc(100% - 1.25rem);
+                padding-top: 1.25rem;
+            }
+
+            .cash-close-header {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .cash-close-submit {
+                width: 100%;
+            }
+
+            .cash-close-filters,
+            .cash-close-summary {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.75rem;
+            }
+
+            .cash-close-filters {
+                padding: 0.85rem;
+            }
+
+            .cash-close-filter-note {
+                padding: 0;
+            }
+
+            .cash-close-card-head {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.75rem;
+            }
+
+            .cash-close-total {
+                text-align: left;
+            }
+
+            .cash-close-detail {
+                padding: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1188,6 +1418,12 @@
                                 @click.prevent="irAVista('reportes-ventas')"
                                 href="#"
                             >Reportes Ventas</a>
+                            <a
+                                v-if="userRole === 'admin'"
+                                :class="['cash-close', currentView === 'cierres-caja' ? 'active' : '']"
+                                @click.prevent="irAVista('cierres-caja')"
+                                href="#"
+                            >Cierres de Caja</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['returns', currentView === 'devoluciones' ? 'active' : '']"
@@ -1300,6 +1536,11 @@
                 <div v-if="currentView === 'reportes-ventas' && userRole === 'admin'">
                     <h1 style="margin-bottom: 2rem;">Reportes de Ventas</h1>
                     <reportes-ventas-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reportes-ventas-view>
+                </div>
+
+                <!-- Consulta detallada de cierres de caja (Admin) -->
+                <div v-if="currentView === 'cierres-caja' && userRole === 'admin'">
+                    <cierres-caja-admin-view :token="token"></cierres-caja-admin-view>
                 </div>
 
                 <!-- Devoluciones (Admin) -->

@@ -13,6 +13,7 @@ createApp({
         'subcategorias-view': SubcategoriasView,
         'ventas-del-dia-view': VentasDelDiaView,
         'cierre-caja-view': CierreCajaView,
+        'cierres-caja-admin-view': CierresCajaAdminView,
         'reportes-ventas-view': ReportesVentasView,
         'devoluciones-view': DevolucionesView,
         'compatibilidad-view': CompatibilidadView,
@@ -117,6 +118,7 @@ createApp({
         irAVista(nombreVista) {
             this.currentView = nombreVista;
             this.menuAbierto = false; // Cerrar menú automáticamente
+            window.scrollTo({ top: 0, behavior: 'instant' });
         },
         
         logout() {

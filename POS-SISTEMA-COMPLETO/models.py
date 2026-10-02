@@ -317,6 +317,7 @@ class CierreCaja(db.Model):
     
     # Estado
     estado = db.Column(db.String(20), default='abierto')  # abierto, cerrado
+    closed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     observaciones = db.Column(db.Text, nullable=True)
     
     created_at = db.Column(db.DateTime, default=get_cdmx_now)
@@ -341,6 +342,7 @@ class CierreCaja(db.Model):
             'efectivo_reportado': float(self.efectivo_reportado) if self.efectivo_reportado else None,
             'diferencia': float(self.diferencia) if self.diferencia else None,
             'estado': self.estado,
+            'closed_at': self.closed_at.isoformat() if self.closed_at else None,
             'observaciones': self.observaciones,
             'created_at': self.created_at.isoformat()
         }
