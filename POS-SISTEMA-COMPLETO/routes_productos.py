@@ -422,6 +422,13 @@ def update_producto(producto_id):
             return jsonify({'error': 'Producto no encontrado'}), 404
         
         data = request.get_json()
+
+        if 'subcategoria_id' in data:
+            subcategoria_id = data['subcategoria_id']
+            if not subcategoria_id:
+                return jsonify({'error': 'Subcategoría es requerida'}), 400
+            if not Subcategoria.query.get(subcategoria_id):
+                return jsonify({'error': 'Subcategoría no existe'}), 404
         
         if 'codigo' in data:
             existing = Producto.query.filter_by(codigo=data['codigo']).first()
@@ -444,6 +451,8 @@ def update_producto(producto_id):
             producto.impuesto = data['impuesto']
         if 'codigo_barras' in data:
             producto.codigo_barras = data['codigo_barras']
+        if 'subcategoria_id' in data:
+            producto.subcategoria_id = subcategoria_id
         
         db.session.commit()
         
