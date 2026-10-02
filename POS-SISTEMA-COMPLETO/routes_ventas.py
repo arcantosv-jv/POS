@@ -683,6 +683,7 @@ def reportes_cierres_caja_detalle():
 
         fecha_inicio_str = request.args.get('fecha_inicio')
         fecha_fin_str = request.args.get('fecha_fin')
+        sucursal_id = request.args.get('sucursal_id') or None
         if not fecha_inicio_str or not fecha_fin_str:
             return jsonify({'error': 'Debe proporcionar fecha_inicio y fecha_fin'}), 400
 
@@ -697,11 +698,17 @@ def reportes_cierres_caja_detalle():
         if (fecha_fin - fecha_inicio).days > 365:
             return jsonify({'error': 'El rango máximo es de 366 días'}), 400
 
-        cierres = CierreCaja.query.filter(
+        query = CierreCaja.query.filter(
             CierreCaja.estado == 'cerrado',
             CierreCaja.fecha >= fecha_inicio,
             CierreCaja.fecha <= fecha_fin
-        ).order_by(CierreCaja.fecha.desc(), CierreCaja.closed_at.desc()).all()
+        )
+        if sucursal_id:
+            if not Sucursal.query.get(sucursal_id):
+                return jsonify({'error': 'Sucursal no encontrada'}), 404
+            query = query.filter(CierreCaja.sucursal_id == sucursal_id)
+
+        cierres = query.order_by(CierreCaja.fecha.desc(), CierreCaja.closed_at.desc()).all()
 
         resultado = []
         for cierre in cierres:
@@ -741,6 +748,7 @@ def reportes_cierres_caja_detalle():
         return jsonify({
             'fecha_inicio': fecha_inicio.isoformat(),
             'fecha_fin': fecha_fin.isoformat(),
+            'sucursal_id': sucursal_id,
             'cantidad': len(resultado),
             'cierres': resultado
         }), 200

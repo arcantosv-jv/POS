@@ -5315,8 +5315,17 @@ const CierresCajaAdminView = {
                     <label for="cierres-fecha-fin">Fecha hasta</label>
                     <input id="cierres-fecha-fin" v-model="fechaFin" type="date">
                 </div>
+                <div class="cash-close-field">
+                    <label for="cierres-sucursal">Sucursal</label>
+                    <select id="cierres-sucursal" v-model="sucursalId">
+                        <option value="">Todas las sucursales</option>
+                        <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">
+                            {{ sucursal.nombre }}
+                        </option>
+                    </select>
+                </div>
                 <div class="cash-close-filter-note">
-                    Los productos se agrupan por cierre, empleado, sucursal y día.
+                    Puedes consultar todos los cierres o limitar el resultado a una sucursal.
                 </div>
             </div>
 
@@ -5391,7 +5400,6 @@ const CierresCajaAdminView = {
                     <p class="cash-close-footnote">El total vendido es neto según las ventas; ingresos por producto son brutos y no descuentan devoluciones.</p>
                 </div>
             </article>
-            </article>
         </section>
     `,
     data() {
@@ -5407,6 +5415,8 @@ const CierresCajaAdminView = {
         return {
             fechaInicio: formatoFechaInput(hace30Dias),
             fechaFin: formatoFechaInput(hoy),
+            sucursalId: '',
+            sucursales: [],
             cierres: [],
             cierreExpandidoId: null,
             loading: false,
@@ -5430,7 +5440,11 @@ const CierresCajaAdminView = {
             this.cierreExpandidoId = null;
             try {
                 const respuesta = await axios.get(`${window.location.origin}/api/ventas/reportes/cierres-caja-detalle`, {
-                    params: { fecha_inicio: this.fechaInicio, fecha_fin: this.fechaFin },
+                    params: {
+                        fecha_inicio: this.fechaInicio,
+                        fecha_fin: this.fechaFin,
+                        sucursal_id: this.sucursalId || undefined
+                    },
                     headers: { Authorization: `Bearer ${this.token}` }
                 });
                 this.cierres = respuesta.data.cierres || [];
@@ -5439,6 +5453,16 @@ const CierresCajaAdminView = {
                 this.error = err.response?.data?.error || 'No se pudieron cargar los cierres de caja';
             } finally {
                 this.loading = false;
+            }
+        },
+        async cargarSucursales() {
+            try {
+                const respuesta = await axios.get(`${window.location.origin}/api/admin/sucursales-publico`, {
+                    headers: { Authorization: `Bearer ${this.token}` }
+                });
+                this.sucursales = Array.isArray(respuesta.data) ? respuesta.data.filter(sucursal => sucursal && sucursal.id && sucursal.nombre) : [];
+            } catch (err) {
+                this.error = err.response?.data?.error || 'No se pudieron cargar las sucursales';
             }
         },
         alternarDetalle(cierreId) {
@@ -5455,11 +5479,15 @@ const CierresCajaAdminView = {
         }
     },
     mounted() {
+        this.cargarSucursales();
         this.cargarCierres();
     },
     watch: {
         token(nuevoToken) {
-            if (nuevoToken) this.cargarCierres();
+            if (nuevoToken) {
+                this.cargarSucursales();
+                this.cargarCierres();
+            }
         }
     }
 };
