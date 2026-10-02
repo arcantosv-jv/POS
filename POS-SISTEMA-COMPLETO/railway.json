@@ -4,6 +4,7 @@
     "builder": "dockerfile"
   },
   "deploy": {
+    "preDeployCommand": ["python", "railway_migrate.py"],
     "startCommand": "gunicorn --config gunicorn_config.py app:app",
     "restartPolicyType": "always",
     "restartPolicyMaxRetries": 5

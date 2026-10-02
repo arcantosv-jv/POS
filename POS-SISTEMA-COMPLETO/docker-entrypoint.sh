@@ -31,9 +31,7 @@ echo "✅ PostgreSQL está listo"
 
 # Ejecutar migraciones
 echo "🔄 Ejecutando migraciones..."
-flask db upgrade || {
-  echo "⚠️  Migraciones fallaron, pero continuando..."
-}
+python railway_migrate.py
 
 echo "✅ Sistema listo para recibir tráfico"
 
