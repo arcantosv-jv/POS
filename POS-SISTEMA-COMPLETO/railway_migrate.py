@@ -21,7 +21,7 @@ def _legacy_schema_matches_current_models():
 
         existing_columns = {column['name'] for column in inspector.get_columns(table.name)}
         for column in table.columns:
-            if table.name == 'cierres_caja' and column.name == 'closed_at':
+            if table.name == 'cierres_caja' and column.name in {'closed_at', 'egreso', 'concepto_egreso'}:
                 continue
             if column.name not in existing_columns:
                 missing.append(f'{table.name}.{column.name}')
@@ -60,10 +60,12 @@ def main():
 
     with app.app_context():
         inspector = inspect(db.engine)
-        if not any(column['name'] == 'closed_at' for column in inspector.get_columns('cierres_caja')):
-            raise RuntimeError('La migración terminó sin crear cierres_caja.closed_at')
+        columns = {column['name'] for column in inspector.get_columns('cierres_caja')}
+        missing = {'closed_at', 'egreso', 'concepto_egreso'} - columns
+        if missing:
+            raise RuntimeError('La migración terminó sin crear columnas de cierre: ' + ', '.join(sorted(missing)))
 
-    print('Migraciones aplicadas correctamente; cierres_caja.closed_at está disponible.')
+    print('Migraciones aplicadas correctamente; las columnas de cierre y egreso están disponibles.')
     return 0
 
 

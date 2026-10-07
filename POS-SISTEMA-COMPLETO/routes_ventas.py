@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Venta, DetalleVenta, Producto, Stock, Sucursal, PagoVenta, CierreCaja
 from datetime import datetime, timedelta, date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import uuid
 from config import get_cdmx_now, CDMX_TZ
 
@@ -498,6 +498,32 @@ def get_cierre_caja_hoy():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+def validar_datos_cierre(data, cierre):
+    """Validar importes antes de modificar el cierre; conservar egresos omitidos."""
+    importes = []
+    for campo, valor in (
+        ('efectivo_reportado', data.get('efectivo_reportado', 0)),
+        ('egreso', data.get('egreso', cierre.egreso or 0)),
+    ):
+        if campo == 'egreso' and valor in (None, ''):
+            valor = 0
+        try:
+            importe = Decimal(str(valor))
+            if (not importe.is_finite() or importe < 0 or importe > Decimal('99999999.99')
+                    or importe != importe.quantize(Decimal('0.01'))):
+                raise ValueError()
+        except (InvalidOperation, ValueError):
+            raise ValueError(f'{campo}: ingresa una cantidad válida, no negativa y con máximo dos decimales')
+        importes.append(importe)
+    concepto = data.get('concepto_egreso', cierre.concepto_egreso or '')
+    if not isinstance(concepto, str):
+        raise ValueError('El concepto del egreso debe ser texto')
+    concepto = concepto.strip()
+    if importes[1] > 0 and not concepto:
+        raise ValueError('Debes escribir el concepto del egreso')
+    return importes[0], importes[1], concepto if importes[1] > 0 else None
+
+
 @ventas_bp.route('/cierre-caja', methods=['POST'])
 @jwt_required()
 def crear_cierre_caja():
@@ -522,9 +548,14 @@ def crear_cierre_caja():
             return jsonify({'error': 'Cierre de caja no encontrado'}), 404
         
         # Actualizar con datos reportados
-        efectivo_reportado = Decimal(str(data.get('efectivo_reportado', 0)))
+        try:
+            efectivo_reportado, egreso, concepto = validar_datos_cierre(data, cierre)
+        except ValueError as error:
+            return jsonify({'error': str(error)}), 400
+        cierre.egreso = egreso
+        cierre.concepto_egreso = concepto
         cierre.efectivo_reportado = efectivo_reportado
-        cierre.diferencia = efectivo_reportado - cierre.total_efectivo
+        cierre.diferencia = efectivo_reportado - cierre.efectivo_esperado
         cierre.observaciones = data.get('observaciones', '')
         cierre.estado = 'cerrado'
         cierre.closed_at = get_cdmx_now()
@@ -780,9 +811,14 @@ def corregir_cierre_caja():
             return jsonify({'error': 'Cierre de caja no encontrado'}), 404
         
         # Actualizar con datos reportados
-        efectivo_reportado = Decimal(str(data.get('efectivo_reportado', 0)))
+        try:
+            efectivo_reportado, egreso, concepto = validar_datos_cierre(data, cierre)
+        except ValueError as error:
+            return jsonify({'error': str(error)}), 400
+        cierre.egreso = egreso
+        cierre.concepto_egreso = concepto
         cierre.efectivo_reportado = efectivo_reportado
-        cierre.diferencia = efectivo_reportado - cierre.total_efectivo
+        cierre.diferencia = efectivo_reportado - cierre.efectivo_esperado
         cierre.observaciones = data.get('observaciones', '')
         cierre.estado = 'cerrado'
         cierre.closed_at = get_cdmx_now()

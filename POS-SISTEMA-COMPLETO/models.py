@@ -311,9 +311,12 @@ class CierreCaja(db.Model):
     total_tarjeta = db.Column(db.Numeric(10, 2), default=0)
     total_transferencia = db.Column(db.Numeric(10, 2), default=0)
     
+    egreso = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
+    concepto_egreso = db.Column(db.Text, nullable=True)
+
     # Efectivo físico reportado
     efectivo_reportado = db.Column(db.Numeric(10, 2), nullable=True)
-    diferencia = db.Column(db.Numeric(10, 2), nullable=True)  # efectivo_reportado - total_efectivo
+    diferencia = db.Column(db.Numeric(10, 2), nullable=True)  # efectivo_reportado - efectivo_esperado
     
     # Estado
     estado = db.Column(db.String(20), default='abierto')  # abierto, cerrado
@@ -327,6 +330,10 @@ class CierreCaja(db.Model):
     empleado = db.relationship('User', backref='cierres_caja')
     sucursal = db.relationship('Sucursal', backref='cierres_caja')
     
+    @property
+    def efectivo_esperado(self):
+        return (self.total_efectivo or 0) - (self.egreso or 0)
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -339,8 +346,11 @@ class CierreCaja(db.Model):
             'total_efectivo': float(self.total_efectivo),
             'total_tarjeta': float(self.total_tarjeta),
             'total_transferencia': float(self.total_transferencia),
-            'efectivo_reportado': float(self.efectivo_reportado) if self.efectivo_reportado else None,
-            'diferencia': float(self.diferencia) if self.diferencia else None,
+            'egreso': float(self.egreso or 0),
+            'concepto_egreso': self.concepto_egreso,
+            'efectivo_esperado': float(self.efectivo_esperado),
+            'efectivo_reportado': float(self.efectivo_reportado) if self.efectivo_reportado is not None else None,
+            'diferencia': float(self.diferencia) if self.diferencia is not None else None,
             'estado': self.estado,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
             'observaciones': self.observaciones,

@@ -4092,7 +4092,7 @@ const CierreCajaView = {
                         <div class="card bg-light">
                             <div class="card-body">
                                 <h6 class="card-title">Total Esperado (Efectivo)</h6>
-                                <p class="h4 text-success">{{ formatoMoneda(cierre.total_efectivo) }}</p>
+                                <p class="h4 text-success">{{ formatoMoneda(efectivoEsperado) }}</p>
                             </div>
                         </div>
                     </div>
@@ -4100,8 +4100,8 @@ const CierreCajaView = {
                         <div class="card bg-light">
                             <div class="card-body">
                                 <h6 class="card-title">Efectivo Reportado</h6>
-                                <p class="h4" :class="cierre.efectivo_reportado ? 'text-primary' : 'text-muted'">
-                                    {{ cierre.efectivo_reportado ? formatoMoneda(cierre.efectivo_reportado) : 'Sin reportar' }}
+                                <p class="h4" :class="cierre.efectivo_reportado !== null ? 'text-primary' : 'text-muted'">
+                                    {{ cierre.efectivo_reportado !== null ? formatoMoneda(cierre.efectivo_reportado) : 'Sin reportar' }}
                                 </p>
                             </div>
                         </div>
@@ -4145,7 +4145,7 @@ const CierreCajaView = {
                 </div>
 
                 <!-- Formulario de cierre -->
-                <div v-if="!loading && cierre && cierre.estado === 'abierto'" class="border-top pt-4">
+                <div v-if="!loading && cierre && cierre.estado === 'abierto'" class="border-top pt-4 cash-register-form">
                     <h6 class="mb-4" style="font-weight: 700; color: var(--primary);">Registrar Cierre de Caja</h6>
                     <div class="row">
                         <div class="col-md-6 mb-4">
@@ -4157,9 +4157,6 @@ const CierreCajaView = {
                                 step="0.01" 
                                 min="0"
                                 placeholder="0.00"
-                                style="padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 0.5rem; font-size: 1.1rem; transition: all 0.3s ease;"
-                                @focus="$event.target.style.borderColor = '#2563EB'; $event.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'"
-                                @blur="$event.target.style.borderColor = 'var(--gray-300)'; $event.target.style.boxShadow = 'none'"
                             >
                         </div>
                         <div class="col-md-6 mb-4">
@@ -4169,10 +4166,18 @@ const CierreCajaView = {
                                 type="text" 
                                 class="form-control"
                                 placeholder="(opcional)"
-                                style="padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 0.5rem; font-size: 1rem; transition: all 0.3s ease;"
-                                @focus="$event.target.style.borderColor = '#2563EB'; $event.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'"
-                                @blur="$event.target.style.borderColor = 'var(--gray-300)'; $event.target.style.boxShadow = 'none'"
                             >
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="formulario-egreso">Egreso (opcional)</label>
+                            <input aria-describedby="formulario-egreso-ayuda" id="formulario-egreso" v-model.number="formulario.egreso" type="number" min="0" step="0.01" class="form-control" placeholder="0.00">
+                            <small id="formulario-egreso-ayuda" class="cash-register-help">Se resta del efectivo esperado; el total de ventas no cambia.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="formulario-concepto">Concepto del egreso <span v-if="Number(formulario.egreso) > 0">*</span></label>
+                            <textarea rows="2" id="formulario-concepto" v-model="formulario.concepto_egreso" class="form-control" :required="Number(formulario.egreso) > 0" placeholder="Ej.: Pago de sueldo"></textarea>
                         </div>
                     </div>
                     <button 
@@ -4190,6 +4195,7 @@ const CierreCajaView = {
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <strong>✓ Caja Cerrada</strong> - Cierre realizado a las {{ formatoHora(cierre.created_at) }}
+                            <p v-if="cierre.egreso > 0"><strong>Egreso:</strong> {{ formatoMoneda(cierre.egreso) }} · {{ cierre.concepto_egreso }}</p>
                             <p v-if="cierre.observaciones" class="mb-0 mt-2"><strong>Notas:</strong> {{ cierre.observaciones }}</p>
                         </div>
                         <button 
@@ -4202,7 +4208,7 @@ const CierreCajaView = {
                     </div>
 
                     <!-- Modo edición para correcciones -->
-                    <div v-if="editandoCierre" class="mt-4 border-top pt-4" style="background: var(--gray-50); padding: 1.5rem; border-radius: 0.5rem;">
+                    <div v-if="editandoCierre" class="mt-4 border-top pt-4 cash-register-form" style="background: var(--gray-50); padding: 1.5rem; border-radius: 0.5rem;">
                         <h6 style="font-weight: 700; margin-bottom: 1.5rem; color: var(--primary);">Corregir Efectivo Reportado</h6>
                         <div class="row mb-4">
                             <div class="col-md-6 mb-3">
@@ -4213,9 +4219,6 @@ const CierreCajaView = {
                                     class="form-control" 
                                     step="0.01" 
                                     min="0"
-                                    style="padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 0.5rem; font-size: 1.1rem; transition: all 0.3s ease;"
-                                    @focus="$event.target.style.borderColor = '#2563EB'; $event.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'"
-                                    @blur="$event.target.style.borderColor = 'var(--gray-300)'; $event.target.style.boxShadow = 'none'"
                                 >
                             </div>
                             <div class="col-md-6 mb-3">
@@ -4225,13 +4228,21 @@ const CierreCajaView = {
                                     type="text" 
                                     class="form-control"
                                     placeholder="Ej: Corrección de error anterior"
-                                    style="padding: 0.75rem 1rem; border: 2px solid var(--gray-300); border-radius: 0.5rem; font-size: 1rem; transition: all 0.3s ease;"
-                                    @focus="$event.target.style.borderColor = '#2563EB'; $event.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)'"
-                                    @blur="$event.target.style.borderColor = 'var(--gray-300)'; $event.target.style.boxShadow = 'none'"
                                 >
                             </div>
                         </div>
-                        <button 
+                        <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="formularioEdicion-egreso">Egreso (opcional)</label>
+                            <input aria-describedby="formularioEdicion-egreso-ayuda" id="formularioEdicion-egreso" v-model.number="formularioEdicion.egreso" type="number" min="0" step="0.01" class="form-control" placeholder="0.00">
+                            <small id="formularioEdicion-egreso-ayuda" class="cash-register-help">Se resta del efectivo esperado; el total de ventas no cambia.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="formularioEdicion-concepto">Concepto del egreso <span v-if="Number(formularioEdicion.egreso) > 0">*</span></label>
+                            <textarea rows="2" id="formularioEdicion-concepto" v-model="formularioEdicion.concepto_egreso" class="form-control" :required="Number(formularioEdicion.egreso) > 0" placeholder="Ej.: Pago de sueldo"></textarea>
+                        </div>
+                    </div>
+                    <button 
                             @click="guardarCorreccion" 
                             class="btn btn-primary btn-sm me-2"
                             style="padding: 0.5rem 1.5rem; font-weight: 600; border-radius: 0.375rem;"
@@ -4259,15 +4270,39 @@ const CierreCajaView = {
             editandoCierre: false,
             formulario: {
                 efectivo_reportado: null,
+                egreso: 0,
+                concepto_egreso: '',
                 observaciones: ''
             },
             formularioEdicion: {
                 efectivo_reportado: null,
+                egreso: 0,
+                concepto_egreso: '',
                 observaciones: ''
             }
         };
     },
+    computed: {
+        efectivoEsperado() {
+            const egreso = this.editandoCierre ? this.formularioEdicion.egreso
+                : this.cierre?.estado === 'abierto' ? this.formulario.egreso : this.cierre?.egreso;
+            return Number(this.cierre?.total_efectivo || 0) - Number(egreso || 0);
+        }
+    },
     methods: {
+        validarEgreso(formulario) {
+            const egreso = Number(formulario.egreso || 0);
+            if (!Number.isFinite(egreso) || egreso < 0) {
+                this.error = 'Ingresa un egreso válido, no negativo';
+                return false;
+            }
+            if (egreso > 0 && !formulario.concepto_egreso.trim()) {
+                this.error = 'Debes escribir el concepto del egreso';
+                return false;
+            }
+            this.error = '';
+            return true;
+        },
         cargarCierreCaja() {
             this.loading = true;
             this.error = '';
@@ -4293,6 +4328,7 @@ const CierreCajaView = {
             }
         },
         guardarCierre() {
+            if (!this.validarEgreso(this.formulario)) return;
             if (this.formulario.efectivo_reportado === null) {
                 alert('Debes reportar el efectivo');
                 return;
@@ -4302,6 +4338,8 @@ const CierreCajaView = {
                 `${window.location.origin}/api/ventas/cierre-caja`,
                 {
                     efectivo_reportado: this.formulario.efectivo_reportado,
+                    egreso: this.formulario.egreso,
+                    concepto_egreso: this.formulario.concepto_egreso,
                     observaciones: this.formulario.observaciones
                 },
                 { headers: { 'Authorization': `Bearer ${this.token}` } }
@@ -4326,6 +4364,8 @@ const CierreCajaView = {
         },
         abrirEdicionCierre() {
             this.editandoCierre = true;
+            this.formularioEdicion.egreso = this.cierre.egreso || 0;
+            this.formularioEdicion.concepto_egreso = this.cierre.concepto_egreso || '';
             this.formularioEdicion.efectivo_reportado = this.cierre.efectivo_reportado;
             this.formularioEdicion.observaciones = this.cierre.observaciones || '';
         },
@@ -4335,6 +4375,7 @@ const CierreCajaView = {
             this.formularioEdicion.observaciones = '';
         },
         guardarCorreccion() {
+            if (!this.validarEgreso(this.formularioEdicion)) return;
             if (this.formularioEdicion.efectivo_reportado === null) {
                 alert('Debes ingresar el efectivo reportado');
                 return;
@@ -4344,6 +4385,8 @@ const CierreCajaView = {
                 `${window.location.origin}/api/ventas/cierre-caja/corregir`,
                 {
                     efectivo_reportado: this.formularioEdicion.efectivo_reportado,
+                    egreso: this.formularioEdicion.egreso,
+                    concepto_egreso: this.formularioEdicion.concepto_egreso,
                     observaciones: this.formularioEdicion.observaciones
                 },
                 { headers: { 'Authorization': `Bearer ${this.token}` } }
@@ -4725,7 +4768,10 @@ const ReportesVentasView = {
                                     <th>Empleado</th>
                                     <th>Sucursal</th>
                                     <th>Total Ventas</th>
-                                    <th>Efectivo</th>
+                                    <th>Egreso</th>
+                                    <th>Concepto del egreso</th>
+                                    <th>Efectivo esperado</th>
+                                    <th>Efectivo de ventas</th>
                                     <th>Tarjeta</th>
                                     <th>Transferencia</th>
                                     <th>Diferencia</th>
@@ -4739,6 +4785,9 @@ const ReportesVentasView = {
                                     <td><small>{{ cierre.empleado_nombre }}</small></td>
                                     <td><small>{{ cierre.sucursal_nombre }}</small></td>
                                     <td><small>{{ formatoMoneda(cierre.total_ventas) }}</small></td>
+                                    <td>{{ formatoMoneda(cierre.egreso) }}</td>
+                                    <td style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ cierre.concepto_egreso || '—' }}</td>
+                                    <td>{{ formatoMoneda(cierre.efectivo_esperado) }}</td>
                                     <td><small>{{ formatoMoneda(cierre.total_efectivo) }}</small></td>
                                     <td><small>{{ formatoMoneda(cierre.total_tarjeta) }}</small></td>
                                     <td><small>{{ formatoMoneda(cierre.total_transferencia) }}</small></td>
@@ -5375,7 +5424,11 @@ const CierresCajaAdminView = {
 
                 <div v-if="cierreExpandidoId === cierre.id" class="cash-close-detail">
                     <div class="cash-close-payments">
-                        <span><strong>Efectivo:</strong> {{ formatoMoneda(cierre.total_efectivo) }}</span>
+                        <span><strong>Efectivo de ventas:</strong> {{ formatoMoneda(cierre.total_efectivo) }}</span>
+                        <span><strong>Egreso:</strong> {{ formatoMoneda(cierre.egreso) }}</span>
+                        <span style="white-space: pre-wrap; overflow-wrap: anywhere;"><strong>Concepto del egreso:</strong> {{ cierre.concepto_egreso || '—' }}</span>
+                        <span><strong>Efectivo esperado:</strong> {{ formatoMoneda(cierre.efectivo_esperado) }}</span>
+                        <span><strong>Efectivo reportado:</strong> {{ formatoMoneda(cierre.efectivo_reportado) }}</span>
                         <span><strong>Tarjeta:</strong> {{ formatoMoneda(cierre.total_tarjeta) }}</span>
                         <span><strong>Transferencia:</strong> {{ formatoMoneda(cierre.total_transferencia) }}</span>
                         <span v-if="cierre.diferencia !== null"><strong>Diferencia:</strong> {{ formatoMoneda(cierre.diferencia) }}</span>
