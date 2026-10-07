@@ -2,7 +2,7 @@ import unittest
 from decimal import Decimal
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
-from models import db, User, Sucursal, CierreCaja
+from models import db, User, Sucursal, CierreCaja, Venta
 from routes_ventas import ventas_bp
 from config import get_cdmx_now
 
@@ -29,6 +29,10 @@ class CierreEgresoTest(unittest.TestCase):
         self.cierre = CierreCaja(empleado_id=empleado.id, sucursal_id=sucursal.id,
                                 fecha=get_cdmx_now().date(), total_ventas=1500,
                                 total_efectivo=1000, total_tarjeta=500)
+        db.session.add_all([
+            Venta(numero_venta='E1', sucursal_id=sucursal.id, cajero_id=empleado.id, total=1000, forma_pago='efectivo'),
+            Venta(numero_venta='T1', sucursal_id=sucursal.id, cajero_id=empleado.id, total=500, forma_pago='tarjeta')
+        ])
         db.session.add(self.cierre)
         db.session.commit()
         self.headers = {'Authorization': 'Bearer ' + create_access_token(identity=empleado.id)}

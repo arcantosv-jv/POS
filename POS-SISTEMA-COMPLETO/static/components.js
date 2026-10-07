@@ -1014,7 +1014,9 @@ const ProductosView = {
                     `${window.location.origin}/api/productos/subcategorias`,
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
-                this.subcategorias = res.data;
+                this.subcategorias = [...res.data].sort((a, b) =>
+                    a.nombre.trim().localeCompare(b.nombre.trim(), 'es', { sensitivity: 'base' })
+                );
             } catch (err) {
                 console.error(err);
             }
@@ -4144,6 +4146,7 @@ const CierreCajaView = {
                     </div>
                 </div>
 
+                <p v-if="cierre && cierre.reembolsos_efectivo > 0" class="alert alert-info"><strong>Reembolsos en efectivo:</strong> {{ formatoMoneda(cierre.reembolsos_efectivo) }}. Ya descontados del efectivo esperado; no los agregues como egresos.</p>
                 <!-- Formulario de cierre -->
                 <div v-if="!loading && cierre && cierre.estado === 'abierto'" class="border-top pt-4 cash-register-form">
                     <h6 class="mb-4" style="font-weight: 700; color: var(--primary);">Registrar Cierre de Caja</h6>
@@ -4169,17 +4172,21 @@ const CierreCajaView = {
                             >
                         </div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" for="formulario-egreso">Egreso (opcional)</label>
-                            <input aria-describedby="formulario-egreso-ayuda" id="formulario-egreso" v-model.number="formulario.egreso" type="number" min="0" step="0.01" class="form-control" placeholder="0.00">
-                            <small id="formulario-egreso-ayuda" class="cash-register-help">Se resta del efectivo esperado; el total de ventas no cambia.</small>
+                    <section class="cash-expenses" aria-label="Egresos de caja">
+                        <h6>Egresos (opcional)</h6>
+                        <p class="cash-register-help">Agrega cada salida por separado. Se descuenta del efectivo esperado, sin cambiar el total de ventas.</p>
+                        <div v-for="(egreso, index) in formulario.egresos" :key="index" class="cash-expense-row">
+                            <div><label class="form-label" :for="'formulario-monto-' + index">Importe *</label>
+                                <input :id="'formulario-monto-' + index" v-model.number="egreso.monto" type="number" min="0.01" step="0.01" class="form-control" placeholder="0.00"></div>
+                            <div><label class="form-label" :for="'formulario-concepto-' + index">Concepto *</label>
+                                <textarea :id="'formulario-concepto-' + index" v-model="egreso.concepto" rows="2" class="form-control" placeholder="Ej.: Pago de sueldo"></textarea></div>
+                            <div><label class="form-label" :for="'formulario-comprobante-' + index">Referencia de comprobante (opcional)</label>
+                                <input :id="'formulario-comprobante-' + index" v-model="egreso.comprobante" class="form-control" maxlength="500" placeholder="Folio o referencia"></div>
+                            <button type="button" class="btn btn-secondary btn-sm" @click="formulario.egresos.splice(index, 1)" :aria-label="'Quitar egreso ' + (index + 1)">Quitar</button>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" for="formulario-concepto">Concepto del egreso <span v-if="Number(formulario.egreso) > 0">*</span></label>
-                            <textarea rows="2" id="formulario-concepto" v-model="formulario.concepto_egreso" class="form-control" :required="Number(formulario.egreso) > 0" placeholder="Ej.: Pago de sueldo"></textarea>
-                        </div>
-                    </div>
+                        <button type="button" class="btn btn-secondary btn-sm" @click="formulario.egresos.push({ monto: '', concepto: '', comprobante: '' })">+ Agregar egreso</button>
+                        <p style="margin-top: 1rem;"><strong>Total de egresos: {{ formatoMoneda(totalEgresos(formulario)) }}</strong></p>
+                    </section>
                     <button 
                         @click="guardarCierre" 
                         class="btn btn-success"
@@ -4195,7 +4202,9 @@ const CierreCajaView = {
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <strong>✓ Caja Cerrada</strong> - Cierre realizado a las {{ formatoHora(cierre.created_at) }}
-                            <p v-if="cierre.egreso > 0"><strong>Egreso:</strong> {{ formatoMoneda(cierre.egreso) }} · {{ cierre.concepto_egreso }}</p>
+                            <div v-if="cierre.egreso > 0"><strong>Total de egresos:</strong> {{ formatoMoneda(cierre.egreso) }}
+                                <p v-for="(e, i) in cierre.egresos" :key="i">{{ formatoMoneda(e.monto) }} · {{ e.concepto }} <span v-if="e.comprobante">(Referencia: {{ e.comprobante }})</span></p>
+                            </div>
                             <p v-if="cierre.observaciones" class="mb-0 mt-2"><strong>Notas:</strong> {{ cierre.observaciones }}</p>
                         </div>
                         <button 
@@ -4231,17 +4240,21 @@ const CierreCajaView = {
                                 >
                             </div>
                         </div>
-                        <div class="row mb-3">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" for="formularioEdicion-egreso">Egreso (opcional)</label>
-                            <input aria-describedby="formularioEdicion-egreso-ayuda" id="formularioEdicion-egreso" v-model.number="formularioEdicion.egreso" type="number" min="0" step="0.01" class="form-control" placeholder="0.00">
-                            <small id="formularioEdicion-egreso-ayuda" class="cash-register-help">Se resta del efectivo esperado; el total de ventas no cambia.</small>
+                        <section class="cash-expenses" aria-label="Egresos de caja">
+                        <h6>Egresos (opcional)</h6>
+                        <p class="cash-register-help">Agrega cada salida por separado. Se descuenta del efectivo esperado, sin cambiar el total de ventas.</p>
+                        <div v-for="(egreso, index) in formularioEdicion.egresos" :key="index" class="cash-expense-row">
+                            <div><label class="form-label" :for="'formularioEdicion-monto-' + index">Importe *</label>
+                                <input :id="'formularioEdicion-monto-' + index" v-model.number="egreso.monto" type="number" min="0.01" step="0.01" class="form-control" placeholder="0.00"></div>
+                            <div><label class="form-label" :for="'formularioEdicion-concepto-' + index">Concepto *</label>
+                                <textarea :id="'formularioEdicion-concepto-' + index" v-model="egreso.concepto" rows="2" class="form-control" placeholder="Ej.: Pago de sueldo"></textarea></div>
+                            <div><label class="form-label" :for="'formularioEdicion-comprobante-' + index">Referencia de comprobante (opcional)</label>
+                                <input :id="'formularioEdicion-comprobante-' + index" v-model="egreso.comprobante" class="form-control" maxlength="500" placeholder="Folio o referencia"></div>
+                            <button type="button" class="btn btn-secondary btn-sm" @click="formularioEdicion.egresos.splice(index, 1)" :aria-label="'Quitar egreso ' + (index + 1)">Quitar</button>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" for="formularioEdicion-concepto">Concepto del egreso <span v-if="Number(formularioEdicion.egreso) > 0">*</span></label>
-                            <textarea rows="2" id="formularioEdicion-concepto" v-model="formularioEdicion.concepto_egreso" class="form-control" :required="Number(formularioEdicion.egreso) > 0" placeholder="Ej.: Pago de sueldo"></textarea>
-                        </div>
-                    </div>
+                        <button type="button" class="btn btn-secondary btn-sm" @click="formularioEdicion.egresos.push({ monto: '', concepto: '', comprobante: '' })">+ Agregar egreso</button>
+                        <p style="margin-top: 1rem;"><strong>Total de egresos: {{ formatoMoneda(totalEgresos(formularioEdicion)) }}</strong></p>
+                    </section>
                     <button 
                             @click="guardarCorreccion" 
                             class="btn btn-primary btn-sm me-2"
@@ -4270,34 +4283,30 @@ const CierreCajaView = {
             editandoCierre: false,
             formulario: {
                 efectivo_reportado: null,
-                egreso: 0,
-                concepto_egreso: '',
+                egresos: [],
                 observaciones: ''
             },
             formularioEdicion: {
                 efectivo_reportado: null,
-                egreso: 0,
-                concepto_egreso: '',
+                egresos: [],
                 observaciones: ''
             }
         };
     },
     computed: {
         efectivoEsperado() {
-            const egreso = this.editandoCierre ? this.formularioEdicion.egreso
-                : this.cierre?.estado === 'abierto' ? this.formulario.egreso : this.cierre?.egreso;
-            return Number(this.cierre?.total_efectivo || 0) - Number(egreso || 0);
+            const egreso = this.editandoCierre ? this.totalEgresos(this.formularioEdicion)
+                : this.cierre?.estado === 'abierto' ? this.totalEgresos(this.formulario) : this.cierre?.egreso;
+            return Number(this.cierre?.total_efectivo || 0) - Number(egreso || 0) - Number(this.cierre?.reembolsos_efectivo || 0);
         }
     },
     methods: {
+        totalEgresos(formulario) {
+            return formulario.egresos.reduce((total, e) => total + Number(e.monto || 0), 0);
+        },
         validarEgreso(formulario) {
-            const egreso = Number(formulario.egreso || 0);
-            if (!Number.isFinite(egreso) || egreso < 0) {
-                this.error = 'Ingresa un egreso válido, no negativo';
-                return false;
-            }
-            if (egreso > 0 && !formulario.concepto_egreso.trim()) {
-                this.error = 'Debes escribir el concepto del egreso';
+            if (formulario.egresos.some(e => !Number.isFinite(Number(e.monto)) || Number(e.monto) <= 0 || !e.concepto.trim())) {
+                this.error = 'Cada egreso necesita un importe mayor a cero y un concepto';
                 return false;
             }
             this.error = '';
@@ -4314,6 +4323,7 @@ const CierreCajaView = {
                     this.cierre = response.data;
                     this.formulario.efectivo_reportado = null;
                     this.formulario.observaciones = '';
+                    this.formulario.egresos = [];
                 })
                 .catch(err => {
                     console.error('Error cargando cierre:', err);
@@ -4338,8 +4348,7 @@ const CierreCajaView = {
                 `${window.location.origin}/api/ventas/cierre-caja`,
                 {
                     efectivo_reportado: this.formulario.efectivo_reportado,
-                    egreso: this.formulario.egreso,
-                    concepto_egreso: this.formulario.concepto_egreso,
+                    egresos: this.formulario.egresos,
                     observaciones: this.formulario.observaciones
                 },
                 { headers: { 'Authorization': `Bearer ${this.token}` } }
@@ -4364,8 +4373,7 @@ const CierreCajaView = {
         },
         abrirEdicionCierre() {
             this.editandoCierre = true;
-            this.formularioEdicion.egreso = this.cierre.egreso || 0;
-            this.formularioEdicion.concepto_egreso = this.cierre.concepto_egreso || '';
+            this.formularioEdicion.egresos = (this.cierre.egresos || []).map(e => ({ ...e }));
             this.formularioEdicion.efectivo_reportado = this.cierre.efectivo_reportado;
             this.formularioEdicion.observaciones = this.cierre.observaciones || '';
         },
@@ -4385,8 +4393,7 @@ const CierreCajaView = {
                 `${window.location.origin}/api/ventas/cierre-caja/corregir`,
                 {
                     efectivo_reportado: this.formularioEdicion.efectivo_reportado,
-                    egreso: this.formularioEdicion.egreso,
-                    concepto_egreso: this.formularioEdicion.concepto_egreso,
+                    egresos: this.formularioEdicion.egresos,
                     observaciones: this.formularioEdicion.observaciones
                 },
                 { headers: { 'Authorization': `Bearer ${this.token}` } }
@@ -4770,6 +4777,7 @@ const ReportesVentasView = {
                                     <th>Total Ventas</th>
                                     <th>Egreso</th>
                                     <th>Concepto del egreso</th>
+                                    <th>Reembolsos en efectivo</th>
                                     <th>Efectivo esperado</th>
                                     <th>Efectivo de ventas</th>
                                     <th>Tarjeta</th>
@@ -4786,7 +4794,8 @@ const ReportesVentasView = {
                                     <td><small>{{ cierre.sucursal_nombre }}</small></td>
                                     <td><small>{{ formatoMoneda(cierre.total_ventas) }}</small></td>
                                     <td>{{ formatoMoneda(cierre.egreso) }}</td>
-                                    <td style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ cierre.concepto_egreso || '—' }}</td>
+                                    <td style="white-space: pre-wrap; overflow-wrap: anywhere;"><div v-for="(e, i) in cierre.egresos" :key="i">{{ formatoMoneda(e.monto) }} · {{ e.concepto }}<small v-if="e.comprobante"> · {{ e.comprobante }}</small></div><span v-if="!cierre.egresos?.length">—</span></td>
+                                    <td>{{ formatoMoneda(cierre.reembolsos_efectivo) }}</td>
                                     <td>{{ formatoMoneda(cierre.efectivo_esperado) }}</td>
                                     <td><small>{{ formatoMoneda(cierre.total_efectivo) }}</small></td>
                                     <td><small>{{ formatoMoneda(cierre.total_tarjeta) }}</small></td>
@@ -5434,6 +5443,11 @@ const CierresCajaAdminView = {
                         <span v-if="cierre.diferencia !== null"><strong>Diferencia:</strong> {{ formatoMoneda(cierre.diferencia) }}</span>
                     </div>
                     <h3>Productos vendidos</h3>
+                    <div v-if="cierre.egresos && cierre.egresos.length" class="cash-expenses">
+                        <h4>Detalle de egresos</h4>
+                        <p v-for="(e, i) in cierre.egresos" :key="i"><strong>{{ formatoMoneda(e.monto) }}</strong> · {{ e.concepto }} <span v-if="e.comprobante"> · Referencia: {{ e.comprobante }}</span></p>
+                    </div>
+                    <p><strong>Reembolsos en efectivo:</strong> {{ formatoMoneda(cierre.reembolsos_efectivo) }}</p>
                     <div v-if="cierre.productos.length" class="table-responsive">
                         <table class="table table-sm table-hover align-middle">
                             <thead class="table-light">
@@ -5695,6 +5709,17 @@ const DevolucionesView = {
                             <small style="color: var(--gray-600); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Máximo disponible: {{ cantidadDisponible }}</small>
                         </div>
 
+                        <div class="cash-expenses">
+                            <h4>Reembolso por método</h4>
+                            <p class="cash-register-help">Indica cómo se devuelve el dinero. El efectivo se descuenta de la caja del empleado que realizó la venta.</p>
+                            <p v-if="ventaSeleccionada.error_conciliacion" class="alert alert-danger">{{ ventaSeleccionada.error_conciliacion }}</p>
+                            <div v-for="metodo in ['efectivo', 'tarjeta', 'transferencia']" :key="metodo" class="form-group">
+                                <label :for="'reembolso-' + metodo">{{ metodo }} (disponible: {{ formatoMoneda(ventaSeleccionada.pagos_disponibles?.[metodo]) }})</label>
+                                <input :id="'reembolso-' + metodo" v-model.number="reembolsos[metodo]" type="number" min="0" step="0.01" :max="ventaSeleccionada.pagos_disponibles?.[metodo] || 0">
+                            </div>
+                            <strong>Total a reembolsar: {{ formatoMoneda(Object.values(reembolsos).reduce((s, n) => s + Number(n || 0), 0)) }}</strong>
+                            <p v-if="error" class="alert alert-danger">{{ error }}</p>
+                        </div>
                         <!-- Motivo Dropdown -->
                         <div style="margin-bottom: 1rem;">
                             <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Motivo de la Devolución</label>
@@ -5727,7 +5752,7 @@ const DevolucionesView = {
                     <!-- Action Buttons -->
                     <div style="display: flex; gap: 0.5rem;">
                         <button @click="modalDevolucion = false" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
-                        <button @click="registrarDevolucion" class="btn btn-danger" style="flex: 1;" :disabled="cantidadDevoluciones <= 0">
+                        <button @click="registrarDevolucion" class="btn btn-danger" style="flex: 1;" :disabled="loading || cantidadDevoluciones <= 0 || !!ventaSeleccionada.error_conciliacion">
                             ↩️ Registrar Devolución
                         </button>
                     </div>
@@ -5752,6 +5777,7 @@ const DevolucionesView = {
                                     <th>Producto</th>
                                     <th>Cantidad</th>
                                     <th>Monto</th>
+                                    <th>Reembolso</th>
                                     <th>Motivo</th>
                                     <th>Administrador</th>
                                     <th>Fecha</th>
@@ -5764,6 +5790,7 @@ const DevolucionesView = {
                                     <td>{{ dev.producto_nombre }}</td>
                                     <td>{{ dev.cantidad_devuelta }}</td>
                                     <td>{{ formatoMoneda(dev.monto_devuelto) }}</td>
+                                    <td><span v-if="dev.conciliacion_pendiente">Histórico: método no registrado</span><div v-for="(monto, metodo) in dev.reembolsos" :key="metodo">{{ metodo }}: {{ formatoMoneda(monto) }}</div><small v-if="dev.caja_empleado_nombre">Caja: {{ dev.caja_empleado_nombre }}</small></td>
                                     <td><span class="badge bg-warning text-dark">{{ dev.motivo }}</span></td>
                                     <td>{{ dev.usuario_nombre }}</td>
                                     <td>{{ formatoFecha(dev.created_at) }}</td>
@@ -5793,6 +5820,7 @@ const DevolucionesView = {
             modalDevolucion: false,
             detalleSeleccionado: null,
             cantidadDevoluciones: 1,
+            reembolsos: { efectivo: 0, tarjeta: 0, transferencia: 0 },
             motivoDevoluciones: '',
             notasDevoluciones: '',
             loading: false,
@@ -5855,9 +5883,14 @@ const DevolucionesView = {
             this.cantidadDevoluciones = 1;
             this.motivoDevoluciones = '';
             this.notasDevoluciones = '';
+            this.error = '';
+            this.reembolsos = { efectivo: 0, tarjeta: 0, transferencia: 0 };
+            const disponibles = Object.entries(venta.pagos_disponibles || {}).filter(([, monto]) => monto > 0);
+            if (disponibles.length === 1) this.reembolsos[disponibles[0][0]] = detalle.precio_unitario;
             this.modalDevolucion = true;
         },
         registrarDevolucion() {
+            if (this.loading) return;
             if (!this.detalleSeleccionado || this.cantidadDevoluciones <= 0) {
                 this.error = 'Por favor completa todos los campos requeridos';
                 return;
@@ -5868,7 +5901,8 @@ const DevolucionesView = {
                 venta_id: this.ventaSeleccionada.id,
                 detalle_venta_id: this.detalleSeleccionado.id,
                 cantidad_devuelta: this.cantidadDevoluciones,
-                motivo: this.motivoDevoluciones || this.notasDevoluciones
+                motivo: [this.motivoDevoluciones, this.notasDevoluciones].filter(Boolean).join(' · '),
+                reembolsos: Object.fromEntries(Object.entries(this.reembolsos).map(([k, v]) => [k, Number(v || 0)]))
             }, {
                 headers: { 'Authorization': `Bearer ${this.token}` }
             })
@@ -5963,20 +5997,21 @@ const CompatibilidadView = {
                         id="modelo-celular" 
                         type="text" 
                         placeholder="ej: Motorola G9 Play, Samsung Galaxy A12, iPhone 13, etc."
-                        @keyup.enter="buscarCompatibilidad"
+                        @keyup.enter="buscarCompatibilidad(false)"
                     />
                     <small style="color: var(--gray-500);">Ingresa el nombre del modelo exacto o aproximado</small>
                 </div>
                 
                 <div class="btn-group">
                     <button 
-                        @click="buscarCompatibilidad" 
+                        @click="buscarCompatibilidad(false)" 
                         class="btn btn-primary"
                         :disabled="!modeloCelular || cargando"
                     >
                         {{ cargando ? '🔄 Buscando...' : '🔍 Buscar Compatibilidad' }}
                     </button>
                     <button @click="limpiar" class="btn btn-secondary">Limpiar</button>
+                    <button @click="buscarCompatibilidad(true)" class="btn btn-secondary" :disabled="cargando || !modeloCelular.trim()">Consultar nuevas sugerencias de IA</button>
                 </div>
             </div>
             
@@ -6012,6 +6047,10 @@ const CompatibilidadView = {
                                     <p style="margin: 0.3rem 0; color: var(--gray-600);">
                                         <strong>Marca:</strong> {{ mica.marca }}
                                     </p>
+                                    <p><strong>{{ mica.verificada ? 'Verificada por el personal' : 'Sin verificar físicamente' }}</strong></p>
+                                    <p v-if="mica.verificada">{{ mica.notas }} · {{ mica.verificada_por }}</p>
+                                    <button v-if="!mica.verificada" class="btn btn-secondary btn-sm" @click="iniciarVerificacion(mica)">Registrar comprobación</button>
+                                    <button v-else-if="mica.puede_retirar" class="btn btn-secondary btn-sm" @click="retirarVerificacion(mica)" :disabled="guardandoVerificacion">Retirar verificación</button>
                                     <!-- Razón desactivada para simplificar los resultados.
                                     <p style="margin: 0.3rem 0; color: var(--gray-700);">
                                         <strong>Razón:</strong> {{ mica.razon }}
@@ -6041,7 +6080,29 @@ const CompatibilidadView = {
                 </div>
             </div>
             
-            <!-- Estado vacío -->
+            <section class="card" style="margin-top: 1.5rem;">
+                <h3>Registrar compatibilidad comprobada</h3>
+                <p class="cash-register-help">Guarda pruebas realizadas por el personal, incluso si la IA no está disponible.</p>
+                <div class="form-group"><label>Modelo del celular</label><input v-model="verificacion.modelo_celular" maxlength="200" placeholder="Modelo al que se colocó la mica"></div>
+                <div class="form-group"><label>Modelo de mica compatible</label><input v-model="verificacion.mica" maxlength="200"></div>
+                <div class="form-group"><label>Marca de la mica</label><input v-model="verificacion.marca" maxlength="100"></div>
+                <div class="form-group"><label>Resultado de la comprobación *</label><textarea v-model="verificacion.notas" rows="2" maxlength="2000" placeholder="Describe el ajuste y cualquier limitación"></textarea></div>
+                <label><input type="checkbox" v-model="verificacion.confirmada"> Confirmo que se comprobó físicamente la compatibilidad</label>
+                <button class="btn btn-success" style="margin-top: 1rem;" @click="guardarVerificacion" :disabled="guardandoVerificacion || !verificacion.confirmada">Guardar verificación</button>
+            </section>
+            <section class="card" style="margin-top: 1.5rem;">
+                <h3>Historial de consultas</h3>
+                <div class="form-group"><label>Filtrar por modelo</label><input v-model="filtroHistorial" @keyup.enter="cargarHistorial(1)"></div>
+                <button class="btn btn-secondary btn-sm" @click="cargarHistorial(1)">Consultar historial</button>
+                <p v-if="errorHistorial" class="alert alert-danger">{{ errorHistorial }}</p>
+                <p v-if="!historial.length">No hay consultas guardadas para este filtro.</p>
+                <div v-for="consulta in historial" :key="consulta.id" style="padding: 1rem 0; border-bottom: 1px solid var(--gray-200);">
+                    <strong>{{ consulta.modelo }}</strong> · {{ new Date(consulta.created_at).toLocaleString('es-MX') }} · {{ consulta.origen }}
+                    <button class="btn btn-secondary btn-sm" @click="abrirConsulta(consulta)">Ver resultado</button>
+                </div>
+                <div style="margin-top: 1rem;"><button class="btn btn-secondary btn-sm" @click="cargarHistorial(paginaHistorial - 1)" :disabled="paginaHistorial <= 1">Anterior</button> {{ paginaHistorial }} / {{ Math.max(1, paginasHistorial) }} <button class="btn btn-secondary btn-sm" @click="cargarHistorial(paginaHistorial + 1)" :disabled="paginaHistorial >= paginasHistorial">Siguiente</button></div>
+            </section>
+                        <!-- Estado vacío -->
             <div v-if="!cargando && !resultados.modelo_solicitado" style="text-align: center; padding: 3rem; color: var(--gray-500);">
                 <p style="font-size: 1.2rem;">Ingresa un modelo de celular para buscar compatibilidades</p>
             </div>
@@ -6050,6 +6111,9 @@ const CompatibilidadView = {
     props: ['apiUrl', 'token', 'userRole'],
     data() {
         return {
+            historial: [], paginaHistorial: 1, paginasHistorial: 1, filtroHistorial: '', errorHistorial: '',
+            guardandoVerificacion: false,
+            verificacion: { modelo_celular: '', mica: '', marca: '', notas: '', confirmada: false },
             modeloCelular: '',
             resultados: {
                 modelo_solicitado: '',
@@ -6061,8 +6125,42 @@ const CompatibilidadView = {
             alerta: ''
         };
     },
+    mounted() { this.cargarHistorial(1); },
     methods: {
-        async buscarCompatibilidad() {
+        async cargarHistorial(page = 1) {
+            this.errorHistorial = '';
+            try {
+                const res = await axios.get('/api/compatibilidad/historial', { params: { page, modelo: this.filtroHistorial }, headers: { Authorization: `Bearer ${this.token}` } });
+                this.historial = res.data.consultas;
+                this.paginaHistorial = res.data.page;
+                this.paginasHistorial = res.data.pages;
+            } catch (err) { this.errorHistorial = err.response?.data?.error || 'No se pudo cargar el historial'; }
+        },
+        abrirConsulta(consulta) { this.modeloCelular = consulta.modelo; this.resultados = consulta.resultado; this.alerta = 'Consulta guardada. Las verificaciones se actualizan al consultar el historial.'; },
+        iniciarVerificacion(mica) { this.verificacion = { modelo_celular: this.resultados.modelo_solicitado, mica: mica.modelo, marca: mica.marca || '', notas: '', confirmada: false }; },
+        async guardarVerificacion() {
+            if (this.guardandoVerificacion) return;
+            this.guardandoVerificacion = true; this.error = '';
+            try {
+                await axios.post('/api/compatibilidad/verificadas', this.verificacion, { headers: { Authorization: `Bearer ${this.token}` } });
+                this.modeloCelular = this.verificacion.modelo_celular;
+                this.verificacion = { modelo_celular: '', mica: '', marca: '', notas: '', confirmada: false };
+                await this.buscarCompatibilidad(false);
+            } catch (err) { this.error = err.response?.data?.error || 'No se pudo guardar la verificación'; }
+            finally { this.guardandoVerificacion = false; }
+        },
+        async retirarVerificacion(mica) {
+            if (!confirm('¿Retirar esta verificación? La compatibilidad dejará de mostrarse como comprobada.')) return;
+            this.guardandoVerificacion = true;
+            try {
+                await axios.delete(`/api/compatibilidad/verificadas/${mica.id}`, { headers: { Authorization: `Bearer ${this.token}` } });
+                this.resultados.compatibles = this.resultados.compatibles.map(item => item.id === mica.id ? { ...item, verificada: false, id: undefined } : item);
+                this.cargarHistorial(1);
+            } catch (err) { this.error = err.response?.data?.error || 'No se pudo retirar la verificación'; }
+            finally { this.guardandoVerificacion = false; }
+        },
+        async buscarCompatibilidad(actualizar = false) {
+            if (this.cargando) return;
             this.error = '';
             this.alerta = '';
             
@@ -6076,12 +6174,14 @@ const CompatibilidadView = {
             try {
                 const response = await axios.post(
                     `${window.location.origin}/api/compatibilidad/buscar`,
-                    { modelo_celular: this.modeloCelular },
+                    { modelo_celular: this.modeloCelular, actualizar_ia: actualizar === true },
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
                 
                 if (response.data.exito) {
                     this.resultados = response.data.datos;
+                    this.alerta = response.data.origen === 'ia' ? 'Las sugerencias de IA no equivalen a una comprobación física.' : 'Resultado recuperado de la base de conocimiento.';
+                    this.cargarHistorial(1);
                     
                     // Mostrar alerta si es fallback local
                     if (this.resultados.notas && this.resultados.notas.includes('Por favor configura')) {
@@ -6148,6 +6248,15 @@ const CompatibilidadView = {
 };
 
 // ============= COMPONENTE: REPARACIONES =============
+function crearFormularioReparacionVacio() {
+    return {
+        nombre_cliente: '', telefono_cliente: '', marca_id: '', modelo_nombre: '',
+        tipo_reparacion_id: '', costo: '', sucursal_id: '',
+        fecha: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }),
+        diagnostico: '', tecnico: '', fecha_prometida: '', anticipo: 0, estado: 'registrada'
+    };
+}
+
 const ReparacionesView = {
     props: {
         apiUrl: String,
@@ -6201,7 +6310,7 @@ const ReparacionesView = {
                         <thead>
                             <tr>
                                 <th>Nombre</th>
-                                <th>Estado</th>
+                                <th>Técnico / fecha prometida</th><th>Abonado / saldo</th><th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -6279,7 +6388,7 @@ const ReparacionesView = {
                             <tr>
                                 <th>Marca</th>
                                 <th>Modelo</th>
-                                <th>Estado</th>
+                                <th>Técnico / fecha prometida</th><th>Abonado / saldo</th><th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -6352,7 +6461,7 @@ const ReparacionesView = {
                             <tr>
                                 <th>Nombre</th>
                                 <th>Descripción</th>
-                                <th>Estado</th>
+                                <th>Técnico / fecha prometida</th><th>Abonado / saldo</th><th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -6520,10 +6629,9 @@ const ReparacionesView = {
             <!-- Sección para Empleados y Admin: Registro de Reparaciones -->
             <div class="card">
                 <div class="card-header">
-                    <h3>{{ mostrarNuevaReparacion ? 'Nueva Reparación' : 'Listado de Reparaciones' }}</h3>
-                    <button @click="mostrarNuevaReparacion = !mostrarNuevaReparacion" class="btn btn-primary btn-sm">
-                        {{ mostrarNuevaReparacion ? 'Ver Listado' : '+ Nueva Reparación' }}
-                    </button>
+                    <h3>{{ mostrarNuevaReparacion ? (editandoReparacionId ? 'Editar Reparación' : 'Nueva Reparación') : 'Listado de Reparaciones' }}</h3>
+                    <button v-if="mostrarNuevaReparacion" @click="cerrarFormularioReparacion" class="btn btn-primary btn-sm" :disabled="guardandoReparacion">Ver Listado</button>
+                    <button v-else @click="nuevaReparacion" class="btn btn-primary btn-sm">+ Nueva Reparación</button>
                 </div>
 
                 <!-- Formulario Nueva Reparación -->
@@ -6540,7 +6648,7 @@ const ReparacionesView = {
                         </div>
                         <div class="form-group">
                             <label>Marca</label>
-                            <select v-model="formularioReparacion.marca_id" @change="formularioReparacion.modelo_nombre = ''" required>
+                            <select :disabled="!!editandoReparacionId" v-model="formularioReparacion.marca_id" @change="formularioReparacion.modelo_nombre = ''" required>
                                 <option value="">Selecciona una marca</option>
                                 <option v-for="marca in marcasDisponibles" :key="marca.id" :value="marca.id">{{ marca.nombre }}</option>
                             </select>
@@ -6551,7 +6659,7 @@ const ReparacionesView = {
                         </div>
                         <div class="form-group">
                             <label>Tipo de Reparación</label>
-                            <select v-model="formularioReparacion.tipo_reparacion_id" required>
+                            <select :disabled="!!editandoReparacionId" v-model="formularioReparacion.tipo_reparacion_id" required>
                                 <option value="">Selecciona un tipo</option>
                                 <option v-for="tipo in tipos" :key="tipo.id" :value="tipo.id">{{ tipo.nombre }}</option>
                             </select>
@@ -6562,7 +6670,7 @@ const ReparacionesView = {
                         </div>
                         <div class="form-group" v-if="userRoleLocal === 'admin'">
                             <label>Sucursal *</label>
-                            <select v-model="formularioReparacion.sucursal_id" required>
+                            <select :disabled="!!editandoReparacionId" v-model="formularioReparacion.sucursal_id" required>
                                 <option value="">Selecciona una sucursal</option>
                                 <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">{{ sucursal.nombre }}</option>
                             </select>
@@ -6576,18 +6684,27 @@ const ReparacionesView = {
                             <label>Fecha</label>
                             <input v-model="formularioReparacion.fecha" type="date" required>
                         </div>
+                        <div class="form-group"><label>Estado</label><select v-model="formularioReparacion.estado"><option v-for="(nombre, estado) in estadosReparacion" :key="estado" :value="estado" :disabled="estado === 'entregada' && userRoleLocal !== 'admin'">{{ nombre }}</option></select></div>
+                        <div class="form-group"><label>Técnico responsable</label><input v-model.trim="formularioReparacion.tecnico" maxlength="120" placeholder="Nombre del técnico"></div>
+                        <div class="form-group"><label>Fecha prometida</label><input v-model="formularioReparacion.fecha_prometida" type="date"></div>
+                        <div class="form-group"><label>Diagnóstico</label><textarea v-model="formularioReparacion.diagnostico" rows="3" maxlength="4000" placeholder="Falla encontrada y trabajo a realizar"></textarea></div>
+                        <div class="form-group"><label>Anticipos / abonado acumulado</label><input v-model.number="formularioReparacion.anticipo" type="number" min="0" step="0.01" :max="formularioReparacion.costo"><small>Registra el total abonado por el cliente. Este seguimiento no genera una venta ni un movimiento de caja.</small></div>
+                        <div class="form-group"><label>Saldo pendiente</label><strong>{{ monedaReparacion(Number(formularioReparacion.costo || 0) - Number(formularioReparacion.anticipo || 0)) }}</strong></div>
                     </div>
                     <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                        <button @click="guardarReparacion" class="btn btn-success">Guardar Reparación</button>
-                        <button @click="mostrarNuevaReparacion = false" class="btn btn-secondary">Cancelar</button>
+                        <button @click="guardarReparacion" class="btn btn-success" :disabled="guardandoReparacion">{{ guardandoReparacion ? 'Guardando…' : 'Guardar Reparación' }}</button>
+                        <button @click="cerrarFormularioReparacion" class="btn btn-secondary" :disabled="guardandoReparacion">Cancelar</button>
                     </div>
                 </div>
 
+                <details v-if="mostrarNuevaReparacion && historialReparacion.length" class="cash-expenses"><summary>Historial de cambios</summary><div v-for="(evento, i) in historialReparacion" :key="i" style="margin-top: 1rem;"><strong>{{ evento.usuario }} · {{ new Date(evento.fecha).toLocaleString('es-MX') }}</strong><p v-for="(cambio, campo) in evento.cambios" :key="campo">{{ campo }}: {{ cambio.antes || '—' }} → {{ cambio.despues || '—' }}</p></div></details>
                 <!-- Listado de Reparaciones -->
                 <div v-if="!mostrarNuevaReparacion">
                     <!-- Filtros -->
                     <div style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
                         <h4>Filtros</h4>
+                        <div class="form-group"><label>Estado</label><select v-model="filtroEstadoReparacion"><option value="">Todos</option><option v-for="(nombre, estado) in estadosReparacion" :key="estado" :value="estado">{{ nombre }}</option></select></div>
+                        <label><input type="checkbox" v-model="filtroAtrasadas"> Solo atrasadas</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; margin-bottom: 0.5rem;">
                             <div class="form-group">
                                 <label>Desde</label>
@@ -6621,7 +6738,7 @@ const ReparacionesView = {
                                 <th>Modelo</th>
                                 <th>Tipo</th>
                                 <th>Costo</th>
-                                <th>Estado</th>
+                                <th>Técnico / fecha prometida</th><th>Abonado / saldo</th><th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -6634,9 +6751,11 @@ const ReparacionesView = {
                                 <td>{{ rep.modelo_nombre }}</td>
                                 <td>{{ rep.tipo_reparacion_nombre }}</td>
                                 <td>\${{ rep.costo }}</td>
-                                <td><span :style="{color: rep.estado === 'entregada' ? 'var(--success)' : 'var(--warning)'}">{{ rep.estado === 'entregada' ? '✓ Entregada' : '⏳ Registrada' }}</span></td>
+                                <td>{{ rep.tecnico || 'Sin asignar' }}<br>{{ rep.fecha_prometida || 'Sin fecha' }}<strong v-if="rep.atrasada" style="color: var(--danger); display: block;">Atrasada</strong></td>
+                                <td>Abonado: {{ monedaReparacion(rep.anticipo) }}<br>Saldo: {{ monedaReparacion(rep.saldo) }}</td>
+                                <td>{{ estadosReparacion[rep.estado] || rep.estado }}</td>
                                 <td>
-                                    <button v-if="rep.estado !== 'entregada'" @click="marcarEntregada(rep.id)" class="btn btn-success btn-sm" title="Marcar como entregada">✓</button>
+                                    <button v-if="userRoleLocal === 'admin' && !['entregada', 'cancelada'].includes(rep.estado)" @click="marcarEntregada(rep.id)" class="btn btn-success btn-sm" title="Marcar como entregada">✓</button>
                                     <button @click="editarReparacion(rep)" class="btn btn-primary btn-sm" style="margin-left: 0.25rem;">Editar</button>
                                     <button v-if="userRoleLocal === 'admin'" @click="eliminarReparacion(rep.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
                                 </td>
@@ -6698,17 +6817,14 @@ const ReparacionesView = {
             formularioModelo: { marca_id: '', nombre: '' },
             formularioTipo: { nombre: '', descripcion: '' },
             formularioCatalogo: { marca_id: '', modelo_id: '', tipo_reparacion_id: '', costo: '' },
-            formularioReparacion: {
-                nombre_cliente: '',
-                telefono_cliente: '',
-                marca_id: '',
-                modelo_nombre: '',
-                tipo_reparacion_id: '',
-                costo: '',
-                sucursal_id: '',
-                fecha: new Date().toISOString().split('T')[0]
-            },
-            
+            editandoReparacionId: null,
+            guardandoReparacion: false,
+            historialReparacion: [],
+            estadosReparacion: { registrada: 'Registrada', diagnostico: 'En diagnóstico', esperando_refaccion: 'Esperando refacción', en_reparacion: 'En reparación', lista: 'Lista para entregar', entregada: 'Entregada', cancelada: 'Cancelada' },
+            filtroEstadoReparacion: '',
+            filtroAtrasadas: false,
+            formularioReparacion: crearFormularioReparacionVacio(),
+
             // Paginación
             paginaMarcas: 1,
             paginaModelos: 1,
@@ -6764,6 +6880,21 @@ const ReparacionesView = {
         this.cargarDatos();
     },
     methods: {
+        monedaReparacion(valor) { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(valor || 0); },
+        limpiarFormularioReparacion() {
+            this.editandoReparacionId = null;
+            this.historialReparacion = [];
+            this.formularioReparacion = crearFormularioReparacionVacio();
+        },
+        nuevaReparacion() {
+            this.limpiarFormularioReparacion();
+            this.mensaje = null;
+            this.mostrarNuevaReparacion = true;
+        },
+        cerrarFormularioReparacion() {
+            this.mostrarNuevaReparacion = false;
+            this.limpiarFormularioReparacion();
+        },
         async cargarPerfilEmpleado() {
             try {
                 const headers = { Authorization: `Bearer ${this.token}` };
@@ -6829,6 +6960,8 @@ const ReparacionesView = {
                             per_page: this.itemsPerPageReparaciones,
                             fecha_inicio: this.filtroFechaInicio || undefined,
                             fecha_fin: this.filtroFechaFin || undefined,
+                            estado: this.filtroEstadoReparacion || undefined,
+                            atrasadas: this.filtroAtrasadas || undefined,
                             sucursal_id: this.filtroSucursal || undefined
                         },
                         headers 
@@ -6918,6 +7051,8 @@ const ReparacionesView = {
             this.filtroFechaInicio = '';
             this.filtroFechaFin = '';
             this.filtroSucursal = '';
+            this.filtroEstadoReparacion = '';
+            this.filtroAtrasadas = false;
             this.paginaReparaciones = 1;
             this.cargarDatos();
         },
@@ -7071,6 +7206,7 @@ const ReparacionesView = {
             this.cargarDatos();
         },
         async guardarReparacion() {
+            if (this.guardandoReparacion) return;
             if (!this.formularioReparacion.nombre_cliente || !this.formularioReparacion.marca_id || !this.formularioReparacion.modelo_nombre || !this.formularioReparacion.tipo_reparacion_id) return;
             
             // Validar que admin seleccione sucursal
@@ -7079,6 +7215,7 @@ const ReparacionesView = {
                 return;
             }
             
+            this.guardandoReparacion = true;
             try {
                 const headers = { Authorization: `Bearer ${this.token}` };
                 const datos = { ...this.formularioReparacion };
@@ -7105,22 +7242,18 @@ const ReparacionesView = {
                     }
                 }
                 
-                await axios.post(`/api/reparaciones`, datos, { headers });
-                this.mostrarMensaje('Reparación registrada', 'exito');
-                this.formularioReparacion = {
-                    nombre_cliente: '',
-                    telefono_cliente: '',
-                    marca_id: '',
-                    modelo_nombre: '',
-                    tipo_reparacion_id: '',
-                    costo: '',
-                    sucursal_id: '',
-                    fecha: new Date().toISOString().split('T')[0]
-                };
-                this.mostrarNuevaReparacion = false;
+                if (this.editandoReparacionId) {
+                    await axios.put(`/api/reparaciones/${this.editandoReparacionId}`, datos, { headers });
+                } else {
+                    await axios.post(`/api/reparaciones`, datos, { headers });
+                }
+                this.cerrarFormularioReparacion();
+                this.mostrarMensaje('Reparación guardada', 'exito');
                 this.cargarDatos();
             } catch (err) {
                 this.mostrarMensaje(err.response?.data?.error || 'Error', 'error');
+            } finally {
+                this.guardandoReparacion = false;
             }
         },
         async marcarEntregada(id) {
@@ -7134,7 +7267,10 @@ const ReparacionesView = {
             }
         },
         async editarReparacion(rep) {
+            this.editandoReparacionId = rep.id;
+            this.historialReparacion = rep.historial || [];
             this.formularioReparacion = {
+                diagnostico: rep.diagnostico || '', tecnico: rep.tecnico || '', fecha_prometida: rep.fecha_prometida || '', anticipo: rep.anticipo || 0, estado: rep.estado,
                 nombre_cliente: rep.nombre_cliente,
                 telefono_cliente: rep.telefono_cliente,
                 marca_id: rep.marca_id,

@@ -2,8 +2,10 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Venta, DetalleVenta, DevolucionVenta, Stock, Producto
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime
 from config import get_cdmx_now
+from cash_accounting import net_payments, set_net_payments, validate_refunds, ensure_cash_open, refresh_open_cash
+from business_validation import money
 
 devoluciones_bp = Blueprint('devoluciones', __name__, url_prefix='/api/devoluciones')
 
@@ -39,10 +41,20 @@ def obtener_ventas_del_dia():
         
         ventas = query.order_by(Venta.created_at.desc()).all()
         
-        return jsonify({
-            'ventas': [v.to_dict(include_detalles=True) for v in ventas]
-        }), 200
+        result = []
+        for venta in ventas:
+            item = venta.to_dict(include_detalles=True)
+            try:
+                item['pagos_disponibles'] = {k: float(v) for k, v in net_payments(venta).items()}
+            except ValueError as error:
+                item['error_conciliacion'] = str(error)
+                item['pagos_disponibles'] = {}
+            result.append(item)
+        return jsonify({'ventas': result}), 200
     
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -58,13 +70,15 @@ def crear_devolucion():
         venta_id = data.get('venta_id')
         detalle_venta_id = data.get('detalle_venta_id')
         cantidad_devuelta = int(data.get('cantidad_devuelta', 0))
+        if isinstance(data.get('cantidad_devuelta'), bool) or Decimal(str(data.get('cantidad_devuelta', 0))) != cantidad_devuelta:
+            raise ValueError('La cantidad a devolver debe ser un número entero')
         motivo = data.get('motivo', '')
         
         if cantidad_devuelta <= 0:
             return jsonify({'error': 'La cantidad a devolver debe ser mayor a 0'}), 400
         
         # Obtener venta y detalle
-        venta = Venta.query.get(venta_id)
+        venta = Venta.query.filter_by(id=venta_id).with_for_update().first()
         if not venta:
             return jsonify({'error': 'Venta no encontrada'}), 404
         
@@ -83,13 +97,22 @@ def crear_devolucion():
                          f'Total disponible: {detalle.cantidad - total_devuelto}'
             }), 400
         
+        monto_devuelto = money(detalle.precio_unitario * cantidad_devuelta)
+        available = net_payments(venta)
+        refunds = validate_refunds(data.get('reembolsos'), monto_devuelto, available)
+        caja_empleado_id = venta.cajero_id
+        ensure_cash_open(caja_empleado_id, venta.sucursal_id)
+
         # Crear registro de devolución
         devolucion = DevolucionVenta(
             venta_id=venta_id,
             detalle_venta_id=detalle_venta_id,
             cantidad_devuelta=cantidad_devuelta,
             motivo=motivo,
-            usuario_id=user_id
+            usuario_id=user_id,
+            caja_empleado_id=caja_empleado_id,
+            fecha_movimiento=get_cdmx_now().date(),
+            reembolsos={method: str(amount) for method, amount in refunds.items()}
         )
         
         db.session.add(devolucion)
@@ -101,8 +124,11 @@ def crear_devolucion():
             sucursal_id=venta.sucursal_id
         ).first()
         
-        if stock:
-            stock.cantidad += cantidad_devuelta
+        if not detalle.sin_stock:
+            if stock:
+                stock.cantidad += cantidad_devuelta
+            else:
+                db.session.add(Stock(producto_id=detalle.producto_id, sucursal_id=venta.sucursal_id, cantidad=cantidad_devuelta))
         
         # Actualizar total de la venta (restar el monto devuelto)
         monto_devuelto = Decimal(str(detalle.precio_unitario)) * Decimal(str(cantidad_devuelta))
@@ -110,6 +136,8 @@ def crear_devolucion():
         
         venta.total -= monto_devuelto
         venta.total_impuestos -= impuesto_devuelto
+        set_net_payments(venta, {method: amount - refunds.get(method, 0) for method, amount in available.items()})
+        refresh_open_cash(caja_empleado_id, venta.sucursal_id)
         
         db.session.commit()
         
@@ -119,6 +147,9 @@ def crear_devolucion():
             'nuevo_total_venta': float(venta.total)
         }), 201
     
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -157,6 +188,9 @@ def listar_devoluciones():
             'devoluciones': [d.to_dict() for d in devoluciones]
         }), 200
     
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -169,8 +203,17 @@ def cancelar_devolucion(devolucion_id):
         if not devolucion:
             return jsonify({'error': 'Devolución no encontrada'}), 404
         
-        venta = devolucion.venta
+        venta = Venta.query.filter_by(id=devolucion.venta_id).with_for_update().one()
         detalle = devolucion.detalle_venta
+        if devolucion.reembolsos is None:
+            return jsonify({'error': 'Devolución histórica sin método de reembolso registrado; requiere conciliación manual antes de revertir'}), 409
+        refund_day = devolucion.fecha_movimiento
+        if refund_day != get_cdmx_now().date():
+            return jsonify({'error': 'Solo se pueden revertir reembolsos del día para no alterar cajas anteriores'}), 409
+        ensure_cash_open(devolucion.caja_empleado_id, venta.sucursal_id)
+        available = net_payments(venta)
+        refunds = {k: Decimal(str(v)) for k, v in devolucion.reembolsos.items()}
+        employee_id = devolucion.caja_empleado_id
         
         # Reversar stock: restar la cantidad devuelta
         stock = Stock.query.filter_by(
@@ -178,7 +221,9 @@ def cancelar_devolucion(devolucion_id):
             sucursal_id=venta.sucursal_id
         ).first()
         
-        if stock:
+        if not detalle.sin_stock:
+            if not stock or stock.cantidad < devolucion.cantidad_devuelta:
+                return jsonify({'error': 'No hay inventario suficiente para revertir esta devolución'}), 400
             stock.cantidad -= devolucion.cantidad_devuelta
         
         # Reversar total de venta: sumar de nuevo el monto
@@ -190,6 +235,9 @@ def cancelar_devolucion(devolucion_id):
         
         # Eliminar devolución
         db.session.delete(devolucion)
+        set_net_payments(venta, {method: amount + refunds.get(method, 0) for method, amount in available.items()})
+        db.session.expire(venta, ['devoluciones'])
+        refresh_open_cash(employee_id, venta.sucursal_id)
         db.session.commit()
         
         return jsonify({
@@ -197,6 +245,9 @@ def cancelar_devolucion(devolucion_id):
             'nuevo_total_venta': float(venta.total)
         }), 200
     
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

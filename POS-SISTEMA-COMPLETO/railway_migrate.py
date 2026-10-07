@@ -13,7 +13,7 @@ def _legacy_schema_matches_current_models():
     missing = []
 
     for table in db.metadata.sorted_tables:
-        if table.name == 'alembic_version':
+        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas'}:
             continue
         if not inspector.has_table(table.name):
             missing.append(f'{table.name} (tabla)')
@@ -21,7 +21,12 @@ def _legacy_schema_matches_current_models():
 
         existing_columns = {column['name'] for column in inspector.get_columns(table.name)}
         for column in table.columns:
-            if table.name == 'cierres_caja' and column.name in {'closed_at', 'egreso', 'concepto_egreso'}:
+            additions = {
+                'cierres_caja': {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo'},
+                'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento'},
+                'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
+            }
+            if column.name in additions.get(table.name, set()):
                 continue
             if column.name not in existing_columns:
                 missing.append(f'{table.name}.{column.name}')
@@ -61,11 +66,23 @@ def main():
     with app.app_context():
         inspector = inspect(db.engine)
         columns = {column['name'] for column in inspector.get_columns('cierres_caja')}
-        missing = {'closed_at', 'egreso', 'concepto_egreso'} - columns
+        missing = {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo'} - columns
         if missing:
             raise RuntimeError('La migración terminó sin crear columnas de cierre: ' + ', '.join(sorted(missing)))
 
-    print('Migraciones aplicadas correctamente; las columnas de cierre y egreso están disponibles.')
+        if not _legacy_schema_matches_current_models():
+            raise RuntimeError('El esquema no coincide con los modelos')
+        for table, required in {
+            'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento'},
+            'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
+        }.items():
+            if required - {c['name'] for c in inspector.get_columns(table)}:
+                raise RuntimeError('Migración incompleta: ' + table)
+        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas'):
+            if not inspector.has_table(table):
+                raise RuntimeError('Migración incompleta: ' + table)
+
+    print('Migraciones aplicadas correctamente; esquema de operación y seguimiento verificado.')
     return 0
 
 

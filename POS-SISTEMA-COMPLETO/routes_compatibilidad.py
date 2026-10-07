@@ -5,6 +5,11 @@ Integración con IA para recomendaciones inteligentes
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from models import db, User, ConsultaCompatibilidad, CompatibilidadVerificada
+from business_validation import text_value
+from config import get_cdmx_now
+from datetime import timedelta
+import unicodedata
 import os
 import requests
 import json
@@ -96,8 +101,6 @@ def get_compatibility_recommendation(modelo_celular):
     """
     
     provider = get_ia_provider()
-    result = None
-    
     try:
         if provider == 'openai':
             result = _get_openai_recommendation(modelo_celular)
@@ -106,16 +109,17 @@ def get_compatibility_recommendation(modelo_celular):
         elif provider == 'gemini':
             result = _get_gemini_recommendation(modelo_celular)
         else:
+            result = None
+        if not isinstance(result, dict) or 'error' in result:
             result = _get_generic_recommendation(modelo_celular)
-        
-        # Si hay error, usar fallback local
-        if result and 'error' in result:
-            return _get_generic_recommendation(modelo_celular)
-        
+            result['_origen'] = 'base_local'
+        else:
+            result['_origen'] = 'ia'
         return result
-    except Exception as e:
-        # Fallback a base de datos local si algo falla
-        return _get_generic_recommendation(modelo_celular)
+    except Exception:
+        result = _get_generic_recommendation(modelo_celular)
+        result['_origen'] = 'base_local'
+        return result
 
 
 def _get_openai_recommendation(modelo_celular):
@@ -536,57 +540,137 @@ def _eliminar_razones(recomendaciones):
     return recomendaciones
 
 
+def normalizar_modelo(value):
+    return ' '.join(unicodedata.normalize('NFKC', text_value(value, 'Modelo', 200, True)).casefold().split())
+
+
+def resultados_actuales(modelo, resultado):
+    confirmed = CompatibilidadVerificada.query.filter_by(modelo=modelo, activa=True).order_by(CompatibilidadVerificada.mica).all()
+    user = db.session.get(User, get_jwt_identity())
+    items = [{**row.to_dict(), 'puede_retirar': user.role == 'admin' or row.usuario_id == user.id} for row in confirmed]
+    names = {row.mica for row in confirmed}
+    for item in resultado.get('compatibles', []):
+        name = normalizar_modelo(item.get('modelo', ''))
+        if name not in names:
+            items.append({'modelo': item['modelo'], 'marca': item.get('marca', ''),
+                          'nivel_compatibilidad': item.get('nivel_compatibilidad', 'media'), 'verificada': False})
+            names.add(name)
+    return {'modelo_solicitado': modelo, 'compatibles': items, 'notas': resultado.get('notas', '')}
+
+
+def validar_resultado_ia(result):
+    if not isinstance(result, dict) or not isinstance(result.get('compatibles'), list):
+        raise ValueError('El proveedor devolvió un resultado de compatibilidad inválido')
+    items = []
+    for item in result['compatibles'][:30]:
+        if not isinstance(item, dict):
+            continue
+        name = text_value(item.get('modelo', ''), 'Modelo compatible', 200, True)
+        level = item.get('nivel_compatibilidad', 'media')
+        items.append({'modelo': name, 'marca': text_value(item.get('marca', ''), 'Marca', 100),
+                      'nivel_compatibilidad': level if level in ('alta', 'media', 'baja') else 'media'})
+    return {'compatibles': items, 'notas': text_value(result.get('notas', '') or '', 'Notas', 10000)}
+
+
 @compatibilidad_bp.route('/buscar', methods=['POST'])
 @jwt_required()
 def buscar_compatibilidad():
-    """
-    Buscar micas compatibles para un modelo de celular
-    
-    Body:
-        {
-            "modelo_celular": "Motorola G9 Play"
-        }
-    """
-    
     try:
-        data = request.get_json()
-        
-        if not data.get('modelo_celular'):
-            return jsonify({'error': 'modelo_celular es requerido'}), 400
-        
-        modelo = data['modelo_celular'].strip()
-        
+        data = request.get_json() or {}
+        modelo = normalizar_modelo(data.get('modelo_celular', ''))
         if len(modelo) < 2:
-            return jsonify({'error': 'modelo_celular debe tener al menos 2 caracteres'}), 400
-        
-        # Obtener recomendaciones
-        recomendaciones = get_compatibility_recommendation(modelo)
-        
-        if 'error' in recomendaciones:
-            return jsonify(recomendaciones), 503
-        
-        # Desactivado al retirar "razon", ya que este ajuste analizaba ese texto:
-        # recomendaciones = _ajustar_compatibilidad_por_notch(recomendaciones)
-        recomendaciones = _eliminar_razones(recomendaciones)
-        
-        return jsonify({
-            'exito': True,
-            'datos': recomendaciones
-        }), 200
-    
-    except Exception as e:
-        return jsonify({'error': f'Error inesperado: {str(e)}'}), 500
+            raise ValueError('Ingresa al menos dos caracteres')
+        refresh = data.get('actualizar_ia') is True
+        confirmed = CompatibilidadVerificada.query.filter_by(modelo=modelo, activa=True).first()
+        cached = ConsultaCompatibilidad.query.filter(
+            ConsultaCompatibilidad.modelo == modelo,
+            ConsultaCompatibilidad.origen.in_(['ia', 'base_local']),
+            ConsultaCompatibilidad.created_at >= get_cdmx_now() - timedelta(days=30)
+        ).order_by(ConsultaCompatibilidad.created_at.desc()).first()
+        if confirmed and not refresh:
+            result, origin = {'compatibles': [], 'notas': 'Consulta la condición de verificación de cada opción.'}, 'verificadas'
+        elif cached and not refresh:
+            result, origin = cached.resultado, 'historial'
+        else:
+            response = get_compatibility_recommendation(modelo)
+            if 'error' in response:
+                return jsonify(response), 503
+            result, origin = validar_resultado_ia(response), response.get('_origen', 'ia')
+        result = resultados_actuales(modelo, result)
+        consulta = ConsultaCompatibilidad(usuario_id=get_jwt_identity(), modelo=modelo, resultado=result, origen=origin)
+        db.session.add(consulta)
+        db.session.commit()
+        return jsonify({'exito': True, 'datos': result, 'origen': origin, 'consulta_id': consulta.id}), 200
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({'error': str(error)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception('Error consultando compatibilidad')
+        return jsonify({'error': 'No se pudo completar la consulta de compatibilidad'}), 500
 
 
 @compatibilidad_bp.route('/historial', methods=['GET'])
 @jwt_required()
 def historial_consultas():
-    """Obtener historial de consultas del usuario (opcional)"""
+    user = db.session.get(User, get_jwt_identity())
+    query = ConsultaCompatibilidad.query
+    if user.role != 'admin':
+        query = query.filter_by(usuario_id=user.id)
+    search = request.args.get('modelo', '').strip()
+    if search:
+        query = query.filter(ConsultaCompatibilidad.modelo.contains(search.casefold(), autoescape=True))
+    page = max(1, request.args.get('page', 1, type=int))
+    result = query.order_by(ConsultaCompatibilidad.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+    items = []
+    for row in result.items:
+        item = row.to_dict()
+        # Mostrar verificaciones vigentes aunque se abra una consulta anterior.
+        item['resultado'] = resultados_actuales(row.modelo, row.resultado)
+        items.append(item)
+    return jsonify({'consultas': items, 'pages': result.pages, 'page': page, 'total': result.total})
+
+
+@compatibilidad_bp.route('/verificadas', methods=['POST'])
+@jwt_required()
+def verificar_compatibilidad():
     try:
-        user_id = get_jwt_identity()
-        # TODO: Implementar guardado de historial en BD si es necesario
-        return jsonify({
-            'mensaje': 'Historial de consultas - función no implementada aún'
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        user = db.session.get(User, get_jwt_identity())
+        if user.role not in ('admin', 'employee'):
+            return jsonify({'error': 'Acceso denegado'}), 403
+        data = request.get_json() or {}
+        if data.get('confirmada') is not True:
+            raise ValueError('Confirma que comprobaste físicamente esta compatibilidad')
+        modelo = normalizar_modelo(data.get('modelo_celular', ''))
+        mica = normalizar_modelo(data.get('mica', ''))
+        notas = text_value(data.get('notas', ''), 'Resultado de la comprobación', 2000, True)
+        marca = text_value(data.get('marca', ''), 'Marca', 100)
+        row = CompatibilidadVerificada.query.filter_by(modelo=modelo, mica=mica).first()
+        if row and row.usuario_id != user.id and user.role != 'admin':
+            return jsonify({'error': 'Solo quien verificó esta compatibilidad o un administrador puede cambiarla'}), 403
+        if not row:
+            row = CompatibilidadVerificada(modelo=modelo, mica=mica)
+            db.session.add(row)
+        row.notas, row.marca, row.usuario_id, row.activa = notas, marca, user.id, True
+        db.session.commit()
+        return jsonify(row.to_dict()), 200
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({'error': str(error)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': 'No se pudo guardar la verificación; vuelve a consultar e intenta nuevamente'}), 409
+
+
+@compatibilidad_bp.route('/verificadas/<registro_id>', methods=['DELETE'])
+@jwt_required()
+def retirar_verificacion(registro_id):
+    user = db.session.get(User, get_jwt_identity())
+    row = db.session.get(CompatibilidadVerificada, registro_id)
+    if not row:
+        return jsonify({'error': 'Verificación no encontrada'}), 404
+    if user.role != 'admin' and row.usuario_id != user.id:
+        return jsonify({'error': 'Solo quien verificó esta compatibilidad o un administrador puede retirarla'}), 403
+    row.activa = False
+    db.session.commit()
+    return jsonify({'message': 'Verificación retirada'})

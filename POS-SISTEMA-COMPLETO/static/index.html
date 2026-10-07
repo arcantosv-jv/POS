@@ -1042,6 +1042,9 @@
             }
         }
 
+        .cash-expenses { margin: 1.5rem 0; padding: 1rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 0.5rem; }
+        .cash-expense-row { display: grid; grid-template-columns: minmax(110px, 1fr) 2fr 2fr auto; gap: 1rem; align-items: start; margin: 1rem 0; }
+        @media (max-width: 900px) { .cash-expense-row { grid-template-columns: minmax(0, 1fr); } }
         /* Campos compartidos para registrar y corregir el cierre de caja. */
         .cash-register-form > h6 {
             margin-bottom: 1.5rem;
@@ -1642,7 +1645,7 @@
     </div>
 
     <!-- Scripts de componentes -->
-    <script src="/static/components.js"></script>
+    <script src="/static/components.js?v=20261007-subcategorias-ordenadas"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

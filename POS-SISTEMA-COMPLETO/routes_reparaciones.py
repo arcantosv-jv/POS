@@ -5,6 +5,7 @@ from models import (db, User, MarcaDispositivo, ModeloDispositivo,
 from functools import wraps
 from config import get_cdmx_now, CDMX_TZ
 from datetime import datetime
+from business_validation import money, text_value
 
 reparaciones_bp = Blueprint('reparaciones', __name__, url_prefix='/api/reparaciones')
 
@@ -362,6 +363,9 @@ def create_catalogo_item():
         if not all(field in data for field in required_fields):
             return jsonify({'error': f'Campos requeridos: {", ".join(required_fields)}'}), 400
         
+        if user.role == 'employee' and sucursal_id != user.sucursal_id:
+            return jsonify({'error': 'Solo puedes registrar reparaciones en tu sucursal'}), 403
+
         # Verificar que existan los registros
         marca = MarcaDispositivo.query.get(data['marca_id'])
         if not marca:
@@ -438,6 +442,51 @@ def delete_catalogo_item(item_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+ESTADOS_REPARACION = ('registrada', 'diagnostico', 'esperando_refaccion', 'en_reparacion', 'lista', 'entregada', 'cancelada')
+
+
+def editar_seguimiento(reparacion, data, user):
+    if user.role not in ('admin', 'employee') or (user.role == 'employee' and reparacion.empleado_id != user.id):
+        raise PermissionError('No tienes permiso para modificar esta reparación')
+    costo = money(data.get('costo', reparacion.costo), 'Costo')
+    anticipo = money(data.get('anticipo', reparacion.anticipo or 0) or 0, 'Abonado acumulado')
+    if anticipo > costo:
+        raise ValueError('El abonado acumulado no puede superar el costo de la reparación')
+    estado = data.get('estado', reparacion.estado or 'registrada')
+    if estado not in ESTADOS_REPARACION:
+        raise ValueError('Estado de reparación inválido')
+    if estado == 'entregada' and user.role != 'admin' and reparacion.estado != 'entregada':
+        raise PermissionError('Solo un administrador puede confirmar la entrega')
+    fields = {'costo': costo, 'anticipo': anticipo, 'estado': estado}
+    for field, maximum in [('diagnostico', 4000), ('tecnico', 120), ('nombre_cliente', 100), ('telefono_cliente', 20)]:
+        if field in data:
+            fields[field] = text_value(data[field], field, maximum, field in ('nombre_cliente', 'telefono_cliente'))
+    for field in ('fecha', 'fecha_prometida'):
+        if field in data:
+            value = data[field]
+            if not value and field == 'fecha_prometida':
+                fields[field] = None
+            else:
+                try:
+                    fields[field] = datetime.strptime(value, '%Y-%m-%d').date()
+                except (TypeError, ValueError):
+                    raise ValueError(f'{field}: utiliza una fecha válida (AAAA-MM-DD)')
+    changes = {}
+    for field, value in fields.items():
+        previous = getattr(reparacion, field)
+        if previous != value:
+            changes[field] = {'antes': str(previous) if previous is not None else None,
+                              'despues': str(value) if value is not None else None}
+    if reparacion.estado != estado:
+        reparacion.fecha_entrega = get_cdmx_now() if estado == 'entregada' else None
+    for field, value in fields.items():
+        setattr(reparacion, field, value)
+    if changes:
+        reparacion.historial = (reparacion.historial or []) + [{
+            'fecha': get_cdmx_now().isoformat(), 'usuario': user.username, 'usuario_id': user.id,
+            'cambios': changes}]
+
+
 # ==================== REPARACIONES ====================
 
 @reparaciones_bp.route('', methods=['GET'])
@@ -458,6 +507,13 @@ def get_reparaciones():
         sucursal_id = request.args.get('sucursal_id')
         
         query = Reparacion.query
+        estado = request.args.get('estado')
+        if estado:
+            if estado not in ESTADOS_REPARACION:
+                return jsonify({'error': 'Estado inválido'}), 400
+            query = query.filter_by(estado=estado)
+        if request.args.get('atrasadas') == 'true':
+            query = query.filter(Reparacion.fecha_prometida < get_cdmx_now().date(), Reparacion.estado.notin_(['entregada', 'cancelada']))
         
         # Si es empleado, solo ver sus propias reparaciones
         if user.role == 'employee':
@@ -488,6 +544,12 @@ def get_reparaciones():
             'current_page': page,
             'reparaciones': [r.to_dict() for r in paginated.items]
         }), 200
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -557,7 +619,7 @@ def create_reparacion():
             return jsonify({'error': 'Tipo de reparación no encontrado'}), 404
         
         reparacion = Reparacion(
-            fecha=data.get('fecha') or get_cdmx_now().date(),
+            fecha=get_cdmx_now().date(),
             nombre_cliente=data['nombre_cliente'],
             telefono_cliente=data['telefono_cliente'],
             marca_id=data['marca_id'],
@@ -567,10 +629,17 @@ def create_reparacion():
             sucursal_id=sucursal_id,
             empleado_id=user_id
         )
+        editar_seguimiento(reparacion, data, user)
         db.session.add(reparacion)
         db.session.commit()
         
         return jsonify(reparacion.to_dict()), 201
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -584,7 +653,16 @@ def get_reparacion(reparacion_id):
         if not reparacion:
             return jsonify({'error': 'Reparación no encontrada'}), 404
         
+        user = db.session.get(User, get_jwt_identity())
+        if user.role != 'admin' and reparacion.empleado_id != user.id:
+            return jsonify({'error': 'Acceso denegado'}), 403
         return jsonify(reparacion.to_dict()), 200
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -606,27 +684,16 @@ def update_reparacion(reparacion_id):
         
         data = request.get_json()
         
-        # Campos editables
-        if 'nombre_cliente' in data:
-            reparacion.nombre_cliente = data['nombre_cliente']
-        if 'telefono_cliente' in data:
-            reparacion.telefono_cliente = data['telefono_cliente']
-        if 'costo' in data:
-            reparacion.costo = data['costo']
-        if 'fecha' in data:
-            reparacion.fecha = datetime.fromisoformat(data['fecha']).date() if isinstance(data['fecha'], str) else data['fecha']
-        
-        # Solo admin puede cambiar estado a entregada
-        if 'estado' in data and (user.role == 'admin' or data['estado'] == 'registrada'):
-            if data['estado'] == 'entregada':
-                reparacion.estado = 'entregada'
-                reparacion.fecha_entrega = get_cdmx_now()
-            elif data['estado'] == 'registrada':
-                reparacion.estado = 'registrada'
-                reparacion.fecha_entrega = None
-        
+        editar_seguimiento(reparacion, data, user)
+
         db.session.commit()
         return jsonify(reparacion.to_dict()), 200
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -640,11 +707,17 @@ def marcar_como_entregada(reparacion_id):
         if not reparacion:
             return jsonify({'error': 'Reparación no encontrada'}), 404
         
-        reparacion.estado = 'entregada'
-        reparacion.fecha_entrega = get_cdmx_now()
-        
+        user = db.session.get(User, get_jwt_identity())
+        editar_seguimiento(reparacion, {'estado': 'entregada'}, user)
+
         db.session.commit()
         return jsonify(reparacion.to_dict()), 200
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -662,6 +735,12 @@ def delete_reparacion(reparacion_id):
         db.session.commit()
         
         return jsonify({'message': 'Reparación eliminada correctamente'}), 200
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

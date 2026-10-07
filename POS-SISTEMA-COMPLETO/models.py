@@ -313,6 +313,8 @@ class CierreCaja(db.Model):
     
     egreso = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
     concepto_egreso = db.Column(db.Text, nullable=True)
+    egresos = db.Column(db.JSON, nullable=True)
+    reembolsos_efectivo = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
 
     # Efectivo físico reportado
     efectivo_reportado = db.Column(db.Numeric(10, 2), nullable=True)
@@ -332,7 +334,7 @@ class CierreCaja(db.Model):
     
     @property
     def efectivo_esperado(self):
-        return (self.total_efectivo or 0) - (self.egreso or 0)
+        return (self.total_efectivo or 0) - (self.egreso or 0) - (self.reembolsos_efectivo or 0)
 
     def to_dict(self):
         return {
@@ -348,6 +350,8 @@ class CierreCaja(db.Model):
             'total_transferencia': float(self.total_transferencia),
             'egreso': float(self.egreso or 0),
             'concepto_egreso': self.concepto_egreso,
+            'egresos': self.egresos if self.egresos is not None else ([{'monto': float(self.egreso), 'concepto': self.concepto_egreso or '', 'comprobante': ''}] if self.egreso else []),
+            'reembolsos_efectivo': float(self.reembolsos_efectivo or 0),
             'efectivo_esperado': float(self.efectivo_esperado),
             'efectivo_reportado': float(self.efectivo_reportado) if self.efectivo_reportado is not None else None,
             'diferencia': float(self.diferencia) if self.diferencia is not None else None,
@@ -369,16 +373,27 @@ class DevolucionVenta(db.Model):
     usuario_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=get_cdmx_now)
     
+    reembolsos = db.Column(db.JSON, nullable=True)
+    fecha_movimiento = db.Column(db.Date, nullable=True)
+    caja_empleado_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    caja_empleado = db.relationship('User', foreign_keys=[caja_empleado_id])
+
     # Relationships
     venta = db.relationship('Venta', backref='devoluciones')
     detalle_venta = db.relationship('DetalleVenta', backref='devoluciones')
-    usuario = db.relationship('User', backref='devoluciones')
+    usuario = db.relationship('User', foreign_keys=[usuario_id], backref='devoluciones')
     
     def to_dict(self):
         detalle = self.detalle_venta
         return {
             'id': self.id,
             'venta_id': self.venta_id,
+            'detalle_venta_id': self.detalle_venta_id,
+            'reembolsos': self.reembolsos,
+            'fecha_movimiento': self.fecha_movimiento.isoformat() if self.fecha_movimiento else None,
+            'conciliacion_pendiente': self.reembolsos is None,
+            'caja_empleado_id': self.caja_empleado_id,
+            'caja_empleado_nombre': self.caja_empleado.username if self.caja_empleado else None,
             'numero_venta': self.venta.numero_venta,
             'producto_id': detalle.producto_id,
             'producto_nombre': detalle.producto.nombre,
@@ -499,6 +514,11 @@ class Reparacion(db.Model):
     modelo_id = db.Column(db.String(36), db.ForeignKey('modelos_dispositivos.id'), nullable=False)
     tipo_reparacion_id = db.Column(db.String(36), db.ForeignKey('tipos_reparacion.id'), nullable=False)
     costo = db.Column(db.Numeric(10, 2), nullable=False)
+    diagnostico = db.Column(db.Text, nullable=True)
+    tecnico = db.Column(db.String(120), nullable=True)
+    fecha_prometida = db.Column(db.Date, nullable=True)
+    anticipo = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
+    historial = db.Column(db.JSON, nullable=True)
     estado = db.Column(db.String(20), default='registrada')  # registrada, entregada
     sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False)
     empleado_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
@@ -526,6 +546,13 @@ class Reparacion(db.Model):
             'tipo_reparacion_id': self.tipo_reparacion_id,
             'tipo_reparacion_nombre': self.tipo_reparacion.nombre if self.tipo_reparacion else None,
             'costo': float(self.costo),
+            'diagnostico': self.diagnostico,
+            'tecnico': self.tecnico,
+            'fecha_prometida': self.fecha_prometida.isoformat() if self.fecha_prometida else None,
+            'anticipo': float(self.anticipo or 0),
+            'saldo': float(self.costo - (self.anticipo or 0)),
+            'historial': self.historial or [],
+            'atrasada': bool(self.fecha_prometida and self.fecha_prometida < get_cdmx_now().date() and self.estado not in ('entregada', 'cancelada')),
             'estado': self.estado,
             'sucursal_id': self.sucursal_id,
             'sucursal_nombre': self.sucursal.nombre if self.sucursal else None,
@@ -535,3 +562,37 @@ class Reparacion(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
+
+
+class ConsultaCompatibilidad(db.Model):
+    __tablename__ = 'consultas_compatibilidad'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    usuario_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    modelo = db.Column(db.String(200), nullable=False, index=True)
+    resultado = db.Column(db.JSON, nullable=False)
+    origen = db.Column(db.String(20), nullable=False, default='ia')
+    created_at = db.Column(db.DateTime, default=get_cdmx_now, index=True)
+
+    def to_dict(self):
+        return {'id': self.id, 'modelo': self.modelo, 'resultado': self.resultado,
+                'origen': self.origen, 'created_at': self.created_at.isoformat()}
+
+
+class CompatibilidadVerificada(db.Model):
+    __tablename__ = 'compatibilidades_verificadas'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    modelo = db.Column(db.String(200), nullable=False, index=True)
+    mica = db.Column(db.String(200), nullable=False)
+    marca = db.Column(db.String(100), nullable=False, default='')
+    notas = db.Column(db.Text, nullable=False)
+    usuario_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    usuario = db.relationship('User')
+    activa = db.Column(db.Boolean, nullable=False, default=True)
+    updated_at = db.Column(db.DateTime, default=get_cdmx_now, onupdate=get_cdmx_now)
+    __table_args__ = (db.UniqueConstraint('modelo', 'mica', name='uq_compatibilidad_verificada'),)
+
+    def to_dict(self):
+        return {'id': self.id, 'modelo_solicitado': self.modelo, 'modelo': self.mica,
+                'marca': self.marca, 'notas': self.notas, 'verificada': True,
+                'verificada_por': self.usuario.username, 'nivel_compatibilidad': 'alta',
+                'updated_at': self.updated_at.isoformat()}

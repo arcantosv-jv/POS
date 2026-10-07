@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Venta, DetalleVenta, Producto, Stock, Sucursal, PagoVenta, CierreCaja
 from datetime import datetime, timedelta, date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
+from business_validation import money, text_value
+from cash_accounting import refresh_cash
 import uuid
 from config import get_cdmx_now, CDMX_TZ
 
@@ -371,6 +373,9 @@ def guardar_pagos_venta(venta_id):
         if user.role == 'employee' and venta.sucursal_id != user.sucursal_id:
             return jsonify({'error': 'Acceso denegado'}), 403
         
+        if any(d.reembolsos is not None for d in venta.devoluciones):
+            return jsonify({'error': 'Esta venta tiene reembolsos registrados; no se puede reemplazar su desglose de pagos'}), 409
+
         data = request.get_json()
         pagos_data = data.get('pagos', [])
         
@@ -434,7 +439,7 @@ def get_cierre_caja_hoy():
         cierre = CierreCaja.query.filter_by(
             empleado_id=user_id,
             fecha=hoy
-        ).first()
+        ).with_for_update().first()
         
         if not cierre:
             # Crear nuevo cierre de caja
@@ -445,51 +450,10 @@ def get_cierre_caja_hoy():
             )
             db.session.add(cierre)
         
-        # Calcular totales del día
-        hoy_inicio = get_cdmx_now().replace(hour=0, minute=0, second=0, microsecond=0)
-        hoy_fin = hoy_inicio.replace(hour=23, minute=59, second=59, microsecond=999999)
-        
-        ventas_hoy = Venta.query.filter(
-            Venta.cajero_id == user_id,
-            Venta.created_at >= hoy_inicio,
-            Venta.created_at <= hoy_fin
-        ).all()
-        
-        total_ventas = Decimal('0.00')
-        total_efectivo = Decimal('0.00')
-        total_tarjeta = Decimal('0.00')
-        total_transferencia = Decimal('0.00')
-        
-        for venta in ventas_hoy:
-            total_ventas += Decimal(str(venta.total))
-            
-            # Obtener detalles de pago
-            if venta.pagos:
-                for pago in venta.pagos:
-                    metodo = pago.metodo_pago.lower()
-                    monto = Decimal(str(pago.monto))
-                    if metodo == 'efectivo':
-                        total_efectivo += monto
-                    elif metodo == 'tarjeta':
-                        total_tarjeta += monto
-                    elif metodo == 'transferencia':
-                        total_transferencia += monto
-            else:
-                # Si no hay pagos registrados, usar forma_pago
-                metodo = venta.forma_pago.lower()
-                monto = Decimal(str(venta.total))
-                if metodo == 'efectivo':
-                    total_efectivo += monto
-                elif metodo == 'tarjeta':
-                    total_tarjeta += monto
-                elif metodo == 'transferencia':
-                    total_transferencia += monto
-        
-        cierre.total_ventas = total_ventas
-        cierre.total_efectivo = total_efectivo
-        cierre.total_tarjeta = total_tarjeta
-        cierre.total_transferencia = total_transferencia
-        
+        # Un cierre confirmado conserva el movimiento de dinero registrado.
+        if cierre.estado != 'cerrado':
+            refresh_cash(cierre)
+
         db.session.commit()
         
         return jsonify(cierre.to_dict()), 200
@@ -499,29 +463,30 @@ def get_cierre_caja_hoy():
         return jsonify({'error': str(e)}), 500
 
 def validar_datos_cierre(data, cierre):
-    """Validar importes antes de modificar el cierre; conservar egresos omitidos."""
-    importes = []
-    for campo, valor in (
-        ('efectivo_reportado', data.get('efectivo_reportado', 0)),
-        ('egreso', data.get('egreso', cierre.egreso or 0)),
-    ):
-        if campo == 'egreso' and valor in (None, ''):
-            valor = 0
-        try:
-            importe = Decimal(str(valor))
-            if (not importe.is_finite() or importe < 0 or importe > Decimal('99999999.99')
-                    or importe != importe.quantize(Decimal('0.01'))):
-                raise ValueError()
-        except (InvalidOperation, ValueError):
-            raise ValueError(f'{campo}: ingresa una cantidad válida, no negativa y con máximo dos decimales')
-        importes.append(importe)
-    concepto = data.get('concepto_egreso', cierre.concepto_egreso or '')
-    if not isinstance(concepto, str):
-        raise ValueError('El concepto del egreso debe ser texto')
-    concepto = concepto.strip()
-    if importes[1] > 0 and not concepto:
-        raise ValueError('Debes escribir el concepto del egreso')
-    return importes[0], importes[1], concepto if importes[1] > 0 else None
+    efectivo = money(data.get('efectivo_reportado', 0), 'Efectivo reportado')
+    if 'egresos' in data:
+        entries = data['egresos']
+    elif 'egreso' in data or 'concepto_egreso' in data:
+        monto = money(data.get('egreso', cierre.egreso or 0) or 0, 'Egreso')
+        entries = [{'monto': monto, 'concepto': data.get('concepto_egreso', cierre.concepto_egreso or '')}] if monto else []
+    else:
+        entries = cierre.to_dict()['egresos']
+    if not isinstance(entries, list) or len(entries) > 100:
+        raise ValueError('Los egresos deben ser una lista de máximo 100 movimientos')
+    egresos = []
+    total = Decimal('0')
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError('Egreso inválido')
+        monto = money(entry.get('monto'), 'Egreso')
+        if monto <= 0:
+            raise ValueError('Cada egreso debe ser mayor a cero; elimina los renglones vacíos')
+        concepto = text_value(entry.get('concepto', ''), 'Concepto del egreso', required=True)
+        comprobante = text_value(entry.get('comprobante', ''), 'Referencia de comprobante', 500)
+        total += monto
+        egresos.append({'monto': str(monto), 'concepto': concepto, 'comprobante': comprobante})
+    money(total, 'Total de egresos')
+    return efectivo, total, '\n'.join(e['concepto'] for e in egresos) or None, egresos
 
 
 @ventas_bp.route('/cierre-caja', methods=['POST'])
@@ -542,16 +507,19 @@ def crear_cierre_caja():
         cierre = CierreCaja.query.filter_by(
             empleado_id=user_id,
             fecha=hoy
-        ).first()
+        ).with_for_update().first()
         
         if not cierre:
             return jsonify({'error': 'Cierre de caja no encontrado'}), 404
         
         # Actualizar con datos reportados
         try:
-            efectivo_reportado, egreso, concepto = validar_datos_cierre(data, cierre)
+            efectivo_reportado, egreso, concepto, egresos = validar_datos_cierre(data, cierre)
         except ValueError as error:
             return jsonify({'error': str(error)}), 400
+        if cierre.estado != 'cerrado':
+            refresh_cash(cierre)
+        cierre.egresos = egresos
         cierre.egreso = egreso
         cierre.concepto_egreso = concepto
         cierre.efectivo_reportado = efectivo_reportado
@@ -805,16 +773,17 @@ def corregir_cierre_caja():
         cierre = CierreCaja.query.filter_by(
             empleado_id=user_id,
             fecha=hoy
-        ).first()
+        ).with_for_update().first()
         
         if not cierre:
             return jsonify({'error': 'Cierre de caja no encontrado'}), 404
         
         # Actualizar con datos reportados
         try:
-            efectivo_reportado, egreso, concepto = validar_datos_cierre(data, cierre)
+            efectivo_reportado, egreso, concepto, egresos = validar_datos_cierre(data, cierre)
         except ValueError as error:
             return jsonify({'error': str(error)}), 400
+        cierre.egresos = egresos
         cierre.egreso = egreso
         cierre.concepto_egreso = concepto
         cierre.efectivo_reportado = efectivo_reportado
