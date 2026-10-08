@@ -1,8 +1,118 @@
 const { ref, reactive, computed, watch } = Vue;
 
+// Panel global: productos recientes, competencia mensual u oculto.
+const PanelVentas = {
+    props: ['token', 'activo'],
+    template: `
+        <slot v-if="modo === 'productos'"></slot>
+        <section v-else-if="modo === 'competencia'" class="card competition-panel" aria-label="Competencia mensual entre sucursales">
+            <div class="card-header"><h3>Competencia entre sucursales</h3></div>
+            <p class="competition-period">{{ nombreMes }}</p>
+            <p v-if="!hayVentas" class="competition-empty">Aún no hay ventas registradas este mes.</p>
+            <div v-if="sucursales.length" class="competition-bars" role="list" aria-label="Sucursales ordenadas por ventas del mes">
+                <div v-for="sucursal in sucursales" :key="sucursal.id" role="listitem" class="competition-row">
+                    <div class="competition-label"><span>{{ sucursal.nombre }}</span><span v-if="sucursal.lider" class="competition-leader">En cabeza</span></div>
+                    <div class="competition-track" aria-hidden="true"><div class="competition-bar" :class="{ 'is-leader': sucursal.lider }" :style="{ width: sucursal.barra + '%' }"></div></div>
+                </div>
+            </div>
+            <p v-else class="competition-empty">No hay sucursales activas.</p>
+        </section>
+        <div v-else-if="error" class="card"><p role="status">{{ error }}</p><button class="btn btn-secondary btn-sm" @click="actualizar">Reintentar</button></div>
+    `,
+    data() { return { modo: null, sucursales: [], periodo: '', hayVentas: false, error: '', solicitud: 0, timer: null }; },
+    computed: {
+        nombreMes() {
+            return this.periodo ? new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(this.periodo + '-01T12:00:00Z')) : '';
+        }
+    },
+    methods: {
+        async actualizar() {
+            if (!this.token || !this.activo) return;
+            const solicitud = ++this.solicitud;
+            try {
+                const res = await axios.get('/api/caracteristicas/panel-ventas', { headers: { Authorization: `Bearer ${this.token}` } });
+                if (solicitud !== this.solicitud) return;
+                this.modo = res.data.modo;
+                this.sucursales = res.data.sucursales || [];
+                this.periodo = res.data.periodo || '';
+                this.hayVentas = res.data.hay_ventas || false;
+                this.error = '';
+            } catch (err) {
+                if (solicitud !== this.solicitud) return;
+                this.modo = null;
+                this.sucursales = [];
+                this.error = 'No se pudo actualizar el panel de ventas.';
+            }
+        },
+        reiniciar() {
+            this.solicitud++;
+            this.modo = null;
+            this.sucursales = [];
+            this.error = '';
+            this.actualizar();
+        }
+    },
+    mounted() {
+        this.actualizar();
+        this.timer = setInterval(() => this.actualizar(), 30000);
+        window.addEventListener('caracteristicas-actualizadas', this.reiniciar);
+    },
+    beforeUnmount() {
+        clearInterval(this.timer);
+        this.solicitud++;
+        window.removeEventListener('caracteristicas-actualizadas', this.reiniciar);
+    },
+    watch: { activo() { this.reiniciar(); }, token() { this.reiniciar(); } }
+};
+
+const CaracteristicasView = {
+    props: ['token'],
+    template: `
+        <section class="card features-panel">
+            <div class="card-header"><h3>Panel del punto de venta</h3></div>
+            <p>Elige qué se muestra debajo de la búsqueda de productos. Esta configuración aplica a todos los usuarios y sucursales.</p>
+            <p v-if="cargando" role="status">Cargando configuración…</p>
+            <fieldset :disabled="cargando || guardando || !disponible" class="features-options">
+                <legend>Contenido del panel</legend>
+                <label><input type="radio" v-model="modo" value="productos" name="panel-ventas"><span><strong>Productos recientes</strong><small>Muestra los productos para agregarlos rápidamente al carrito.</small></span></label>
+                <label><input type="radio" v-model="modo" value="competencia" name="panel-ventas"><span><strong>Competencia mensual</strong><small>Compara el importe neto vendido por sucursal en el mes actual, sin mostrar cantidades. Las devoluciones se descuentan; los egresos no.</small></span></label>
+                <label><input type="radio" v-model="modo" value="oculto" name="panel-ventas"><span><strong>Ocultar ambos</strong><small>Oculta productos recientes y la gráfica de competencia.</small></span></label>
+            </fieldset>
+            <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
+            <p v-if="mensaje" class="alert alert-success" role="status">{{ mensaje }}</p>
+            <button class="btn btn-primary" @click="guardar" :disabled="cargando || guardando || !disponible">{{ guardando ? 'Guardando…' : 'Guardar configuración' }}</button>
+            <button v-if="!disponible && !cargando" class="btn btn-secondary" @click="cargar">Reintentar</button>
+            <p class="cash-register-help">Los cambios se reflejan al abrir Ventas o, en pantallas abiertas, en un máximo de 30 segundos.</p>
+        </section>
+    `,
+    data() { return { modo: 'productos', cargando: true, guardando: false, disponible: false, error: '', mensaje: '' }; },
+    methods: {
+        async cargar() {
+            this.cargando = true; this.error = ''; this.disponible = false;
+            try {
+                const res = await axios.get('/api/caracteristicas', { headers: { Authorization: `Bearer ${this.token}` } });
+                this.modo = res.data.panel_ventas; this.disponible = true;
+            } catch (err) { this.error = err.response?.data?.error || 'No se pudo cargar la configuración'; }
+            finally { this.cargando = false; }
+        },
+        async guardar() {
+            if (this.guardando || !this.disponible) return;
+            this.guardando = true; this.error = ''; this.mensaje = '';
+            try {
+                await axios.put('/api/caracteristicas', { panel_ventas: this.modo }, { headers: { Authorization: `Bearer ${this.token}` } });
+                this.mensaje = 'Configuración guardada para todas las sucursales.';
+                window.dispatchEvent(new Event('caracteristicas-actualizadas'));
+            } catch (err) { this.error = err.response?.data?.error || 'No se pudo guardar la configuración'; }
+            finally { this.guardando = false; }
+        }
+    },
+    mounted() { this.cargar(); }
+};
+
 // ============= COMPONENTE: VENTAS (Punto de Venta) =============
 const VentasView = {
-    props: ['apiUrl', 'token', 'userSucursal', 'userRole'],
+    components: { 'panel-ventas': PanelVentas },
+    props: ['apiUrl', 'token', 'userSucursal', 'userRole', 'activo'],
     template: `
         <div class="grid grid-2" style="gap: 2rem;">
             <div>
@@ -49,6 +159,7 @@ const VentasView = {
                     </div>
                 </div>
 
+                <panel-ventas ref="panelVentas" :token="token" :activo="activo">
                 <div class="card">
                     <div class="card-header">
                         <h3>Productos Recientes</h3>
@@ -80,6 +191,7 @@ const VentasView = {
                         </div>
                     </div>
                 </div>
+                </panel-ventas>
             </div>
 
             <div>
@@ -515,6 +627,7 @@ const VentasView = {
                     { headers: { Authorization: `Bearer ${this.token}` } }
                 );
 
+                this.$refs.panelVentas?.actualizar();
                 this.ultimaVentaId = response.data.venta.id;
                 this.ventaExitosa = response.data.venta.numero_venta;
                 this.carrito = [];

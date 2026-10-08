@@ -1341,6 +1341,22 @@
                 padding: 0.85rem;
             }
         }
+        .features-panel { max-width: 850px; }
+        .features-options { border: 0; margin: 1.5rem 0; padding: 0; }
+        .features-options legend { font-weight: 600; margin-bottom: 0.75rem; }
+        .features-options label { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid var(--gray-300); border-radius: 0.5rem; cursor: pointer; }
+        .features-options input { margin-top: 0.3rem; accent-color: var(--primary); }
+        .features-options small { display: block; color: var(--gray-600); margin-top: 0.3rem; line-height: 1.5; }
+        .competition-period { text-transform: capitalize; color: var(--gray-600); margin-bottom: 1rem; }
+        .competition-bars { max-height: 330px; overflow-y: auto; }
+        .competition-row { margin-bottom: 1.25rem; }
+        .competition-label { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 600; overflow-wrap: anywhere; }
+        .competition-leader { font-size: 0.75rem; color: var(--primary); white-space: nowrap; }
+        .competition-track { background: var(--gray-100); border-radius: 8px; height: 22px; overflow: hidden; }
+        .competition-bar { height: 100%; background: #93c5fd; border-radius: 8px; transition: width 0.3s ease; }
+        .competition-bar.is-leader { background: var(--primary); }
+        .competition-empty { color: var(--gray-600); padding: 0.5rem 0 1rem; }
+        @media (prefers-reduced-motion: reduce) { .competition-bar { transition: none; } }
     </style>
 </head>
 <body>
@@ -1423,6 +1439,7 @@
                                 @click.prevent="irAVista('dashboard')"
                                 href="#"
                             >Dashboard</a>
+                            <a v-if="userRole === 'admin'" :class="['features', currentView === 'caracteristicas' ? 'active' : '']" @click.prevent="irAVista('caracteristicas')" href="#">Características</a>
                             <a 
                                 v-if="userRole === 'admin'" 
                                 :class="['products', currentView === 'productos' ? 'active' : '']"
@@ -1554,10 +1571,15 @@
                     <inventario-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></inventario-view>
                 </div>
 
+                <div v-if="currentView === 'caracteristicas' && userRole === 'admin'">
+                    <h1 style="margin-bottom: 2rem;">Características</h1>
+                    <caracteristicas-view :token="token"></caracteristicas-view>
+                </div>
+
                 <!-- Ventas (Todos) -->
                 <div v-show="currentView === 'ventas'">
                     <h1 style="margin-bottom: 2rem;">Punto de Venta</h1>
-                    <ventas-view :apiUrl="apiUrl" :token="token" :userSucursal="userSucursal" :userRole="userRole"></ventas-view>
+                    <ventas-view :activo="currentView === 'ventas'" :apiUrl="apiUrl" :token="token" :userSucursal="userSucursal" :userRole="userRole"></ventas-view>
                 </div>
 
                 <!-- Reportes (Admin) -->
@@ -1645,7 +1667,7 @@
     </div>
 
     <!-- Scripts de componentes -->
-    <script src="/static/components.js?v=20261007-subcategorias-ordenadas"></script>
-    <script src="/static/app.js"></script>
+    <script src="/static/components.js?v=20261008-caracteristicas"></script>
+    <script src="/static/app.js?v=20261008-caracteristicas"></script>
 </body>
 </html>

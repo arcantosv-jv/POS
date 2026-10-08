@@ -3,6 +3,7 @@ const { createApp } = Vue;
 createApp({
     components: {
         'ventas-view': VentasView,
+        'caracteristicas-view': CaracteristicasView,
         'productos-view': ProductosView,
         'inventario-view': InventarioView,
         'reportes-view': ReportesView,

@@ -596,3 +596,9 @@ class CompatibilidadVerificada(db.Model):
                 'marca': self.marca, 'notas': self.notas, 'verificada': True,
                 'verificada_por': self.usuario.username, 'nivel_compatibilidad': 'alta',
                 'updated_at': self.updated_at.isoformat()}
+
+
+class ConfiguracionSistema(db.Model):
+    __tablename__ = 'configuracion_sistema'
+    id = db.Column(db.Integer, primary_key=True)
+    panel_ventas = db.Column(db.String(20), nullable=False, default='productos', server_default='productos')

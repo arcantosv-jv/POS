@@ -40,6 +40,7 @@ def create_app(config_name=None):
     # Registrar blueprints
     from routes_auth import auth_bp
     from routes_admin import admin_bp
+    from routes_caracteristicas import caracteristicas_bp
     from routes_productos import productos_bp
     from routes_inventario import inventario_bp
     from routes_ventas import ventas_bp
@@ -52,6 +53,7 @@ def create_app(config_name=None):
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(caracteristicas_bp)
     app.register_blueprint(productos_bp)
     app.register_blueprint(inventario_bp)
     app.register_blueprint(ventas_bp)
