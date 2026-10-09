@@ -78,10 +78,12 @@ def crear_devolucion():
             return jsonify({'error': 'La cantidad a devolver debe ser mayor a 0'}), 400
         
         # Obtener venta y detalle
-        venta = Venta.query.filter_by(id=venta_id).with_for_update().first()
+        venta = db.session.get(Venta, venta_id)
         if not venta:
             return jsonify({'error': 'Venta no encontrada'}), 404
         
+        User.query.filter_by(id=venta.cajero_id).with_for_update().first()
+        venta = Venta.query.filter_by(id=venta_id).populate_existing().with_for_update().one()
         detalle = DetalleVenta.query.get(detalle_venta_id)
         if not detalle or detalle.venta_id != venta_id:
             return jsonify({'error': 'Detalle de venta no encontrado'}), 404
@@ -203,6 +205,12 @@ def cancelar_devolucion(devolucion_id):
         if not devolucion:
             return jsonify({'error': 'Devolución no encontrada'}), 404
         
+        User.query.filter_by(id=devolucion.caja_empleado_id or devolucion.venta.cajero_id).with_for_update().first()
+        devolucion = DevolucionVenta.query.filter_by(id=devolucion_id).populate_existing().first()
+        if not devolucion:
+            return jsonify({'error': 'La devolución ya fue revertida'}), 409
+        if devolucion.cierre_caja_id:
+            return jsonify({'error': 'Este reembolso pertenece a un cierre confirmado y no se puede revertir'}), 409
         venta = Venta.query.filter_by(id=devolucion.venta_id).with_for_update().one()
         detalle = devolucion.detalle_venta
         if devolucion.reembolsos is None:

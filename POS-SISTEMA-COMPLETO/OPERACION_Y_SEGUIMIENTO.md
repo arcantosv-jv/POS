@@ -4,9 +4,9 @@
 
 - El administrador registra el importe a devolver por efectivo, tarjeta y/o transferencia. La suma debe coincidir con los productos devueltos y no superar el saldo de cada método de la venta.
 - Los pagos de la venta conservan el saldo neto después del reembolso. No se permite reemplazar el desglose de una venta con reembolsos registrados.
-- El efectivo esperado se calcula como cobros en efectivo menos reembolsos del día menos egresos. El reembolso se asigna al empleado que realizó la venta, en su sucursal.
-- Una devolución de una venta anterior afecta la caja del día del reembolso. El total neto de ventas sigue asociado a la fecha de la venta, como antes.
-- Una caja cerrada conserva sus cifras. No admite nuevos reembolsos en ese día; las correcciones de efectivo y egresos siguen disponibles. Revertir una devolución exige que sea del día, que la caja siga abierta y que exista inventario suficiente.
+- El efectivo esperado suma el efectivo reportado acumulado de los turnos anteriores de la sucursal más los cobros en efectivo del turno actual, menos sus reembolsos y egresos. Los movimientos pendientes de la sucursal se asignan una sola vez al confirmar el cierre, aunque cambie el cajero.
+- Una devolución de una venta anterior afecta la caja del día del reembolso. En el cierre, el reembolso de una venta de un cierre anterior reduce el total neto del cierre que registra esa salida. Los reportes generales de ventas mantienen la fecha original de la venta.
+- Una caja cerrada conserva sus cifras. Para registrar más movimientos se puede iniciar otro cierre del mismo día; las correcciones de efectivo y egresos se aplican al cierre seleccionado. Revertir una devolución exige que sea del día, que exista una caja abierta, que el reembolso aún no pertenezca a un cierre confirmado y que exista inventario suficiente.
 - Las devoluciones históricas sin desglose quedan señaladas como «método no registrado». La migración no inventa su método ni altera sus importes. Si los pagos mixtos históricos no coinciden con la venta neta, requieren conciliación antes de registrar nuevas devoluciones.
 - Los productos vendidos sin stock no agregan existencias ficticias al devolverlos.
 
@@ -49,3 +49,33 @@ node tests/test_frontend_operacion.js
 ```
 
 Las pruebas de JavaScript validan la lógica de los componentes; no sustituyen una comprobación visual en navegador.
+
+
+## Varios cierres en un día
+
+Después de confirmar un cierre, «Iniciar otro cierre de caja» abre un formulario limpio con los movimientos pendientes del día. Volver a pulsar el botón no crea otra caja abierta. Cada venta y cada reembolso se vincula a un solo cierre al confirmarlo. Las ventas, egresos y reembolsos pertenecen únicamente a ese turno. El efectivo reportado es el conteo físico acumulado de la sucursal en el día, incluidos los turnos anteriores. Por ejemplo: primer turno reporta $500, segundo vende $300 y reporta $800; el tercero recibe $800, no $1,300. El historial superior permite desplegar cada cierre y consultar cajero, pagos, egresos y productos.
+
+Administrador → Cierres de Caja agrupa por fecha, muestra la cantidad de cierres y suma sus totales netos confirmados. Cada cierre mantiene su detalle de empleado, sucursal, pagos, egresos y productos. El filtro de sucursal también limita los totales de los grupos.
+
+La migración `011_multiples_cierres.py` añade las asociaciones y vincula movimientos históricos según empleado, sucursal, día y hora de confirmación, sin cambiar los importes guardados. Si un cierre histórico no tiene hora de confirmación, usa el día completo. Los movimientos posteriores quedan sin asignar. El proceso habitual `python railway_migrate.py` aplica esta revisión en local y producción.
+
+
+## Efectivo acumulado y zona horaria
+
+La migración `012_efectivo_acumulado.py` guarda `efectivo_inicial` en cada cierre. Los cierres históricos conservan NULL para identificar sus reportes individuales, sin cambiar cifras ni diferencias. Al comenzar un turno se suman los reportes anteriores descontando el efectivo que ya habían recibido. Si se corrige un cierre anterior, se recalculan los saldos iniciales y diferencias de los siguientes, conservando sus conteos físicos y movimientos.
+
+Los turnos se agrupan por sucursal y fecha de `America/Mexico_City`. El arrastre empieza en cero al cambiar el día en CDMX. Las horas se muestran explícitamente en esa zona, independientemente del navegador o Railway. En PostgreSQL, la migración convierte `ventas.created_at` a `timestamp with time zone`, reconstruyendo el instante con la zona de la sesión que se usaba para guardar las fechas; los límites del día se consultan con zona CDMX. No se resta un número fijo de horas a los registros.
+
+Pruebas adicionales:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -q
+node tests/test_frontend_cierres.js
+```
+
+Incluyen tres turnos con cambio de cajero, faltantes, egresos, correcciones, cierres históricos, movimientos compartidos sin duplicación, aislamiento entre sucursales y cambio de fecha CDMX cuando UTC ya está en el día siguiente.
+
+
+## Plazo para corregir cierres
+
+El cajero puede corregir sus propios cierres hasta una hora después de la confirmación original, inclusive. La validación se realiza en el servidor y las correcciones no renuevan el plazo. También se permite cruzar medianoche CDMX dentro de esa hora: el cierre del día anterior aparece como editable, sin trasladar sus movimientos al nuevo día. Los cierres históricos sin hora de confirmación no son editables porque no se puede determinar su plazo.

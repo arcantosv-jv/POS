@@ -103,7 +103,7 @@ class OperacionTest(unittest.TestCase):
         res = self.refund(sale, {'efectivo': 100})
         self.assertEqual(res.status_code, 201, res.json)
         self.assertEqual(self.cash()['efectivo_esperado'], -100)
-        self.assertEqual(self.cash()['total_ventas'], 0)
+        self.assertEqual(self.cash()['total_ventas'], -100)
 
     def test_full_refund_and_no_stock_return(self):
         for method in ('mixto', 'efectivo'):
@@ -198,6 +198,57 @@ class OperacionTest(unittest.TestCase):
             res = self.request('/api/compatibilidad/verificadas', dict(modelo_celular='X', mica='Y', notas=notes, confirmada=confirmation), role='employee')
             self.assertEqual(res.status_code, 400)
             self.assertEqual(CompatibilidadVerificada.query.count(), 0)
+
+    def test_multiple_closures_separate_movements_and_corrections(self):
+        first_sale = self.sale()
+        first_id = self.cash()['id']
+        first = self.request('/api/ventas/cierre-caja', {'cierre_id': first_id, 'efectivo_reportado': 200, 'egresos': []}, role='employee')
+        self.assertEqual(first.status_code, 200, first.json)
+        self.assertEqual(first_sale.cierre_caja_id, first_id)
+        original_time = first.json['cierre']['closed_at']
+        second = self.request('/api/ventas/cierre-caja/nuevo', {}, role='employee')
+        self.assertEqual(second.status_code, 200, second.json)
+        second_id = second.json['cierre']['id']
+        self.assertNotEqual(first_id, second_id)
+        self.assertEqual(second.json['cierre']['total_ventas'], 0)
+        self.assertEqual(self.request('/api/ventas/cierre-caja/nuevo', {}, role='employee').json['cierre']['id'], second_id)
+        self.assertEqual(CierreCaja.query.count(), 2)
+        second_sale = self.sale(method='efectivo')
+        refund = self.refund(first_sale, {'efectivo': 100})
+        self.assertEqual(refund.status_code, 201, refund.json)
+        preview = self.cash()
+        self.assertEqual(preview['id'], second_id)
+        self.assertEqual((preview['total_ventas'], preview['total_efectivo'], preview['reembolsos_efectivo']), (200, 300, 100))
+        # Un formulario anterior no puede confirmar ni cambiar otro cierre.
+        stale = self.request('/api/ventas/cierre-caja', {'cierre_id': first_id, 'efectivo_reportado': 1}, role='employee')
+        self.assertEqual(stale.status_code, 409)
+        saved = self.request('/api/ventas/cierre-caja', {'cierre_id': second_id, 'efectivo_reportado': 350, 'egresos': [{'monto': 50, 'concepto': 'Transporte'}]}, role='employee')
+        self.assertEqual(saved.status_code, 200, saved.json)
+        self.assertEqual(saved.json['cierre']['diferencia'], 0)
+        self.assertEqual(second_sale.cierre_caja_id, second_id)
+        self.assertEqual(db.session.get(DevolucionVenta, refund.json['devolucion']['id']).cierre_caja_id, second_id)
+        today = get_cdmx_now().date().isoformat()
+        report = self.client.get('/api/ventas/reportes/cierres-caja-detalle', query_string={'fecha_inicio': today, 'fecha_fin': today}, headers=self.headers['admin'])
+        self.assertEqual(report.status_code, 200, report.json)
+        closes = {c['id']: c for c in report.json['cierres']}
+        self.assertEqual(sum(c['total_vendido'] for c in closes.values()), 500)
+        self.assertEqual(closes[first_id]['total_vendido'], 300)
+        self.assertEqual(closes[second_id]['total_vendido'], 200)
+        self.assertEqual([c['cantidad_ventas'] for c in closes.values()], [1, 1])
+        self.assertEqual([c['productos'][0]['unidades'] for c in closes.values()], [3, 3])
+        corrected = self.request('/api/ventas/cierre-caja/corregir', {'cierre_id': first_id, 'efectivo_reportado': 180, 'egresos': [{'monto': 20, 'concepto': 'Corrección'}]}, role='employee')
+        self.assertEqual(corrected.status_code, 200, corrected.json)
+        self.assertEqual(corrected.json['cierre']['closed_at'], original_time)
+        self.assertEqual(db.session.get(CierreCaja, second_id).egreso, 50)
+        self.assertEqual(self.request('/api/ventas/cierre-caja/corregir', {'cierre_id': first_id, 'efectivo_reportado': 0}, role='other').status_code, 400)
+        self.assertEqual(self.request('/api/ventas/cierre-caja/corregir', {'efectivo_reportado': 0}, role='employee').status_code, 400)
+        self.assertEqual(self.cash()['id'], second_id)
+        self.assertEqual(CierreCaja.query.count(), 2)
+        third = self.request('/api/ventas/cierre-caja/nuevo', {}, role='employee').json['cierre']
+        self.assertEqual((third['total_ventas'], third['total_efectivo'], third['reembolsos_efectivo'], third['egreso']), (0, 0, 0, 0))
+        reverse = self.request('/api/devoluciones/' + refund.json['devolucion']['id'], method='delete')
+        self.assertEqual(reverse.status_code, 409)
+
 
 
 if __name__ == '__main__':

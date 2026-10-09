@@ -1357,6 +1357,20 @@
         .competition-bar.is-leader { background: var(--primary); }
         .competition-empty { color: var(--gray-600); padding: 0.5rem 0 1rem; }
         @media (prefers-reduced-motion: reduce) { .competition-bar { transition: none; } }
+        .cash-close-day { margin: 1.5rem 0 2rem; }
+        .cash-close-day-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding: 1.25rem; margin-bottom: 1rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 0.75rem; }
+        .cash-close-day-header h3 { margin-bottom: 0.35rem; }
+        .cash-close-day-header span, .cash-close-day-header p { color: var(--gray-600); }
+        .cash-close-day-header strong { display: block; font-size: 1.4rem; margin-top: 0.35rem; color: var(--primary); }
+        .cash-sales-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--gray-200); border-radius: .75rem; background: var(--gray-50); }
+        .cash-sales-summary h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+        .cash-sales-total { display: block; color: var(--primary); font-size: 1.75rem; margin-bottom: .5rem; }
+        .cash-sales-summary > .cash-register-help { grid-column: 1 / -1; margin: 0; }
+        .cash-shift-history { margin-bottom: 2rem; }
+        .cash-shift-summary { padding: 1rem 1.25rem; cursor: pointer; color: var(--gray-800); }
+        .cash-shift-summary span { margin-left: 1rem; display: inline-block; }
+        .cash-shift-equation { margin: 1rem 0; }
+        .cash-shift-equation p { margin-bottom: .5rem; overflow-wrap: anywhere; }
     </style>
 </head>
 <body>
@@ -1667,7 +1681,7 @@
     </div>
 
     <!-- Scripts de componentes -->
-    <script src="/static/components.js?v=20261008-caracteristicas"></script>
+    <script src="/static/components.js?v=20261009-edicion-cierre-1h"></script>
     <script src="/static/app.js?v=20261008-caracteristicas"></script>
 </body>
 </html>

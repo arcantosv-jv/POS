@@ -20,6 +20,7 @@ function instance(name) {
     const component = sandbox.views[name];
     const object = { ...component.data(), token: 'test' };
     for (const [name, fn] of Object.entries(component.methods)) object[name] = fn.bind(object);
+    for (const [key, fn] of Object.entries(component.computed || {})) Object.defineProperty(object, key, { get: fn.bind(object) });
     return object;
 }
 (async () => {

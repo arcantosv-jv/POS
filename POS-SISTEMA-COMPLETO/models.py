@@ -217,6 +217,7 @@ class Venta(db.Model):
     """Modelo de venta"""
     __tablename__ = 'ventas'
     
+    cierre_caja_id = db.Column(db.String(36), db.ForeignKey('cierres_caja.id'), nullable=True, index=True)
     id = db.Column(db.String(10), primary_key=True, default=generate_venta_id)
     numero_venta = db.Column(db.String(50), unique=True, nullable=False)
     sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False)
@@ -225,7 +226,7 @@ class Venta(db.Model):
     total_impuestos = db.Column(db.Numeric(10, 2), default=0)
     forma_pago = db.Column(db.String(50), nullable=False)  # efectivo, tarjeta, transferencia, etc
     observaciones = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=get_cdmx_now, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=get_cdmx_now, index=True)
     updated_at = db.Column(db.DateTime, default=get_cdmx_now, onupdate=get_cdmx_now)
     
     # Relationships (implícitas desde User y Sucursal backref)
@@ -315,6 +316,8 @@ class CierreCaja(db.Model):
     concepto_egreso = db.Column(db.Text, nullable=True)
     egresos = db.Column(db.JSON, nullable=True)
     reembolsos_efectivo = db.Column(db.Numeric(10, 2), nullable=False, default=0, server_default='0')
+    # NULL identifica cierres históricos cuyo reporte era individual, no acumulado.
+    efectivo_inicial = db.Column(db.Numeric(10, 2), nullable=True, default=0)
 
     # Efectivo físico reportado
     efectivo_reportado = db.Column(db.Numeric(10, 2), nullable=True)
@@ -334,6 +337,10 @@ class CierreCaja(db.Model):
     
     @property
     def efectivo_esperado(self):
+        return (self.efectivo_inicial or 0) + self.efectivo_del_turno
+
+    @property
+    def efectivo_del_turno(self):
         return (self.total_efectivo or 0) - (self.egreso or 0) - (self.reembolsos_efectivo or 0)
 
     def to_dict(self):
@@ -353,6 +360,10 @@ class CierreCaja(db.Model):
             'egresos': self.egresos if self.egresos is not None else ([{'monto': float(self.egreso), 'concepto': self.concepto_egreso or '', 'comprobante': ''}] if self.egreso else []),
             'reembolsos_efectivo': float(self.reembolsos_efectivo or 0),
             'efectivo_esperado': float(self.efectivo_esperado),
+            'efectivo_inicial': float(self.efectivo_inicial or 0),
+            'reporte_acumulado': self.efectivo_inicial is not None,
+            'efectivo_del_turno': float(self.efectivo_del_turno),
+            'aportacion_reportada': float(self.efectivo_reportado - (self.efectivo_inicial or 0)) if self.efectivo_reportado is not None else None,
             'efectivo_reportado': float(self.efectivo_reportado) if self.efectivo_reportado is not None else None,
             'diferencia': float(self.diferencia) if self.diferencia is not None else None,
             'estado': self.estado,
@@ -365,6 +376,7 @@ class DevolucionVenta(db.Model):
     """Modelo para registrar devoluciones de productos de una venta"""
     __tablename__ = 'devoluciones_venta'
     
+    cierre_caja_id = db.Column(db.String(36), db.ForeignKey('cierres_caja.id'), nullable=True, index=True)
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     venta_id = db.Column(db.String(36), db.ForeignKey('ventas.id'), nullable=False)
     detalle_venta_id = db.Column(db.String(36), db.ForeignKey('detalles_venta.id'), nullable=False)

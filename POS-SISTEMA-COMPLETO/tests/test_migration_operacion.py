@@ -11,8 +11,9 @@ from models import db
 
 ROOT = Path(__file__).resolve().parents[1]
 ADDITIONS = {
-    'cierres_caja': {'egresos', 'reembolsos_efectivo'},
-    'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento'},
+    'cierres_caja': {'egresos', 'reembolsos_efectivo', 'efectivo_inicial'},
+    'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},
+    'ventas': {'cierre_caja_id'},
     'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
 }
 NEW_TABLES = {'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema'}
@@ -33,7 +34,11 @@ class MigrationTest(unittest.TestCase):
                 with engine.begin() as conn:
                     conn.execute(legacy.tables['sucursales'].insert(), dict(id='s', nombre='Prueba', direccion='Centro'))
                     conn.execute(legacy.tables['users'].insert(), dict(id='u', username='admin', email='test@example.com', password_hash='test', role='admin'))
-                    conn.execute(legacy.tables['cierres_caja'].insert(), dict(id='c', empleado_id='u', sucursal_id='s', fecha=date.today(), total_ventas=1000, total_efectivo=1000, egreso=200, concepto_egreso='Sueldo', estado='cerrado', efectivo_reportado=800, diferencia=0, created_at=datetime.now()))
+                    conn.execute(legacy.tables['cierres_caja'].insert(), dict(id='c', empleado_id='u', sucursal_id='s', fecha=date(2026, 10, 9), total_ventas=1000, total_efectivo=1000, egreso=200, concepto_egreso='Sueldo', estado='cerrado', efectivo_reportado=800, diferencia=0, created_at=datetime(2026, 10, 9, 8), closed_at=datetime(2026, 10, 9, 10)))
+                    conn.execute(legacy.tables['ventas'].insert(), [
+                        dict(id='antes', numero_venta='V-antes', sucursal_id='s', cajero_id='u', total=1000, forma_pago='efectivo', created_at=datetime(2026, 10, 9, 9)),
+                        dict(id='despues', numero_venta='V-despues', sucursal_id='s', cajero_id='u', total=200, forma_pago='efectivo', created_at=datetime(2026, 10, 9, 11))
+                    ])
                     if versioned:
                         conn.execute(sa.text('CREATE TABLE alembic_version (version_num VARCHAR(32) PRIMARY KEY)'))
                         conn.execute(sa.text("INSERT INTO alembic_version VALUES ('008')"))
@@ -42,12 +47,14 @@ class MigrationTest(unittest.TestCase):
                     result = subprocess.run([sys.executable, 'railway_migrate.py'], cwd=ROOT, env=env, text=True, capture_output=True, timeout=45)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 with engine.connect() as conn:
-                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '010')
-                    row = conn.execute(sa.text('SELECT total_ventas, egreso, concepto_egreso, efectivo_reportado, diferencia, egresos, reembolsos_efectivo FROM cierres_caja WHERE id=\'c\'')).one()
-                    self.assertEqual(tuple(row), (1000, 200, 'Sueldo', 800, 0, None, 0))
+                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '012')
+                    row = conn.execute(sa.text('SELECT total_ventas, egreso, concepto_egreso, efectivo_reportado, diferencia, egresos, reembolsos_efectivo, efectivo_inicial FROM cierres_caja WHERE id=\'c\'')).one()
+                    self.assertEqual(tuple(row), (1000, 200, 'Sueldo', 800, 0, None, 0, None))
                     for table, columns in ADDITIONS.items():
                         self.assertFalse(columns - {c['name'] for c in sa.inspect(conn).get_columns(table)})
                     self.assertTrue(NEW_TABLES.issubset(sa.inspect(conn).get_table_names()))
+                    assignments = dict(conn.execute(sa.text('SELECT id, cierre_caja_id FROM ventas')).all())
+                    self.assertEqual(assignments, {'antes': 'c', 'despues': None})
                 engine.dispose()
 
 

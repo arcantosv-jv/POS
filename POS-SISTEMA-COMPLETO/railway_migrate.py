@@ -22,8 +22,9 @@ def _legacy_schema_matches_current_models():
         existing_columns = {column['name'] for column in inspector.get_columns(table.name)}
         for column in table.columns:
             additions = {
-                'cierres_caja': {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo'},
-                'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento'},
+                'cierres_caja': {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo', 'efectivo_inicial'},
+                'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},
+                'ventas': {'cierre_caja_id'},
                 'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
             }
             if column.name in additions.get(table.name, set()):
@@ -66,14 +67,15 @@ def main():
     with app.app_context():
         inspector = inspect(db.engine)
         columns = {column['name'] for column in inspector.get_columns('cierres_caja')}
-        missing = {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo'} - columns
+        missing = {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo', 'efectivo_inicial'} - columns
         if missing:
             raise RuntimeError('La migración terminó sin crear columnas de cierre: ' + ', '.join(sorted(missing)))
 
         if not _legacy_schema_matches_current_models():
             raise RuntimeError('El esquema no coincide con los modelos')
         for table, required in {
-            'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento'},
+            'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},
+                'ventas': {'cierre_caja_id'},
             'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
         }.items():
             if required - {c['name'] for c in inspector.get_columns(table)}:

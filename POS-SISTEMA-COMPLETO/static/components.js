@@ -454,7 +454,8 @@ const VentasView = {
                 this.validarStockProducto(producto);
             }
             
-            const existe = this.carrito.find(item => item.id === producto.id);
+            const precio = parseFloat(producto.precio);
+            const existe = this.carrito.find(item => item.id === producto.id && item.precio === precio);
             if (existe) {
                 existe.cantidad++;
             } else {
@@ -462,7 +463,7 @@ const VentasView = {
                     id: producto.id,
                     nombre: producto.nombre,
                     codigo: producto.codigo,
-                    precio: producto.precio ? parseFloat(producto.precio) : 0,
+                    precio,
                     impuesto: parseFloat(producto.impuesto || 0),
                     cantidad: 1
                 });
@@ -497,12 +498,14 @@ const VentasView = {
             }
         },
         agregarProductoFlexibleAlCarrito() {
-            if (this.precioFlexible < 0) {
+            const precio = parseFloat(this.precioFlexible);
+            if (!Number.isFinite(precio) || precio < 0) {
                 this.error = 'Ingresa un precio válido (mayor o igual a 0)';
                 return;
             }
             
-            const existe = this.carrito.find(item => item.id === this.productoSinPrecio.id);
+            // Cada importe conserva su propio renglón, aunque sea el mismo producto.
+            const existe = this.carrito.find(item => item.id === this.productoSinPrecio.id && item.precio === precio);
             if (existe) {
                 existe.cantidad++;
             } else {
@@ -510,7 +513,7 @@ const VentasView = {
                     id: this.productoSinPrecio.id,
                     nombre: this.productoSinPrecio.nombre,
                     codigo: this.productoSinPrecio.codigo,
-                    precio: parseFloat(this.precioFlexible),
+                    precio,
                     impuesto: parseFloat(this.productoSinPrecio.impuesto || 0),
                     cantidad: 1
                 });
@@ -4181,7 +4184,40 @@ const VentasDelDiaView = {
 };
 
 // ============= COMPONENTE: CIERRE DE CAJA (Empleado) =============
+const DetalleTurnoCaja = {
+    props: ['cierre'],
+    template: `
+        <div class="cash-close-detail">
+            <div class="cash-close-payments">
+                <span><strong>Ventas del turno:</strong> {{ moneda(cierre.total_ventas) }}</span>
+                <span><strong>Efectivo de ventas:</strong> {{ moneda(cierre.total_efectivo) }}</span>
+                <span><strong>Tarjeta:</strong> {{ moneda(cierre.total_tarjeta) }}</span>
+                <span><strong>Transferencia:</strong> {{ moneda(cierre.total_transferencia) }}</span>
+                <span><strong>Egresos:</strong> {{ moneda(cierre.egreso) }}</span>
+                <span><strong>Reembolsos en efectivo:</strong> {{ moneda(cierre.reembolsos_efectivo) }}</span>
+                <span><strong>Efectivo neto del turno:</strong> {{ moneda(cierre.efectivo_del_turno) }}</span>
+                <span><strong>Efectivo recibido de turnos anteriores:</strong> {{ moneda(cierre.efectivo_inicial) }}</span>
+                <span><strong>Efectivo esperado acumulado:</strong> {{ moneda(cierre.efectivo_esperado) }}</span>
+                <span v-if="cierre.efectivo_reportado !== null"><strong>Efectivo reportado {{ cierre.reporte_acumulado ? 'acumulado' : 'del turno' }}:</strong> {{ moneda(cierre.efectivo_reportado) }}</span>
+                <span v-if="cierre.diferencia !== null"><strong>Diferencia:</strong> {{ moneda(cierre.diferencia) }}</span>
+            </div>
+            <p v-for="(egreso, i) in cierre.egresos" :key="i"><strong>{{ moneda(egreso.monto) }}</strong> · {{ egreso.concepto }} <span v-if="egreso.comprobante"> · Referencia: {{ egreso.comprobante }}</span></p>
+            <div v-if="cierre.productos && cierre.productos.length" class="table-responsive">
+                <table class="table"><thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos brutos</th></tr></thead>
+                    <tbody><tr v-for="producto in cierre.productos" :key="producto.producto_id"><td>{{ producto.producto }} · {{ producto.codigo }}</td><td>{{ producto.unidades }}</td><td>{{ moneda(producto.ingresos_brutos) }}</td></tr></tbody>
+                </table>
+            </div>
+            <p v-else class="cash-register-help">Sin productos vendidos en este turno.</p>
+            <p v-if="cierre.observaciones"><strong>Observaciones:</strong> {{ cierre.observaciones }}</p>
+        </div>
+    `,
+    methods: {
+        moneda(valor) { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(valor) || 0); }
+    }
+};
+
 const CierreCajaView = {
+    components: { 'detalle-turno-caja': DetalleTurnoCaja },
     template: `
         <div class="card">
             <div class="card-header bg-success text-white">
@@ -4201,12 +4237,42 @@ const CierreCajaView = {
                     <button type="button" class="btn-close" @click="error = ''" aria-label="Close"></button>
                 </div>
 
+                <section v-if="!loading && cierre && cierre.cierres_editables_dia_anterior?.length && !editandoCierre" class="cash-shift-history">
+                    <h3>Cierres de ayer que aún puedes corregir</h3>
+                    <div v-for="anterior in cierre.cierres_editables_dia_anterior" :key="anterior.id" class="cash-close-card cash-shift-summary">
+                        <strong>{{ anterior.fecha }} · {{ formatoHora(anterior.closed_at) }}</strong>
+                        <button type="button" class="btn btn-secondary btn-sm" @click="abrirEdicionCierre(anterior)">Editar cierre · hasta {{ formatoHora(anterior.editable_hasta) }}</button>
+                    </div>
+                </section>
+                <section v-if="!loading && cierre && cierre.cierres_anteriores && cierre.cierres_anteriores.length" class="cash-shift-history" aria-label="Cierres anteriores de la sucursal">
+                    <h3>Cierres anteriores del día · {{ cierre.sucursal_nombre }}</h3>
+                    <p class="cash-register-help">{{ cierre.fecha }} · Fecha y horarios de Ciudad de México. Incluye todos los cajeros de esta sucursal.</p>
+                    <details v-for="anterior in cierre.cierres_anteriores" :key="anterior.id" class="cash-close-card">
+                        <summary class="cash-shift-summary">
+                            <strong>Turno {{ anterior.numero_turno }} · {{ anterior.empleado_nombre }}</strong>
+                            <span>{{ formatoHora(anterior.closed_at || anterior.created_at) }} · Reportado: {{ formatoMoneda(anterior.efectivo_reportado) }}</span>
+                            <span class="cash-register-help">Ver desglose</span>
+                        </summary>
+                        <detalle-turno-caja :cierre="anterior"></detalle-turno-caja>
+                        <button v-if="anterior.puede_corregir && !editandoCierre" type="button" class="btn btn-secondary btn-sm" @click="abrirEdicionCierre(anterior)">Editar cierre · hasta {{ formatoHora(anterior.editable_hasta) }}</button>
+                    </details>
+                </section>
+                <h3 v-if="!loading && cierre">Turno {{ cierre.numero_turno || 1 }} · {{ cierre.empleado_nombre }}</h3>
                 <!-- Resumen de efectivo -->
                 <div v-if="!loading && cierre" class="row mb-4">
                     <div class="col-md-6">
                         <div class="card bg-light">
                             <div class="card-body">
-                                <h6 class="card-title">Total Esperado (Efectivo)</h6>
+                                <h6 class="card-title">Efectivo esperado acumulado del día</h6>
+                                <div class="cash-shift-equation">
+                                    <p v-if="!cierre.cierres_anteriores?.length && cierre.efectivo_inicial"><strong>Efectivo recibido de turnos anteriores: {{ formatoMoneda(cierre.efectivo_inicial) }}</strong></p>
+                                    <p v-for="anterior in (cierre.reporte_acumulado === false ? [] : cierre.cierres_anteriores || [])" :key="anterior.id">
+                                        {{ anterior.numero_turno === 1 ? 'Efectivo del primer turno' : '+ Aportación del turno ' + anterior.numero_turno }}: <strong>{{ formatoMoneda(anterior.aportacion_reportada) }}</strong>
+                                    </p>
+                                    <p>{{ cierre.cierres_anteriores && cierre.cierres_anteriores.length ? '+ Efectivo neto de este turno' : 'Efectivo neto de este turno' }}: <strong>{{ formatoMoneda(efectivoTurno) }}</strong></p>
+                                    <p class="cash-register-help">Los turnos anteriores usan el efectivo reportado, descontando el saldo que ya habían recibido.</p>
+                                </div>
+                                <strong>Total:</strong>
                                 <p class="h4 text-success">{{ formatoMoneda(efectivoEsperado) }}</p>
                             </div>
                         </div>
@@ -4231,12 +4297,25 @@ const CierreCajaView = {
                     <p v-else class="mb-0 mt-2">✓ Cuadra perfecto</p>
                 </div>
 
+                <section v-if="!loading && cierre" class="cash-sales-summary" aria-label="Total de ventas del cierre">
+                    <div>
+                        <h3>Total de ventas de este turno</h3>
+                        <strong class="cash-sales-total">{{ formatoMoneda(cierre.total_ventas) }}</strong>
+                        <p>Incluye efectivo, tarjeta, transferencia y pagos mixtos.</p>
+                    </div>
+                    <div v-if="cierre.cierres_anteriores && cierre.cierres_anteriores.length">
+                        <h3>Total de ventas del día hasta este cierre</h3>
+                        <strong class="cash-sales-total">{{ formatoMoneda(totalVentasDia) }}</strong>
+                        <p>Suma los turnos anteriores de la sucursal y este turno.</p>
+                    </div>
+                    <p class="cash-register-help">Los pagos mixtos se incluyen una sola vez y se distribuyen por método de pago. Los totales son netos de devoluciones; los egresos no reducen las ventas.</p>
+                </section>
                 <!-- Resumen de otros pagos -->
                 <div v-if="!loading && cierre" class="row mb-4">
                     <div class="col-md-4">
                         <div class="card text-center">
                             <div class="card-body">
-                                <h6 class="card-title">Total Tarjeta</h6>
+                                <h6 class="card-title">Tarjeta de este turno</h6>
                                 <p class="h5 text-info">{{ formatoMoneda(cierre.total_tarjeta) }}</p>
                             </div>
                         </div>
@@ -4244,7 +4323,7 @@ const CierreCajaView = {
                     <div class="col-md-4">
                         <div class="card text-center">
                             <div class="card-body">
-                                <h6 class="card-title">Total Transferencia</h6>
+                                <h6 class="card-title">Transferencia de este turno</h6>
                                 <p class="h5 text-warning">{{ formatoMoneda(cierre.total_transferencia) }}</p>
                             </div>
                         </div>
@@ -4252,20 +4331,25 @@ const CierreCajaView = {
                     <div class="col-md-4">
                         <div class="card text-center">
                             <div class="card-body">
-                                <h6 class="card-title">Total Ventas</h6>
-                                <p class="h5 text-primary">{{ formatoMoneda(cierre.total_ventas) }}</p>
+                                <h6 class="card-title">Efectivo de ventas de este turno</h6>
+                                <p class="h5 text-primary">{{ formatoMoneda(cierre.total_efectivo) }}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <details v-if="!loading && cierre" class="cash-close-card">
+                    <summary class="cash-shift-summary"><strong>Ver desglose de este turno</strong></summary>
+                    <detalle-turno-caja :cierre="detalleTurnoActual"></detalle-turno-caja>
+                </details>
                 <p v-if="cierre && cierre.reembolsos_efectivo > 0" class="alert alert-info"><strong>Reembolsos en efectivo:</strong> {{ formatoMoneda(cierre.reembolsos_efectivo) }}. Ya descontados del efectivo esperado; no los agregues como egresos.</p>
                 <!-- Formulario de cierre -->
                 <div v-if="!loading && cierre && cierre.estado === 'abierto'" class="border-top pt-4 cash-register-form">
                     <h6 class="mb-4" style="font-weight: 700; color: var(--primary);">Registrar Cierre de Caja</h6>
+                    <p class="cash-register-help">Reporta todo el efectivo que hay en caja: el recibido de los turnos anteriores más el de este turno. Las ventas, reembolsos y egresos de este turno se muestran por separado.</p>
                     <div class="row">
                         <div class="col-md-6 mb-4">
-                            <label class="form-label" style="font-weight: 600; margin-bottom: 0.75rem; display: block;">Efectivo Reportado *</label>
+                            <label class="form-label" style="font-weight: 600; margin-bottom: 0.75rem; display: block;">Efectivo Reportado Acumulado *</label>
                             <input 
                                 v-model.number="formulario.efectivo_reportado" 
                                 type="number" 
@@ -4304,7 +4388,7 @@ const CierreCajaView = {
                         @click="guardarCierre" 
                         class="btn btn-success"
                         style="padding: 0.75rem 2rem; font-weight: 600; border-radius: 0.5rem; transition: all 0.3s ease;"
-                        :disabled="formulario.efectivo_reportado === null || formulario.efectivo_reportado === ''"
+                        :disabled="guardandoCierre || formulario.efectivo_reportado === null || formulario.efectivo_reportado === ''"
                     >
                         ✓ Cerrar Caja
                     </button>
@@ -4314,19 +4398,26 @@ const CierreCajaView = {
                 <div v-if="!loading && cierre && cierre.estado === 'cerrado'" class="alert alert-info">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <strong>✓ Caja Cerrada</strong> - Cierre realizado a las {{ formatoHora(cierre.created_at) }}
+                            <strong>✓ Caja Cerrada</strong> - Cierre realizado a las {{ formatoHora(cierre.closed_at || cierre.created_at) }}
                             <div v-if="cierre.egreso > 0"><strong>Total de egresos:</strong> {{ formatoMoneda(cierre.egreso) }}
                                 <p v-for="(e, i) in cierre.egresos" :key="i">{{ formatoMoneda(e.monto) }} · {{ e.concepto }} <span v-if="e.comprobante">(Referencia: {{ e.comprobante }})</span></p>
                             </div>
                             <p v-if="cierre.observaciones" class="mb-0 mt-2"><strong>Notas:</strong> {{ cierre.observaciones }}</p>
                         </div>
                         <button 
-                            @click="abrirEdicionCierre" 
+                            @click="abrirEdicionCierre()"
                             class="btn btn-sm btn-warning"
-                            v-if="!editandoCierre"
+                            v-if="!editandoCierre && cierre.puede_corregir"
                         >
                             ✏️ Editar
                         </button>
+                    </div>
+
+                    <p class="cash-register-help" v-if="cierre.puede_corregir">Puedes corregir este cierre hasta las {{ formatoHora(cierre.editable_hasta) }} (CDMX). El plazo es de una hora desde la confirmación original.</p>
+                    <p class="cash-register-help" v-else>El plazo para modificar este cierre terminó. Solo se permiten cambios durante la primera hora.</p>
+                    <div v-if="!editandoCierre" style="margin-top: 1.5rem;">
+                        <p class="cash-register-help">Puedes realizar otro cierre hoy. Sus movimientos empezarán desde cero y conservará el efectivo reportado acumulado de la sucursal.</p>
+                        <button type="button" class="btn btn-primary" @click="iniciarOtroCierre" :disabled="iniciandoCierre || guardandoCierre">{{ iniciandoCierre ? 'Preparando…' : '+ Iniciar otro cierre de caja' }}</button>
                     </div>
 
                     <!-- Modo edición para correcciones -->
@@ -4369,7 +4460,7 @@ const CierreCajaView = {
                         <p style="margin-top: 1rem;"><strong>Total de egresos: {{ formatoMoneda(totalEgresos(formularioEdicion)) }}</strong></p>
                     </section>
                     <button 
-                            @click="guardarCorreccion" 
+                            @click="guardarCorreccion" :disabled="guardandoCierre"
                             class="btn btn-primary btn-sm me-2"
                             style="padding: 0.5rem 1.5rem; font-weight: 600; border-radius: 0.375rem;"
                         >
@@ -4391,9 +4482,12 @@ const CierreCajaView = {
     data() {
         return {
             cierre: null,
+            iniciandoCierre: false,
+            guardandoCierre: false,
             loading: true,
             error: '',
             editandoCierre: false,
+            cierreAntesDeEdicion: null,
             formulario: {
                 efectivo_reportado: null,
                 egresos: [],
@@ -4407,13 +4501,40 @@ const CierreCajaView = {
         };
     },
     computed: {
-        efectivoEsperado() {
+        totalVentasDia() {
+            const cierres = [...(this.cierre?.cierres_anteriores || []), this.cierre];
+            return cierres.reduce((centavos, cierre) => centavos + Math.round(Number(cierre?.total_ventas || 0) * 100), 0) / 100;
+        },
+        detalleTurnoActual() {
+            if (!this.cierre) return null;
+            const form = this.editandoCierre ? this.formularioEdicion : this.cierre.estado === 'abierto' ? this.formulario : null;
+            return { ...this.cierre, egresos: form ? form.egresos : this.cierre.egresos,
+                egreso: form ? this.totalEgresos(form) : this.cierre.egreso,
+                efectivo_del_turno: this.efectivoTurno, efectivo_esperado: this.efectivoEsperado };
+        },
+        efectivoTurno() {
             const egreso = this.editandoCierre ? this.totalEgresos(this.formularioEdicion)
                 : this.cierre?.estado === 'abierto' ? this.totalEgresos(this.formulario) : this.cierre?.egreso;
             return Number(this.cierre?.total_efectivo || 0) - Number(egreso || 0) - Number(this.cierre?.reembolsos_efectivo || 0);
+        },
+        efectivoEsperado() {
+            return Number(this.cierre?.efectivo_inicial || 0) + this.efectivoTurno;
         }
     },
     methods: {
+        async iniciarOtroCierre() {
+            if (this.iniciandoCierre || this.guardandoCierre) return;
+            this.iniciandoCierre = true;
+            this.error = '';
+            try {
+                const response = await axios.post('/api/ventas/cierre-caja/nuevo', {}, { headers: { Authorization: `Bearer ${this.token}` } });
+                this.cierre = response.data.cierre;
+                this.editandoCierre = false;
+                this.formulario = { efectivo_reportado: null, egresos: [], observaciones: '' };
+                this.formularioEdicion = { efectivo_reportado: null, egresos: [], observaciones: '' };
+            } catch (err) { this.error = err.response?.data?.error || 'No se pudo iniciar otro cierre'; }
+            finally { this.iniciandoCierre = false; }
+        },
         totalEgresos(formulario) {
             return formulario.egresos.reduce((total, e) => total + Number(e.monto || 0), 0);
         },
@@ -4451,15 +4572,18 @@ const CierreCajaView = {
             }
         },
         guardarCierre() {
+            if (this.guardandoCierre || this.iniciandoCierre) return;
             if (!this.validarEgreso(this.formulario)) return;
             if (this.formulario.efectivo_reportado === null) {
                 alert('Debes reportar el efectivo');
                 return;
             }
             
+            this.guardandoCierre = true;
             axios.post(
                 `${window.location.origin}/api/ventas/cierre-caja`,
                 {
+                    cierre_id: this.cierre.id,
                     efectivo_reportado: this.formulario.efectivo_reportado,
                     egresos: this.formulario.egresos,
                     observaciones: this.formulario.observaciones
@@ -4473,38 +4597,47 @@ const CierreCajaView = {
             .catch(err => {
                 console.error('Error cerrando caja:', err);
                 this.error = err.response?.data?.error || 'Error al cerrar caja';
-            });
+            }).finally(() => { this.guardandoCierre = false; });
         },
         formatoMoneda(valor) {
-            return new Intl.NumberFormat('es-AR', {
+            return new Intl.NumberFormat('es-MX', {
                 style: 'currency',
-                currency: 'ARS'
+                currency: 'MXN'
             }).format(valor || 0);
         },
         formatoHora(fecha) {
-            return new Date(fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            const conZona = /(?:Z|[+-]\d{2}:\d{2})$/.test(fecha) ? fecha : fecha + '-06:00';
+            return new Date(conZona).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' });
         },
-        abrirEdicionCierre() {
+        abrirEdicionCierre(cierre = this.cierre) {
+            if (!cierre?.puede_corregir) return;
+            this.cierreAntesDeEdicion = this.cierre;
+            this.cierre = cierre;
             this.editandoCierre = true;
             this.formularioEdicion.egresos = (this.cierre.egresos || []).map(e => ({ ...e }));
             this.formularioEdicion.efectivo_reportado = this.cierre.efectivo_reportado;
             this.formularioEdicion.observaciones = this.cierre.observaciones || '';
         },
         cancelarEdicion() {
+            if (this.cierreAntesDeEdicion) this.cierre = this.cierreAntesDeEdicion;
+            this.cierreAntesDeEdicion = null;
             this.editandoCierre = false;
             this.formularioEdicion.efectivo_reportado = null;
             this.formularioEdicion.observaciones = '';
         },
         guardarCorreccion() {
+            if (this.guardandoCierre || this.iniciandoCierre) return;
             if (!this.validarEgreso(this.formularioEdicion)) return;
             if (this.formularioEdicion.efectivo_reportado === null) {
                 alert('Debes ingresar el efectivo reportado');
                 return;
             }
             
+            this.guardandoCierre = true;
             axios.post(
                 `${window.location.origin}/api/ventas/cierre-caja/corregir`,
                 {
+                    cierre_id: this.cierre.id,
                     efectivo_reportado: this.formularioEdicion.efectivo_reportado,
                     egresos: this.formularioEdicion.egresos,
                     observaciones: this.formularioEdicion.observaciones
@@ -4514,12 +4647,14 @@ const CierreCajaView = {
             .then(response => {
                 this.cierre = response.data.cierre;
                 this.editandoCierre = false;
+                this.cierreAntesDeEdicion = null;
+                this.cargarCierreCaja();
                 alert('Corrección guardada exitosamente');
             })
             .catch(err => {
                 console.error('Error guardando corrección:', err);
                 this.error = err.response?.data?.error || 'Error al guardar la corrección';
-            });
+            }).finally(() => { this.guardandoCierre = false; });
         }
     },
     mounted() {
@@ -5521,7 +5656,12 @@ const CierresCajaAdminView = {
                 No se encontraron cierres confirmados en el rango seleccionado.
             </div>
 
-            <article v-for="cierre in cierres" :key="cierre.id" class="cash-close-card">
+            <section v-for="grupo in cierresPorDia" :key="grupo.fecha" class="cash-close-day">
+                <header class="cash-close-day-header">
+                    <div><h3>{{ formatoFechaGrupo(grupo.fecha) }}</h3><p>{{ grupo.cierres.length }} {{ grupo.cierres.length === 1 ? 'cierre de caja' : 'cierres de caja' }}</p></div>
+                    <div><span>Total neto vendido en los cierres del día</span><strong>{{ formatoMoneda(grupo.total) }}</strong></div>
+                </header>
+            <article v-for="cierre in grupo.cierres" :key="cierre.id" class="cash-close-card">
                 <div class="cash-close-card-head">
                     <div class="cash-close-fact">
                         <div class="cash-close-meta">Fecha del cierre</div>
@@ -5549,6 +5689,8 @@ const CierresCajaAdminView = {
                         <span><strong>Efectivo de ventas:</strong> {{ formatoMoneda(cierre.total_efectivo) }}</span>
                         <span><strong>Egreso:</strong> {{ formatoMoneda(cierre.egreso) }}</span>
                         <span style="white-space: pre-wrap; overflow-wrap: anywhere;"><strong>Concepto del egreso:</strong> {{ cierre.concepto_egreso || '—' }}</span>
+                        <span><strong>Efectivo recibido de turnos anteriores:</strong> {{ formatoMoneda(cierre.efectivo_inicial) }}</span>
+                        <span><strong>Efectivo neto de este turno:</strong> {{ formatoMoneda(cierre.efectivo_del_turno) }}</span>
                         <span><strong>Efectivo esperado:</strong> {{ formatoMoneda(cierre.efectivo_esperado) }}</span>
                         <span><strong>Efectivo reportado:</strong> {{ formatoMoneda(cierre.efectivo_reportado) }}</span>
                         <span><strong>Tarjeta:</strong> {{ formatoMoneda(cierre.total_tarjeta) }}</span>
@@ -5577,24 +5719,19 @@ const CierresCajaAdminView = {
                         </table>
                     </div>
                     <p v-else class="text-muted mb-1">Este cierre no tiene productos asociados a sus ventas.</p>
-                    <p class="cash-close-footnote">El total vendido es neto según las ventas; ingresos por producto son brutos y no descuentan devoluciones.</p>
+                    <p class="cash-close-footnote">El total neto se conserva al confirmar el cierre e incluye sus reembolsos, incluso de ventas anteriores. Los ingresos por producto son brutos.</p>
                 </div>
             </article>
+            </section>
         </section>
     `,
     data() {
-        const hoy = new Date();
-        const hace30Dias = new Date(hoy);
-        hace30Dias.setDate(hoy.getDate() - 29);
-        const formatoFechaInput = fecha => {
-            const año = fecha.getFullYear();
-            const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-            const dia = String(fecha.getDate()).padStart(2, '0');
-            return `${año}-${mes}-${dia}`;
-        };
+        const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const hace30Dias = new Date(hoy + 'T12:00:00Z');
+        hace30Dias.setUTCDate(hace30Dias.getUTCDate() - 29);
         return {
-            fechaInicio: formatoFechaInput(hace30Dias),
-            fechaFin: formatoFechaInput(hoy),
+            fechaInicio: hace30Dias.toISOString().slice(0, 10),
+            fechaFin: hoy,
             sucursalId: '',
             sucursales: [],
             cierres: [],
@@ -5605,6 +5742,16 @@ const CierresCajaAdminView = {
         };
     },
     computed: {
+        cierresPorDia() {
+            const grupos = new Map();
+            for (const cierre of this.cierres) {
+                if (!grupos.has(cierre.fecha)) grupos.set(cierre.fecha, { fecha: cierre.fecha, cierres: [], centavos: 0 });
+                const grupo = grupos.get(cierre.fecha);
+                grupo.cierres.push(cierre);
+                grupo.centavos += Math.round(Number(cierre.total_vendido || 0) * 100);
+            }
+            return [...grupos.values()].sort((a, b) => b.fecha.localeCompare(a.fecha)).map(grupo => ({ ...grupo, total: grupo.centavos / 100 }));
+        },
         totalVendido() {
             return this.cierres.reduce((total, cierre) => total + Number(cierre.total_vendido || 0), 0);
         },
@@ -5613,6 +5760,10 @@ const CierresCajaAdminView = {
         }
     },
     methods: {
+        formatoFechaGrupo(fecha) {
+            const texto = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(fecha + 'T12:00:00Z'));
+            return texto.charAt(0).toUpperCase() + texto.slice(1);
+        },
         async cargarCierres() {
             this.loading = true;
             this.error = '';
@@ -5655,7 +5806,8 @@ const CierresCajaAdminView = {
             return new Date(`${fecha}T12:00:00`).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' });
         },
         formatoHora(fecha) {
-            return new Date(fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            const conZona = /(?:Z|[+-]\d{2}:\d{2})$/.test(fecha) ? fecha : fecha + '-06:00';
+            return new Date(conZona).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' });
         }
     },
     mounted() {

@@ -4,7 +4,7 @@ from models import db, User, Venta, DetalleVenta, Producto, Stock, Sucursal, Pag
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from business_validation import money, text_value
-from cash_accounting import refresh_cash
+from cash_accounting import refresh_cash, lock_branch, cierres_confirmados, actualizar_arrastres, movimientos_pendientes
 import uuid
 from config import get_cdmx_now, CDMX_TZ
 
@@ -16,7 +16,8 @@ def crear_venta():
     """Crear nueva venta (carrito de compra)"""
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.query.filter_by(id=user_id).with_for_update().first()
+        lock_branch(user.sucursal_id)
         
         # Empleados y admin pueden crear ventas
         if user.role not in ['employee', 'admin']:
@@ -422,42 +423,112 @@ def guardar_pagos_venta(venta_id):
 
 # ============= ENDPOINTS CIERRE DE CAJA =============
 
+def plazo_correccion(cierre):
+    if cierre.estado != 'cerrado' or not cierre.closed_at:
+        return None, False
+    confirmado = cierre.closed_at
+    if confirmado.tzinfo is None:
+        confirmado = CDMX_TZ.localize(confirmado)
+    limite = confirmado + timedelta(hours=1)
+    ahora = get_cdmx_now()
+    return limite, confirmado <= ahora <= limite
+
+
+def detalle_cierre(cierre):
+    ventas = (movimientos_pendientes(cierre)[0] if cierre.estado == 'abierto' else
+              Venta.query.filter_by(cierre_caja_id=cierre.id).order_by(Venta.created_at.desc()).all())
+
+    productos = {}
+    for venta in ventas:
+        for detalle in venta.detalles:
+            producto = productos.setdefault(detalle.producto_id, {
+                'producto_id': detalle.producto_id,
+                'codigo': detalle.producto.codigo,
+                'producto': detalle.producto.nombre,
+                'unidades': 0,
+                'ingresos_brutos': Decimal('0.00')
+            })
+            producto['unidades'] += detalle.cantidad
+            producto['ingresos_brutos'] += detalle.subtotal
+
+    datos_cierre = cierre.to_dict()
+    limite, vigente = plazo_correccion(cierre)
+    datos_cierre['editable_hasta'] = limite.isoformat() if limite else None
+    datos_cierre['puede_corregir'] = vigente and cierre.empleado_id == get_jwt_identity()
+    datos_cierre.update({
+        'cantidad_ventas': len(ventas),
+        'total_vendido': float(cierre.total_ventas or 0),
+        'productos': [
+            {**producto, 'ingresos_brutos': float(producto['ingresos_brutos'])}
+            for producto in sorted(productos.values(), key=lambda item: item['unidades'], reverse=True)
+        ]
+    })
+    return datos_cierre
+
+
+def cierre_con_contexto(cierre):
+    confirmados = cierres_confirmados(cierre.sucursal_id, cierre.fecha)
+    anteriores = confirmados
+    if cierre.estado == 'cerrado':
+        anteriores = confirmados[:next(i for i, c in enumerate(confirmados) if c.id == cierre.id)]
+    datos = detalle_cierre(cierre)
+    datos['numero_turno'] = len(anteriores) + 1
+    datos['cierres_anteriores'] = [dict(detalle_cierre(c), numero_turno=i + 1) for i, c in enumerate(anteriores)]
+    recientes = CierreCaja.query.filter_by(empleado_id=get_jwt_identity(), sucursal_id=cierre.sucursal_id,
+        fecha=get_cdmx_now().date() - timedelta(days=1), estado='cerrado').all()
+    datos['cierres_editables_dia_anterior'] = [detalle_cierre(c) for c in recientes if plazo_correccion(c)[1]]
+    return datos
+
+
+def cierres_del_dia(user):
+    return CierreCaja.query.filter_by(empleado_id=user.id, sucursal_id=user.sucursal_id, fecha=get_cdmx_now().date())
+
+
+def cierre_abierto(user):
+    return cierres_del_dia(user).filter_by(estado='abierto').order_by(CierreCaja.created_at.desc(), CierreCaja.id.desc()).first()
+
+
+def nuevo_cierre(user):
+    cierre = CierreCaja(empleado_id=user.id, sucursal_id=user.sucursal_id,
+                        fecha=get_cdmx_now().date(), estado='abierto')
+    db.session.add(cierre)
+    db.session.flush()
+    return cierre
+
+
 @ventas_bp.route('/cierre-caja/hoy', methods=['GET'])
 @jwt_required()
 def get_cierre_caja_hoy():
-    """Obtener cierre de caja del día actual del empleado"""
     try:
-        user_id = get_jwt_identity()
-        user = User.query.get(user_id)
-        
+        user = User.query.filter_by(id=get_jwt_identity()).with_for_update().first()
+        lock_branch(user.sucursal_id)
         if user.role != 'employee':
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
-        
-        hoy = get_cdmx_now().date()
-        
-        # Obtener cierre existente o crear uno
-        cierre = CierreCaja.query.filter_by(
-            empleado_id=user_id,
-            fecha=hoy
-        ).with_for_update().first()
-        
+        cierre = cierre_abierto(user) or cierres_del_dia(user).order_by(CierreCaja.created_at.desc(), CierreCaja.id.desc()).first()
         if not cierre:
-            # Crear nuevo cierre de caja
-            cierre = CierreCaja(
-                empleado_id=user_id,
-                sucursal_id=user.sucursal_id,
-                fecha=hoy
-            )
-            db.session.add(cierre)
-        
-        # Un cierre confirmado conserva el movimiento de dinero registrado.
-        if cierre.estado != 'cerrado':
+            cierre = nuevo_cierre(user)
+        if cierre.estado == 'abierto':
             refresh_cash(cierre)
-
         db.session.commit()
-        
-        return jsonify(cierre.to_dict()), 200
-    
+        return jsonify(cierre_con_contexto(cierre)), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@ventas_bp.route('/cierre-caja/nuevo', methods=['POST'])
+@jwt_required()
+def iniciar_nuevo_cierre():
+    try:
+        user = User.query.filter_by(id=get_jwt_identity()).with_for_update().first()
+        lock_branch(user.sucursal_id)
+        if user.role != 'employee':
+            return jsonify({'error': 'Solo empleados pueden iniciar un cierre'}), 403
+        # Repetir la solicitud nunca crea dos cajas abiertas.
+        cierre = cierre_abierto(user) or nuevo_cierre(user)
+        refresh_cash(cierre)
+        db.session.commit()
+        return jsonify({'cierre': cierre_con_contexto(cierre)}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -495,30 +566,30 @@ def crear_cierre_caja():
     """Crear/actualizar cierre de caja del empleado"""
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.query.filter_by(id=user_id).with_for_update().first()
+        lock_branch(user.sucursal_id)
         
         if user.role != 'employee':
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
-        data = request.get_json()
-        hoy = get_cdmx_now().date()
-        
-        # Obtener cierre existente
-        cierre = CierreCaja.query.filter_by(
-            empleado_id=user_id,
-            fecha=hoy
-        ).with_for_update().first()
-        
+        data = request.get_json() or {}
+        cierre = (cierres_del_dia(user).filter_by(id=data['cierre_id']).first()
+                  if data.get('cierre_id') else cierre_abierto(user))
         if not cierre:
-            return jsonify({'error': 'Cierre de caja no encontrado'}), 404
-        
+            return jsonify({'error': 'No hay un cierre abierto. Inicia un nuevo cierre.'}), 409
+        if cierre.estado != 'abierto':
+            return jsonify({'error': 'Este cierre ya fue confirmado. Usa la opción de corregir.'}), 409
+
         # Actualizar con datos reportados
         try:
             efectivo_reportado, egreso, concepto, egresos = validar_datos_cierre(data, cierre)
         except ValueError as error:
             return jsonify({'error': str(error)}), 400
-        if cierre.estado != 'cerrado':
-            refresh_cash(cierre)
+        sales, refunds = refresh_cash(cierre)
+        for sale in sales:
+            sale.cierre_caja_id = cierre.id
+        for refund in refunds:
+            refund.cierre_caja_id = cierre.id
         cierre.egresos = egresos
         cierre.egreso = egreso
         cierre.concepto_egreso = concepto
@@ -532,7 +603,7 @@ def crear_cierre_caja():
         
         return jsonify({
             'message': 'Cierre de caja registrado exitosamente',
-            'cierre': cierre.to_dict()
+            'cierre': cierre_con_contexto(cierre)
         }), 200
     
     except Exception as e:
@@ -711,38 +782,7 @@ def reportes_cierres_caja_detalle():
 
         resultado = []
         for cierre in cierres:
-            inicio_dia = CDMX_TZ.localize(datetime.combine(cierre.fecha, datetime.min.time()))
-            fin_dia = inicio_dia + timedelta(days=1)
-            ventas = Venta.query.filter(
-                Venta.cajero_id == cierre.empleado_id,
-                Venta.sucursal_id == cierre.sucursal_id,
-                Venta.created_at >= inicio_dia,
-                Venta.created_at < fin_dia
-            ).order_by(Venta.created_at.desc()).all()
-
-            productos = {}
-            for venta in ventas:
-                for detalle in venta.detalles:
-                    producto = productos.setdefault(detalle.producto_id, {
-                        'producto_id': detalle.producto_id,
-                        'codigo': detalle.producto.codigo,
-                        'producto': detalle.producto.nombre,
-                        'unidades': 0,
-                        'ingresos_brutos': Decimal('0.00')
-                    })
-                    producto['unidades'] += detalle.cantidad
-                    producto['ingresos_brutos'] += detalle.subtotal
-
-            datos_cierre = cierre.to_dict()
-            datos_cierre.update({
-                'cantidad_ventas': len(ventas),
-                'total_vendido': float(sum((venta.total for venta in ventas), Decimal('0.00'))),
-                'productos': [
-                    {**producto, 'ingresos_brutos': float(producto['ingresos_brutos'])}
-                    for producto in sorted(productos.values(), key=lambda item: item['unidades'], reverse=True)
-                ]
-            })
-            resultado.append(datos_cierre)
+            resultado.append(detalle_cierre(cierre))
 
         return jsonify({
             'fecha_inicio': fecha_inicio.isoformat(),
@@ -758,26 +798,26 @@ def reportes_cierres_caja_detalle():
 @ventas_bp.route('/cierre-caja/corregir', methods=['POST'])
 @jwt_required()
 def corregir_cierre_caja():
-    """Corregir/reabrirciembre de caja del empleado"""
+    """Corregir un cierre propio durante la hora posterior a su confirmación."""
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.query.filter_by(id=user_id).with_for_update().first()
+        lock_branch(user.sucursal_id)
         
         if user.role != 'employee':
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
-        data = request.get_json()
-        hoy = get_cdmx_now().date()
-        
-        # Obtener cierre existente
-        cierre = CierreCaja.query.filter_by(
-            empleado_id=user_id,
-            fecha=hoy
-        ).with_for_update().first()
-        
+        data = request.get_json() or {}
+        if data.get('cierre_id'):
+            cierre = CierreCaja.query.filter_by(empleado_id=user.id, sucursal_id=user.sucursal_id, id=data['cierre_id'], estado='cerrado').first()
+        else:
+            candidates = cierres_del_dia(user).filter_by(estado='cerrado').all()
+            cierre = candidates[0] if len(candidates) == 1 else None
         if not cierre:
-            return jsonify({'error': 'Cierre de caja no encontrado'}), 404
-        
+            return jsonify({'error': 'Selecciona el cierre confirmado que deseas corregir'}), 400
+        if not plazo_correccion(cierre)[1]:
+            return jsonify({'error': 'Solo puedes modificar el cierre hasta una hora después de su confirmación original.'}), 409
+
         # Actualizar con datos reportados
         try:
             efectivo_reportado, egreso, concepto, egresos = validar_datos_cierre(data, cierre)
@@ -790,13 +830,14 @@ def corregir_cierre_caja():
         cierre.diferencia = efectivo_reportado - cierre.efectivo_esperado
         cierre.observaciones = data.get('observaciones', '')
         cierre.estado = 'cerrado'
-        cierre.closed_at = get_cdmx_now()
+        actualizar_arrastres(cierre.sucursal_id, cierre.fecha)
+        # Conservar la hora original de confirmación y sus movimientos.
         
         db.session.commit()
         
         return jsonify({
             'message': 'Cierre de caja corregido exitosamente',
-            'cierre': cierre.to_dict()
+            'cierre': cierre_con_contexto(cierre)
         }), 200
     
     except Exception as e:
