@@ -79,3 +79,15 @@ Incluyen tres turnos con cambio de cajero, faltantes, egresos, correcciones, cie
 ## Plazo para corregir cierres
 
 El cajero puede corregir sus propios cierres hasta una hora después de la confirmación original, inclusive. La validación se realiza en el servidor y las correcciones no renuevan el plazo. También se permite cruzar medianoche CDMX dentro de esa hora: el cierre del día anterior aparece como editable, sin trasladar sus movimientos al nuevo día. Los cierres históricos sin hora de confirmación no son editables porque no se puede determinar su plazo.
+
+## Comisiones
+
+Admin → Características → «Habilitar Comisiones para empleados» controla el acceso global. Inicialmente está desactivado. El menú del empleado se actualiza al iniciar sesión, al recuperar el foco y cada 30 segundos. El servidor bloquea inmediatamente consulta, captura, edición y eliminación si está desactivado; admin conserva su acceso y los registros.
+
+El empleado registra Celular o Tablet, costo de venta, método de pago (efectivo, tarjeta o transferencia) y nombre libre del empleado. El servidor asigna la sucursal, la cuenta que capturó y la fecha/hora CDMX. Cada empleado consulta los registros de su sucursal y puede editar o eliminar los que capturó mientras estén «No aprobada».
+
+Admin consulta todas las sucursales, asigna la comisión en pesos, pulsa «Aprobada», corrige el importe o quita la aprobación. Un registro aprobado queda bloqueado para edición o eliminación por empleados. El nombre libre se muestra junto a la sucursal; la cuenta real de captura se conserva por separado. El botón «Actualizar» obtiene los cambios de aprobación. Ninguna comisión afecta ventas, stock o cierres de caja.
+
+La migración `013_comisiones.py` crea la tabla y el interruptor. Se aplica con `.venv/bin/python railway_migrate.py`; Railway usa este mismo proceso antes de desplegar.
+
+Pruebas: `.venv/bin/python -m unittest discover -s tests -q` y `node tests/test_frontend_comisiones.js`. Validan permisos, sucursales, aprobación reversible, bloqueo global, importes y fecha CDMX, además de la lógica del formulario y del menú.

@@ -1371,6 +1371,12 @@
         .cash-shift-summary span { margin-left: 1rem; display: inline-block; }
         .cash-shift-equation { margin: 1rem 0; }
         .cash-shift-equation p { margin-bottom: .5rem; overflow-wrap: anywhere; }
+        .commission-form { border: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 1rem; margin: 1rem 0 2rem; }
+        .commission-form label, .commission-actions label { display: block; font-weight: 700; margin-bottom: .5rem; }
+        .commission-form input, .commission-form select, .commission-actions input { width: 100%; padding: .75rem; border: 1px solid var(--gray-300); border-radius: .5rem; font: inherit; }
+        .commission-record { padding: 1.25rem; }
+        .commission-record header, .commission-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+        .commission-actions { justify-content: flex-start; align-items: end; }
     </style>
 </head>
 <body>
@@ -1453,6 +1459,7 @@
                                 @click.prevent="irAVista('dashboard')"
                                 href="#"
                             >Dashboard</a>
+                            <a v-if="userRole === 'admin' || (userRole === 'employee' && comisionesHabilitadas)" :class="['commissions', currentView === 'comisiones' ? 'active' : '']" @click.prevent="irAVista('comisiones')" href="#">Comisiones</a>
                             <a v-if="userRole === 'admin'" :class="['features', currentView === 'caracteristicas' ? 'active' : '']" @click.prevent="irAVista('caracteristicas')" href="#">Características</a>
                             <a 
                                 v-if="userRole === 'admin'" 
@@ -1585,6 +1592,9 @@
                     <inventario-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></inventario-view>
                 </div>
 
+                <div v-if="currentView === 'comisiones' && (userRole === 'admin' || comisionesHabilitadas)">
+                    <comisiones-view :token="token" :user-role="userRole" :user-id="userId"></comisiones-view>
+                </div>
                 <div v-if="currentView === 'caracteristicas' && userRole === 'admin'">
                     <h1 style="margin-bottom: 2rem;">Características</h1>
                     <caracteristicas-view :token="token"></caracteristicas-view>
@@ -1681,7 +1691,8 @@
     </div>
 
     <!-- Scripts de componentes -->
-    <script src="/static/components.js?v=20261009-edicion-cierre-1h"></script>
-    <script src="/static/app.js?v=20261008-caracteristicas"></script>
+    <script src="/static/components.js?v=20261009-comisiones"></script>
+    <script src="/static/comisiones.js?v=20261009-comisiones"></script>
+    <script src="/static/app.js?v=20261009-comisiones"></script>
 </body>
 </html>

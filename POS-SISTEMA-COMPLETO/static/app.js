@@ -2,6 +2,7 @@ const { createApp } = Vue;
 
 createApp({
     components: {
+        'comisiones-view': ComisionesView,
         'ventas-view': VentasView,
         'caracteristicas-view': CaracteristicasView,
         'productos-view': ProductosView,
@@ -35,6 +36,8 @@ createApp({
             // Vistas
             currentView: 'dashboard',
             menuAbierto: false,
+            comisionesHabilitadas: false,
+            accesoTimer: null,
             
             // Formulario de login
             loginForm: {
@@ -77,7 +80,29 @@ createApp({
             }
         );
     },
+    mounted() {
+        this.cargarAcceso();
+        this.accesoTimer = setInterval(this.cargarAcceso, 30000);
+        window.addEventListener('caracteristicas-actualizadas', this.cargarAcceso);
+        window.addEventListener('focus', this.cargarAcceso);
+    },
+    beforeUnmount() {
+        clearInterval(this.accesoTimer);
+        window.removeEventListener('caracteristicas-actualizadas', this.cargarAcceso);
+        window.removeEventListener('focus', this.cargarAcceso);
+    },
+    watch: { token() { this.comisionesHabilitadas = false; this.cargarAcceso(); } },
     methods: {
+        async cargarAcceso() {
+            const token = this.token;
+            if (!token) return;
+            try {
+                const res = await axios.get('/api/caracteristicas/acceso', { headers: { Authorization: `Bearer ${token}` } });
+                if (this.token !== token) return;
+                this.comisionesHabilitadas = !!res.data.comisiones_habilitadas;
+            } catch (err) { if (this.token !== token) return; this.comisionesHabilitadas = false; }
+            if (this.userRole !== 'admin' && !this.comisionesHabilitadas && this.currentView === 'comisiones') this.irAVista('ventas');
+        },
         async login() {
             this.loginError = '';
             this.loginLoading = true;
@@ -117,6 +142,7 @@ createApp({
         },
         
         irAVista(nombreVista) {
+            if (nombreVista === 'comisiones' && this.userRole !== 'admin' && !this.comisionesHabilitadas) return;
             this.currentView = nombreVista;
             this.menuAbierto = false; // Cerrar menú automáticamente
             window.scrollTo({ top: 0, behavior: 'instant' });

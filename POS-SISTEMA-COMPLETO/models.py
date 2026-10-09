@@ -613,4 +613,30 @@ class CompatibilidadVerificada(db.Model):
 class ConfiguracionSistema(db.Model):
     __tablename__ = 'configuracion_sistema'
     id = db.Column(db.Integer, primary_key=True)
+    comisiones_habilitadas = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     panel_ventas = db.Column(db.String(20), nullable=False, default='productos', server_default='productos')
+
+
+class Comision(db.Model):
+    __tablename__ = 'comisiones'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False, index=True)
+    creado_por_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    dispositivo = db.Column(db.String(10), nullable=False)
+    costo = db.Column(db.Numeric(10, 2), nullable=False)
+    metodo_pago = db.Column(db.String(20), nullable=False)
+    nombre_empleado = db.Column(db.String(150), nullable=False)
+    monto_comision = db.Column(db.Numeric(10, 2), nullable=True)
+    aprobada = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=get_cdmx_now)
+    sucursal = db.relationship('Sucursal')
+
+    def to_dict(self):
+        from config import CDMX_TZ
+        fecha = self.created_at
+        fecha = CDMX_TZ.localize(fecha) if fecha.tzinfo is None else fecha.astimezone(CDMX_TZ)
+        return dict(id=self.id, sucursal_id=self.sucursal_id, sucursal_nombre=self.sucursal.nombre,
+                    creado_por_id=self.creado_por_id, dispositivo=self.dispositivo, costo=float(self.costo),
+                    metodo_pago=self.metodo_pago, nombre_empleado=self.nombre_empleado,
+                    monto_comision=float(self.monto_comision) if self.monto_comision is not None else None,
+                    aprobada=self.aprobada, created_at=fecha.isoformat())

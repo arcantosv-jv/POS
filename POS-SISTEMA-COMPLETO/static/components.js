@@ -78,6 +78,10 @@ const CaracteristicasView = {
                 <label><input type="radio" v-model="modo" value="competencia" name="panel-ventas"><span><strong>Competencia mensual</strong><small>Compara el importe neto vendido por sucursal en el mes actual, sin mostrar cantidades. Las devoluciones se descuentan; los egresos no.</small></span></label>
                 <label><input type="radio" v-model="modo" value="oculto" name="panel-ventas"><span><strong>Ocultar ambos</strong><small>Oculta productos recientes y la gráfica de competencia.</small></span></label>
             </fieldset>
+            <fieldset :disabled="cargando || guardando || !disponible" class="features-options">
+                <legend>Comisiones</legend>
+                <label><input type="checkbox" v-model="comisionesHabilitadas"><span><strong>Habilitar Comisiones para empleados</strong><small>Permite registrar y consultar las comisiones de su sucursal. Admin conserva el acceso aunque esté desactivado.</small></span></label>
+            </fieldset>
             <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
             <p v-if="mensaje" class="alert alert-success" role="status">{{ mensaje }}</p>
             <button class="btn btn-primary" @click="guardar" :disabled="cargando || guardando || !disponible">{{ guardando ? 'Guardando…' : 'Guardar configuración' }}</button>
@@ -85,13 +89,13 @@ const CaracteristicasView = {
             <p class="cash-register-help">Los cambios se reflejan al abrir Ventas o, en pantallas abiertas, en un máximo de 30 segundos.</p>
         </section>
     `,
-    data() { return { modo: 'productos', cargando: true, guardando: false, disponible: false, error: '', mensaje: '' }; },
+    data() { return { modo: 'productos', comisionesHabilitadas: false, cargando: true, guardando: false, disponible: false, error: '', mensaje: '' }; },
     methods: {
         async cargar() {
             this.cargando = true; this.error = ''; this.disponible = false;
             try {
                 const res = await axios.get('/api/caracteristicas', { headers: { Authorization: `Bearer ${this.token}` } });
-                this.modo = res.data.panel_ventas; this.disponible = true;
+                this.modo = res.data.panel_ventas; this.comisionesHabilitadas = !!res.data.comisiones_habilitadas; this.disponible = true;
             } catch (err) { this.error = err.response?.data?.error || 'No se pudo cargar la configuración'; }
             finally { this.cargando = false; }
         },
@@ -99,7 +103,7 @@ const CaracteristicasView = {
             if (this.guardando || !this.disponible) return;
             this.guardando = true; this.error = ''; this.mensaje = '';
             try {
-                await axios.put('/api/caracteristicas', { panel_ventas: this.modo }, { headers: { Authorization: `Bearer ${this.token}` } });
+                await axios.put('/api/caracteristicas', { panel_ventas: this.modo, comisiones_habilitadas: this.comisionesHabilitadas }, { headers: { Authorization: `Bearer ${this.token}` } });
                 this.mensaje = 'Configuración guardada para todas las sucursales.';
                 window.dispatchEvent(new Event('caracteristicas-actualizadas'));
             } catch (err) { this.error = err.response?.data?.error || 'No se pudo guardar la configuración'; }

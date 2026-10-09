@@ -20,7 +20,7 @@ def modo_panel():
 @caracteristicas_bp.route('', methods=['GET'])
 @admin_required
 def consultar():
-    return jsonify({'panel_ventas': modo_panel()})
+    return jsonify({'panel_ventas': modo_panel(), 'comisiones_habilitadas': comisiones_habilitadas()})
 
 
 @caracteristicas_bp.route('', methods=['PUT'])
@@ -33,13 +33,17 @@ def guardar():
     if not config:
         config = ConfiguracionSistema(id=1)
         db.session.add(config)
+    if 'comisiones_habilitadas' in data and not isinstance(data['comisiones_habilitadas'], bool):
+        return jsonify({'error': 'Comisiones debe ser verdadero o falso'}), 400
     config.panel_ventas = data['panel_ventas']
+    if 'comisiones_habilitadas' in data:
+        config.comisiones_habilitadas = data['comisiones_habilitadas']
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
         return jsonify({'error': 'No se pudo guardar la configuración. Intenta nuevamente.'}), 409
-    return jsonify({'panel_ventas': config.panel_ventas})
+    return jsonify({'panel_ventas': config.panel_ventas, 'comisiones_habilitadas': config.comisiones_habilitadas})
 
 
 @caracteristicas_bp.route('/panel-ventas', methods=['GET'])
@@ -67,5 +71,18 @@ def panel_ventas():
                            'lider': bool(maximum and amounts.get(b.id, Decimal('0')) == maximum)} for b in branches]
         })
     response = jsonify(payload)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+def comisiones_habilitadas():
+    config = db.session.get(ConfiguracionSistema, 1)
+    return bool(config and config.comisiones_habilitadas)
+
+
+@caracteristicas_bp.route('/acceso', methods=['GET'])
+@jwt_required()
+def acceso():
+    response = jsonify({'comisiones_habilitadas': comisiones_habilitadas()})
     response.headers['Cache-Control'] = 'no-store'
     return response
