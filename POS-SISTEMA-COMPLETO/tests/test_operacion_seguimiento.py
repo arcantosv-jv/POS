@@ -6,7 +6,8 @@ from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
 from models import (db, User, Sucursal, Categoria, Subcategoria, Producto, Stock, Venta,
                     DetalleVenta, PagoVenta, CierreCaja, DevolucionVenta, MarcaDispositivo,
-                    TipoReparacion, Reparacion, ConsultaCompatibilidad, CompatibilidadVerificada)
+                    TipoReparacion, Reparacion, ConsultaCompatibilidad, CompatibilidadVerificada,
+                    ModeloDispositivo, CatalogoReparacion)
 from routes_ventas import ventas_bp
 from routes_devoluciones import devoluciones_bp
 from routes_reparaciones import reparaciones_bp
@@ -67,6 +68,31 @@ class OperacionTest(unittest.TestCase):
         res = self.request('/api/ventas/cierre-caja/hoy', role='employee', method='get')
         self.assertEqual(res.status_code, 200, res.json)
         return res.json
+
+    def test_admin_can_create_and_update_repair_catalog(self):
+        modelo = ModeloDispositivo(nombre='Modelo de prueba', marca_id=self.marca.id)
+        db.session.add(modelo)
+        db.session.commit()
+        data = dict(marca_id=self.marca.id, modelo_id=modelo.id,
+                    tipo_reparacion_id=self.tipo.id, costo=690)
+        denied = self.request('/api/reparaciones/catalogo', data, role='employee')
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(CatalogoReparacion.query.count(), 0)
+        created = self.request('/api/reparaciones/catalogo', data)
+        self.assertEqual(created.status_code, 201, created.json)
+        self.assertEqual(created.json['costo'], 690)
+        item_id = created.json['id']
+        self.assertEqual(db.session.get(CatalogoReparacion, item_id).modelo_id, modelo.id)
+        duplicate = self.request('/api/reparaciones/catalogo', data)
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertEqual(CatalogoReparacion.query.count(), 1)
+        endpoint = '/api/reparaciones/catalogo/' + item_id
+        self.assertEqual(self.request(endpoint, {'costo': 700}, role='employee', method='put').status_code, 403)
+        updated = self.request(endpoint, {'costo': 750}, method='put')
+        self.assertEqual(updated.status_code, 200, updated.json)
+        self.assertEqual(updated.json['costo'], 750)
+        listed = self.request('/api/reparaciones/catalogo', method='get')
+        self.assertEqual(listed.json['catalogo'][0]['costo'], 750)
 
     def test_refund_mixed_cash_expenses_and_reverse(self):
         sale = self.sale()

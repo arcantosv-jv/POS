@@ -363,9 +363,6 @@ def create_catalogo_item():
         if not all(field in data for field in required_fields):
             return jsonify({'error': f'Campos requeridos: {", ".join(required_fields)}'}), 400
         
-        if user.role == 'employee' and sucursal_id != user.sucursal_id:
-            return jsonify({'error': 'Solo puedes registrar reparaciones en tu sucursal'}), 403
-
         # Verificar que existan los registros
         marca = MarcaDispositivo.query.get(data['marca_id'])
         if not marca:
