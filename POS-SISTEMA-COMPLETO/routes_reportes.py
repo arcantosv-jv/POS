@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Venta, DetalleVenta, EntradaInventario, Sucursal, Stock, Producto
@@ -35,8 +36,8 @@ def reportes_ventas_diarias():
         )
         
         # Filtrar por sucursal
-        if user.role == 'employee':
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None:
+            query = query.filter_by(sucursal_id=current_branch(user))
         elif sucursal_id:
             query = query.filter_by(sucursal_id=sucursal_id)
         
@@ -99,8 +100,8 @@ def reportes_ventas_mensuales():
         )
         
         # Filtrar por sucursal
-        if user.role == 'employee':
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None:
+            query = query.filter_by(sucursal_id=current_branch(user))
         elif sucursal_id:
             query = query.filter_by(sucursal_id=sucursal_id)
         
@@ -175,8 +176,8 @@ def reportes_ventas_anuales():
         )
         
         # Filtrar por sucursal
-        if user.role == 'employee':
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None:
+            query = query.filter_by(sucursal_id=current_branch(user))
         elif sucursal_id:
             query = query.filter_by(sucursal_id=sucursal_id)
         
@@ -238,8 +239,8 @@ def reportes_productos_vendidos():
         query = DetalleVenta.query.join(Venta)
         
         # Filtrar por sucursal
-        if user.role == 'employee':
-            query = query.filter(Venta.sucursal_id == user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None:
+            query = query.filter(Venta.sucursal_id == current_branch(user))
         elif sucursal_id:
             query = query.filter(Venta.sucursal_id == sucursal_id)
         
@@ -301,7 +302,7 @@ def reporte_consolidado():
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        if user.role != 'admin':
+        if user.role != 'admin' and not delegated_access():
             return jsonify({'error': 'Solo admin puede ver reportes consolidados'}), 403
         
         fecha_inicio = request.args.get('fecha_inicio')
@@ -537,7 +538,7 @@ def _get_dashboard_payload(data):
 def dashboard_ventas():
     """Métricas agregadas de ventas, sucursales y productos para administración."""
     user = User.query.get(get_jwt_identity())
-    if not user or user.role != 'admin':
+    if not user or (user.role != 'admin' and not delegated_access()):
         return jsonify({'error': 'Solo administradores pueden consultar el dashboard'}), 403
 
     try:
@@ -556,7 +557,7 @@ def dashboard_ventas():
 def analizar_dashboard_ventas():
     """Genera hallazgos narrativos con Gemini sobre métricas ya calculadas."""
     user = User.query.get(get_jwt_identity())
-    if not user or user.role != 'admin':
+    if not user or (user.role != 'admin' and not delegated_access()):
         return jsonify({'error': 'Solo administradores pueden generar análisis'}), 403
 
     try:
@@ -613,8 +614,8 @@ def reportes_productos_bajo_stock():
         query = query.filter(Producto.is_active == True)
         
         # Si es empleado, filtrar por su sucursal
-        if user.role == 'employee' and user.sucursal_id:
-            query = query.filter(Stock.sucursal_id == user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None and current_branch(user):
+            query = query.filter(Stock.sucursal_id == current_branch(user))
         
         # Contar PRODUCTOS ACTIVOS ÚNICOS donde cantidad < cantidad_minima
         bajo_stock = query.filter(Stock.cantidad < Stock.cantidad_minima).distinct(Stock.producto_id).count()
@@ -643,8 +644,8 @@ def reportes_total_productos():
         query = Producto.query.filter_by(is_active=True)
         
         # Si es empleado, contar solo productos que tienen stock en su sucursal
-        if user.role == 'employee' and user.sucursal_id:
-            query = query.join(Stock).filter(Stock.sucursal_id == user.sucursal_id).distinct()
+        if user.role == 'employee' and user.permisos is None and current_branch(user):
+            query = query.join(Stock).filter(Stock.sucursal_id == current_branch(user)).distinct()
         
         total = query.count()
         
@@ -654,3 +655,42 @@ def reportes_total_productos():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+reportes_bp.before_request(authorize_request)
+
+@reportes_bp.route('/ventas-categorias', methods=['GET'])
+@jwt_required()
+def ventas_categorias():
+    """Top 10 por importe bruto con impuestos, según la clasificación actual."""
+    from models import Categoria, Subcategoria
+    from permissions import allowed_branches
+    try:
+        desde = datetime.strptime(request.args.get('fecha_inicio', ''), '%Y-%m-%d').date()
+        hasta = datetime.strptime(request.args.get('fecha_fin', ''), '%Y-%m-%d').date()
+        if desde > hasta:
+            raise ValueError()
+        inicio = CDMX_TZ.localize(datetime.combine(desde, datetime.min.time()))
+        fin = CDMX_TZ.localize(datetime.combine(hasta + timedelta(days=1), datetime.min.time()))
+    except (ValueError, OverflowError):
+        return jsonify({'error': 'Selecciona fechas válidas; inicio no puede ser posterior al fin.'}), 400
+    orden = request.args.get('orden', 'importe')
+    if orden not in ('importe', 'cantidad'):
+        return jsonify({'error': 'Orden inválido: usa importe o cantidad.'}), 400
+    user = db.session.get(User, get_jwt_identity())
+    cantidad = func.sum(DetalleVenta.cantidad)
+    importe = func.sum(DetalleVenta.subtotal + func.coalesce(DetalleVenta.impuesto_unitario, 0) * DetalleVenta.cantidad)
+    query = db.session.query(Categoria.id, Categoria.nombre, cantidad.label('cantidad'), importe.label('total')).select_from(DetalleVenta).join(
+        Venta, Venta.id == DetalleVenta.venta_id).join(Producto, Producto.id == DetalleVenta.producto_id).join(
+        Subcategoria, Subcategoria.id == Producto.subcategoria_id).join(Categoria, Categoria.id == Subcategoria.categoria_id).filter(
+        Venta.created_at >= inicio, Venta.created_at < fin)
+    if user.role != 'admin':
+        query = query.filter(Venta.sucursal_id.in_(allowed_branches(user)))
+    sucursal = request.args.get('sucursal_id')
+    if sucursal:
+        query = query.filter(Venta.sucursal_id == sucursal)
+    criterios = (cantidad.desc(), importe.desc()) if orden == 'cantidad' else (importe.desc(), cantidad.desc())
+    filas = query.group_by(Categoria.id, Categoria.nombre).order_by(*criterios, Categoria.nombre.asc(), Categoria.id.asc()).limit(10).all()
+    return jsonify({'categorias': [{'id': r.id, 'nombre': r.nombre, 'cantidad': int(r.cantidad), 'total': float(r.total)} for r in filas],
+                    'orden': orden, 'fecha_inicio': desde.isoformat(), 'fecha_fin': hasta.isoformat()})

@@ -91,3 +91,45 @@ Admin consulta todas las sucursales, asigna la comisión en pesos, pulsa «Aprob
 La migración `013_comisiones.py` crea la tabla y el interruptor. Se aplica con `.venv/bin/python railway_migrate.py`; Railway usa este mismo proceso antes de desplegar.
 
 Pruebas: `.venv/bin/python -m unittest discover -s tests -q` y `node tests/test_frontend_comisiones.js`. Validan permisos, sucursales, aprobación reversible, bloqueo global, importes y fecha CDMX, además de la lógica del formulario y del menú.
+
+## Accesos por usuario y sucursal
+
+En **Admin → Usuarios → Accesos**, selecciona las acciones de cada apartado y las sucursales permitidas. «Ver» es necesario para habilitar otras acciones del apartado. La sucursal principal siempre debe estar incluida. Los catálogos de productos, categorías y reparaciones son globales: sus permisos de edición afectan al catálogo compartido.
+
+Ejemplos:
+
+- **Solo entradas de inventario:** activa Inventario → Ver y Registrar entradas. No actives Ajustar stock, Eliminar ni Exportar. No necesita permiso para crear productos; el buscador de productos existentes está disponible como parte del formulario.
+- **Solo consultar cierres:** activa Consultar cierres de caja → Ver. No actives Realizar cierre de caja. Puede consultar los cierres de las sucursales asignadas sin modificar nada.
+- **Varias sucursales:** selecciona las sucursales adicionales. El selector superior permite elegir la sucursal activa para registrar ventas, cierres y comisiones. Los filtros de consulta solo ofrecen sucursales permitidas.
+
+Los administradores conservan acceso universal. La gestión de cuentas, sucursales y Características sigue siendo exclusiva de admin. Los empleados nuevos empiezan sin accesos: después de crearlos, configura sus permisos con el botón Accesos. La migración `014_permisos_usuario.py` deja los campos de usuarios existentes en NULL para conservar los accesos anteriores hasta que admin los configure explícitamente.
+
+El servidor comprueba permisos vigentes en cada petición, incluso con un token emitido anteriormente. Se valida la sucursal solicitada, el identificador de los registros y se restringen las consultas, relaciones y reportes a las sucursales asignadas. Los cambios de accesos se reflejan en el menú al recuperar el foco y cada 30 segundos; la API los aplica desde la siguiente petición. Desactivar Comisiones en Características tiene prioridad sobre el permiso individual.
+
+Se mantienen las reglas propias de cada operación: comisiones aprobadas bloqueadas, edición de comisiones solo por quien capturó y correcciones de cierre limitadas a una hora. La importación que modifica existencias requiere también Ajustar stock; Registrar entradas no permite modificar el mínimo de stock.
+
+Pruebas específicas: `.venv/bin/python -m unittest discover -s tests -p test_permisos.py -v` y `node tests/test_frontend_permisos.js`. La revisión 014 se aplica con el mismo `railway_migrate.py` que ejecuta Railway antes del despliegue.
+
+## Apartados
+
+Migración `015_apartados.py` (local aplicada; Railway la ejecuta con el proceso normal de migración).
+
+- Admin conserva acceso y puede consultar todas las sucursales. Los empleados solo consultan y operan apartados de su sucursal principal, aunque tengan acceso a otras en otros módulos.
+- Habilitar en Administración → Características → Apartados. Después asignar en Usuarios → Accesos: Ver, Crear, Registrar abonos y Marcar entregada. Cancelar y registrar la devolución de dinero son exclusivos de admin.
+- Campos: cliente, teléfono, empleado (texto abierto), sucursal, varios productos/cantidades, precio final capturado manualmente, anticipo, desglose efectivo/tarjeta/transferencia (combinables), observaciones y plazo de 15/30/45 días. Fechas CDMX. La cuenta real del usuario queda registrada en cada movimiento.
+- Reservar disminuye `stocks.cantidad` (unidades disponibles) y aumenta `stocks.reservado`. Se permite registrar con existencias parciales o nulas; solo se reservan las unidades disponibles. Los faltantes iniciales se guardan por producto y solo se exponen a admin. Entregar requiere saldo cero, libera las unidades reservadas y descuenta únicamente las unidades adicionales disponibles, sin generar stock negativo. Se permite entregar aunque falten existencias registradas. La marca de faltantes iniciales se conserva para admin. La fecha y hora de entrega del historial se muestran en CDMX a empleado y admin, también para entregas anteriores. Cancelar devuelve únicamente las unidades efectivamente reservadas a disponibilidad y registra el motivo y dinero devuelto. Vencer no cancela ni libera inventario.
+- Los anticipos y abonos permanecen fuera de ventas y caja hasta la entrega. Al entregar se crea una venta del día (CDMX) en la sucursal del apartado, atribuida al usuario que entrega, con todos los pagos acumulados; entra al corte como una venta normal. Dos o más métodos generan pago mixto, y un solo método conserva su tipo. La entrega, la venta y la liberación de reserva se guardan en una transacción y no pueden repetirse. La cancelación anterior a la entrega no genera venta ni movimientos de caja. La devolución registrada es constancia; no ejecuta transferencias bancarias. El historial muestra las cantidades devueltas; el abonado conserva los cobros originales.
+- El precio inicia vacío y se captura manualmente para cada producto. Es el precio final por unidad, sin agregar impuestos del catálogo. Un cambio posterior del precio del catálogo no modifica el acuerdo. Para cambios de productos se cancela mediante admin y se crea un apartado nuevo; no hay edición destructiva del historial.
+- Las ventas normales no pueden consumir unidades reservadas. Cuando existen reservas y la cantidad disponible es insuficiente, se rechaza la venta de esa cantidad. Se bloquean filas de stock durante reservas y ventas; no se permite eliminar un registro de stock que tenga reservas.
+
+Pruebas:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p test_apartados.py
+.venv/bin/python -m unittest discover -s tests -p test_migration_operacion.py
+node tests/test_frontend_apartados.js
+```
+
+Admin dispone de la sección «Registrados sin existencias» en Apartados, con faltantes iniciales por producto. Empleados no reciben estos campos en la API ni ven la sección. No requiere otra migración: los datos se conservan en el detalle JSON; los apartados anteriores mantienen su reserva completa.
+
+Este cambio aplica a nuevas entregas. No convierte automáticamente los apartados que ya estaban entregados antes de activarlo, para no alterar cortes históricos. El detalle muestra el ID de la venta creada.

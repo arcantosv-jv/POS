@@ -11,6 +11,7 @@ const sandbox = {
     } }
 };
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/permisos.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/components.js'), 'utf8') + '\nthis.view = VentasView;', sandbox);
 function instance() {
     const obj = { ...sandbox.view.data(), userRole: 'empleado', token: 'test', $refs: {} };

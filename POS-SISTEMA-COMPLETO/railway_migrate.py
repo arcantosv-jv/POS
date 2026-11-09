@@ -13,7 +13,7 @@ def _legacy_schema_matches_current_models():
     missing = []
 
     for table in db.metadata.sorted_tables:
-        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones'}:
+        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados'}:
             continue
         if not inspector.has_table(table.name):
             missing.append(f'{table.name} (tabla)')
@@ -22,6 +22,8 @@ def _legacy_schema_matches_current_models():
         existing_columns = {column['name'] for column in inspector.get_columns(table.name)}
         for column in table.columns:
             additions = {
+                'stocks': {'reservado'},
+                'users': {'permisos', 'sucursales_permitidas'},
                 'cierres_caja': {'closed_at', 'egreso', 'concepto_egreso', 'egresos', 'reembolsos_efectivo', 'efectivo_inicial'},
                 'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},
                 'ventas': {'cierre_caja_id'},
@@ -74,15 +76,17 @@ def main():
         if not _legacy_schema_matches_current_models():
             raise RuntimeError('El esquema no coincide con los modelos')
         for table, required in {
+            'stocks': {'reservado'},
+                'users': {'permisos', 'sucursales_permitidas'},
             'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},
                 'ventas': {'cierre_caja_id'},
             'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
         }.items():
             if required - {c['name'] for c in inspector.get_columns(table)}:
                 raise RuntimeError('Migración incompleta: ' + table)
-        if 'comisiones_habilitadas' not in {c['name'] for c in inspector.get_columns('configuracion_sistema')}:
+        if not {'comisiones_habilitadas', 'apartados_habilitados'}.issubset({c['name'] for c in inspector.get_columns('configuracion_sistema')}):
             raise RuntimeError('Migración incompleta: comisiones_habilitadas')
-        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones'):
+        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados'):
             if not inspector.has_table(table):
                 raise RuntimeError('Migración incompleta: ' + table)
 

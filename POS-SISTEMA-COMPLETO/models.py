@@ -22,6 +22,8 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
+    permisos = db.Column(db.JSON, nullable=True)
+    sucursales_permitidas = db.Column(db.JSON, nullable=True)
     role = db.Column(db.String(20), nullable=False, default='employee')  # admin, employee
     sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
@@ -44,6 +46,8 @@ class User(db.Model):
         return {
             'id': self.id,
             'username': self.username,
+            'permisos': self.permisos,
+            'sucursales_permitidas': self.sucursales_permitidas,
             'email': self.email,
             'role': self.role,
             'sucursal_id': self.sucursal_id,
@@ -166,6 +170,7 @@ class Producto(db.Model):
         return data
 
 class Stock(db.Model):
+    reservado = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     """Modelo de stock de producto por sucursal"""
     __tablename__ = 'stocks'
     
@@ -611,6 +616,7 @@ class CompatibilidadVerificada(db.Model):
 
 
 class ConfiguracionSistema(db.Model):
+    apartados_habilitados = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     __tablename__ = 'configuracion_sistema'
     id = db.Column(db.Integer, primary_key=True)
     comisiones_habilitadas = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
@@ -640,3 +646,34 @@ class Comision(db.Model):
                     metodo_pago=self.metodo_pago, nombre_empleado=self.nombre_empleado,
                     monto_comision=float(self.monto_comision) if self.monto_comision is not None else None,
                     aprobada=self.aprobada, created_at=fecha.isoformat())
+
+
+class Apartado(db.Model):
+    __tablename__ = 'apartados'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False, index=True)
+    creado_por_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    cliente = db.Column(db.String(150), nullable=False)
+    telefono = db.Column(db.String(40), nullable=False)
+    empleado = db.Column(db.String(150), nullable=False)
+    observaciones = db.Column(db.Text, nullable=False, default='')
+    plazo = db.Column(db.Integer, nullable=False)
+    fecha = db.Column(db.Date, nullable=False)
+    vence = db.Column(db.Date, nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default='pendiente')
+    total = db.Column(db.Numeric(10, 2), nullable=False)
+    abonado = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    productos = db.Column(db.JSON, nullable=False)
+    movimientos = db.Column(db.JSON, nullable=False, default=list)
+    sucursal = db.relationship('Sucursal')
+
+    def to_dict(self):
+        return dict(id=self.id, folio='AP-' + self.id[:8].upper(), sucursal_id=self.sucursal_id,
+                    sucursal=self.sucursal.nombre, cliente=self.cliente, telefono=self.telefono,
+                    empleado=self.empleado, observaciones=self.observaciones, plazo=self.plazo,
+                    fecha=self.fecha.isoformat(), vence=self.vence.isoformat(), estado=self.estado,
+                    vencido=self.estado in ('pendiente', 'liquidado') and get_cdmx_now().date() > self.vence,
+                    total=float(self.total), abonado=float(self.abonado), restante=float(self.total-self.abonado),
+                    venta_id=next((m.get('venta_id') for m in self.movimientos if m.get('tipo') == 'entregar'), None),
+                    fecha_entrega=next((m['fecha'] for m in self.movimientos if m.get('tipo') == 'entregar'), None),
+                    productos=self.productos, movimientos=self.movimientos)

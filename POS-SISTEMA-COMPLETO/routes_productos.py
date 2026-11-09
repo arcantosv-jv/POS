@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Producto, Categoria, Subcategoria, Stock, Sucursal
@@ -13,7 +14,7 @@ def admin_required(fn):
     def wrapper(*args, **kwargs):
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-        if not user or user.role != 'admin':
+        if not user or (user.role != 'admin' and not delegated_access()):
             return jsonify({'error': 'Acceso denegado'}), 403
         return fn(*args, **kwargs)
     return wrapper
@@ -482,3 +483,7 @@ def delete_producto(producto_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+productos_bp.before_request(authorize_request)

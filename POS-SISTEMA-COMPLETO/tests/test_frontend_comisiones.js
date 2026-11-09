@@ -7,13 +7,14 @@ const calls = [];
 const sandbox = { console, Intl, Date, Event: class {}, confirm: () => true,
     Vue: { createApp(config) { root = config; return { mount() {} }; } },
     window: { location: { origin: '' }, scrollTo() {}, dispatchEvent() {} },
-    axios: { async get(url) { return { data: url.includes('acceso') ? { comisiones_habilitadas: enabled } : { comisiones: [] } }; },
+    axios: { async get(url) { return { data: url.includes('mi-acceso') ? { role: 'employee', permisos: { comisiones: ['ver'], ventas: ['ver'] }, sucursales: [] } : url.includes('acceso') ? { comisiones_habilitadas: enabled } : { comisiones: [] } }; },
         async post(url, data) { calls.push({ url, data }); return { data: {} }; },
         async put(url, data) { calls.push({ url, data }); return { data: {} }; },
         async delete(url) { calls.push({ url }); return { data: {} }; } }
 };
 vm.createContext(sandbox);
-for (const file of ['components.js', 'comisiones.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/permisos.js'), 'utf8'), sandbox);
+for (const file of ['components.js', 'comisiones.js', 'apartados.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
 vm.runInContext('this.comisiones = ComisionesView;', sandbox);
 function instance(component) {
     const obj = { ...component.data(), token: 'test', userRole: 'employee', userId: 'employee' };
@@ -28,7 +29,7 @@ function instance(component) {
     app.irAVista('comisiones'); assert.equal(app.currentView, 'ventas');
     enabled = true; await app.cargarAcceso(); app.irAVista('comisiones');
     assert.equal(app.currentView, 'comisiones');
-    app.userRole = 'admin'; enabled = false; await app.cargarAcceso();
+    enabled = false; await app.cargarAcceso(); app.userRole = 'admin'; app.irAVista('comisiones');
     assert.equal(app.currentView, 'comisiones');
     const view = instance(sandbox.comisiones);
     view.formulario = { dispositivo: 'Tablet', costo: '1000', metodo_pago: 'tarjeta', nombre_empleado: 'Jazmin' };

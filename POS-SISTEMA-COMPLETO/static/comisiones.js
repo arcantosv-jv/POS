@@ -6,7 +6,7 @@ const ComisionesView = {
             <p class="cash-register-help">Registro independiente de ventas y cierre de caja. Fechas y horarios de Ciudad de México.</p>
             <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
             <p v-if="mensaje" class="alert alert-success" role="status">{{ mensaje }}</p>
-            <form v-if="userRole !== 'admin'" @submit.prevent="guardar" class="cash-register-form">
+            <form v-if="userRole !== 'admin' && ($root.puede('comisiones', 'crear') || (editandoId && $root.puede('comisiones', 'editar')))" @submit.prevent="guardar" class="cash-register-form">
                 <h3>{{ editandoId ? 'Editar registro' : 'Registrar comisión' }}</h3>
                 <fieldset :disabled="guardando || cargando" class="commission-form">
                     <div class="form-group"><label for="com-dispositivo">Dispositivo *</label><select id="com-dispositivo" v-model="formulario.dispositivo" required><option value="" disabled>Selecciona una opción</option><option>Celular</option><option>Tablet</option></select></div>
@@ -28,7 +28,7 @@ const ComisionesView = {
                     <button v-if="!registro.aprobada" class="btn btn-success" @click="revisar(registro, true)" :disabled="guardando">Aprobada</button>
                     <button v-else class="btn btn-secondary" @click="revisar(registro, false)" :disabled="guardando">Quitar aprobación</button>
                 </div>
-                <div v-else-if="!registro.aprobada && registro.creado_por_id === userId"><button class="btn btn-secondary btn-sm" @click="editar(registro)" :disabled="guardando">Editar</button> <button class="btn btn-danger btn-sm" @click="eliminar(registro)" :disabled="guardando">Eliminar</button></div>
+                <div v-else-if="!registro.aprobada && registro.creado_por_id === userId"><button v-if="$root.puede('comisiones', 'editar')" class="btn btn-secondary btn-sm" @click="editar(registro)" :disabled="guardando">Editar</button> <button v-if="$root.puede('comisiones', 'eliminar')" class="btn btn-danger btn-sm" @click="eliminar(registro)" :disabled="guardando">Eliminar</button></div>
             </article>
         </section>
     `,

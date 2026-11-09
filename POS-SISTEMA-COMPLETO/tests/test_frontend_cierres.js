@@ -7,6 +7,7 @@ const sandbox = { Vue: {}, console, Intl, Date, alert() {}, window: { location: 
     axios: { async post(url, data) { calls.push({ url, data }); return { data: { cierre: { id: 'nuevo', estado: url.endsWith('/nuevo') ? 'abierto' : 'cerrado' } } }; } }
 };
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/permisos.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/components.js'), 'utf8') + '\nthis.views = { CierreCajaView, CierresCajaAdminView };', sandbox);
 function instance(name) {
     const component = sandbox.views[name];

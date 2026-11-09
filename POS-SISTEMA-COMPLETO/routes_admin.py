@@ -25,7 +25,12 @@ def admin_required(fn):
 def get_sucursales_publico():
     """Obtener todas las sucursales (acceso público para empleados y admins)"""
     try:
-        sucursales = Sucursal.query.all()  # Devolver todas las sucursales, activas e inactivas
+        user = db.session.get(User, get_jwt_identity())
+        query = Sucursal.query
+        if user.role != 'admin':
+            from permissions import allowed_branches
+            query = query.filter(Sucursal.id.in_(allowed_branches(user)))
+        sucursales = query.all()
         return jsonify([s.to_dict() for s in sucursales]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -191,7 +196,11 @@ def update_usuario(usuario_id):
             usuario.email = data['email']
         
         if 'sucursal_id' in data and usuario.role == 'employee':
+            if not Sucursal.query.filter_by(id=data['sucursal_id'], is_active=True).first():
+                return jsonify({'error': 'Sucursal inválida'}), 400
             usuario.sucursal_id = data['sucursal_id']
+            if usuario.sucursales_permitidas is not None:
+                usuario.sucursales_permitidas = list(dict.fromkeys(usuario.sucursales_permitidas + [usuario.sucursal_id]))
         
         if 'is_active' in data:
             usuario.is_active = data['is_active']
@@ -248,3 +257,7 @@ def reset_usuario_password(usuario_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+admin_bp.before_request(authorize_request)

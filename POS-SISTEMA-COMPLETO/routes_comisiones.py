@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 """Registro independiente de comisiones; sin movimientos de ventas o caja."""
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -13,7 +14,7 @@ def usuario_autorizado():
     user = db.session.get(User, get_jwt_identity())
     if not user or user.role not in ('admin', 'employee'):
         return None, (jsonify({'error': 'Acceso denegado'}), 403)
-    if user.role != 'admin' and (not user.sucursal_id or not comisiones_habilitadas()):
+    if user.role != 'admin' and (not current_branch(user) or not comisiones_habilitadas()):
         return None, (jsonify({'error': 'Comisiones no está habilitado para empleados'}), 403)
     return user, None
 
@@ -37,8 +38,8 @@ def registros():
         return error
     if request.method == 'GET':
         query = Comision.query
-        if user.role != 'admin':
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+        if user.role != 'admin' and not delegated_access():
+            query = query.filter_by(sucursal_id=current_branch(user))
         response = jsonify({'comisiones': [c.to_dict() for c in query.order_by(Comision.created_at.desc(), Comision.id).all()]})
         response.headers['Cache-Control'] = 'no-store'
         return response
@@ -48,7 +49,7 @@ def registros():
         data = request.get_json(silent=True)
         if not isinstance(data, dict):
             raise ValueError('Registro inválido')
-        registro = Comision(**datos_registro(data), sucursal_id=user.sucursal_id, creado_por_id=user.id, created_at=get_cdmx_now())
+        registro = Comision(**datos_registro(data), sucursal_id=current_branch(user), creado_por_id=user.id, created_at=get_cdmx_now())
         db.session.add(registro)
         db.session.commit()
         return jsonify(registro.to_dict()), 201
@@ -64,8 +65,8 @@ def modificar(registro_id):
     if error:
         return error
     query = Comision.query.filter_by(id=registro_id)
-    if user.role != 'admin':
-        query = query.filter_by(sucursal_id=user.sucursal_id)
+    if user.role != 'admin' and not delegated_access():
+        query = query.filter_by(sucursal_id=current_branch(user))
     registro = query.with_for_update().first()
     if not registro:
         return jsonify({'error': 'Registro no encontrado'}), 404
@@ -102,3 +103,7 @@ def modificar(registro_id):
             return jsonify({'error': str(exc)}), 400
     db.session.commit()
     return jsonify(registro.to_dict())
+
+
+from permissions import authorize_request
+comisiones_bp.before_request(authorize_request)

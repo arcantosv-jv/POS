@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Producto, Subcategoria, Categoria, Stock, Sucursal
@@ -14,7 +15,7 @@ def importar_productos():
         user = User.query.get(user_id)
         
         # Solo admin puede importar
-        if user.role != 'admin':
+        if user.role != 'admin' and not delegated_access():
             return jsonify({'error': 'Acceso denegado'}), 403
         
         data = request.get_json()
@@ -53,7 +54,45 @@ def importar_productos():
                 # Verificar si el producto ya existe
                 producto_existente = Producto.query.filter_by(codigo=codigo).first()
                 
+                # Resolver clasificación también al actualizar productos existentes.
+                if subcategoria_nombre and not categoria_nombre:
+                    raise ValueError('Indica la categoría junto con la subcategoría')
+                subcategoria = None
+                if categoria_nombre or not producto_existente:
+                    # Crear categoría si no existe
+                    categoria = None
+                    if categoria_nombre:
+                        categoria = Categoria.query.filter_by(nombre=categoria_nombre).first()
+                        if not categoria:
+                            categoria = Categoria(nombre=categoria_nombre, descripcion=f'Categoría {categoria_nombre}')
+                            db.session.add(categoria)
+                            db.session.flush()
+                    else:
+                        # Si no hay categoría, usar General
+                        categoria = Categoria.query.filter_by(nombre='General').first()
+                        if not categoria:
+                            categoria = Categoria(nombre='General', descripcion='Categoría General')
+                            db.session.add(categoria)
+                            db.session.flush()
+
+                    # Crear subcategoría si no existe
+                    subcategoria = Subcategoria.query.filter_by(
+                        nombre=subcategoria_nombre or categoria.nombre,
+                        categoria_id=categoria.id
+                    ).first()
+
+                    if not subcategoria:
+                        subcategoria = Subcategoria(
+                            nombre=subcategoria_nombre or categoria.nombre,
+                            descripcion=f'Subcategoría {subcategoria_nombre}',
+                            categoria_id=categoria.id
+                        )
+                        db.session.add(subcategoria)
+                        db.session.flush()
+
                 if producto_existente:
+                    if subcategoria is not None:
+                        producto_existente.subcategoria_id = subcategoria.id
                     # Actualizar precio si es diferente
                     if precio > 0:
                         producto_existente.precio = precio
@@ -63,7 +102,7 @@ def importar_productos():
                         stock = Stock.query.filter_by(
                             producto_id=producto_existente.id,
                             sucursal_id=sucursal_id
-                        ).first()
+                        ).with_for_update().first()
                         
                         if stock:
                             stock.cantidad = stock_cantidad
@@ -78,37 +117,6 @@ def importar_productos():
                     db.session.commit()
                     importados += 1
                     continue
-                
-                # Crear categoría si no existe
-                categoria = None
-                if categoria_nombre:
-                    categoria = Categoria.query.filter_by(nombre=categoria_nombre).first()
-                    if not categoria:
-                        categoria = Categoria(nombre=categoria_nombre, descripcion=f'Categoría {categoria_nombre}')
-                        db.session.add(categoria)
-                        db.session.flush()
-                else:
-                    # Si no hay categoría, usar General
-                    categoria = Categoria.query.filter_by(nombre='General').first()
-                    if not categoria:
-                        categoria = Categoria(nombre='General', descripcion='Categoría General')
-                        db.session.add(categoria)
-                        db.session.flush()
-                
-                # Crear subcategoría si no existe
-                subcategoria = Subcategoria.query.filter_by(
-                    nombre=subcategoria_nombre,
-                    categoria_id=categoria.id
-                ).first()
-                
-                if not subcategoria:
-                    subcategoria = Subcategoria(
-                        nombre=subcategoria_nombre,
-                        descripcion=f'Subcategoría {subcategoria_nombre}',
-                        categoria_id=categoria.id
-                    )
-                    db.session.add(subcategoria)
-                    db.session.flush()
                 
                 # Crear producto
                 producto = Producto(
@@ -136,6 +144,7 @@ def importar_productos():
                 importados += 1
             
             except ValueError as e:
+                db.session.rollback()
                 errores.append(f"Error en producto {prod.get('nombre', 'desconocido')}: {str(e)}")
             except Exception as e:
                 db.session.rollback()
@@ -159,3 +168,7 @@ def importar_productos():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+importar_bp.before_request(authorize_request)

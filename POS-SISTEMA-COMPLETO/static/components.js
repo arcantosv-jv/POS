@@ -1,3 +1,35 @@
+// CSV con comillas, comas internas y saltos de línea dentro de campos.
+function leerCSVProductos(texto) {
+    const filas = [];
+    let fila = [], campo = '', entreComillas = false, cerrada = false;
+    const agregarCampo = () => { fila.push(campo.trim()); campo = ''; cerrada = false; };
+    texto = texto.replace(/^\uFEFF/, '');
+    for (let i = 0; i < texto.length; i++) {
+        const c = texto[i];
+        if (entreComillas) {
+            if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+            else if (c === '"') { entreComillas = false; cerrada = true; }
+            else campo += c;
+        } else if (c === ',') agregarCampo();
+        else if (c === '\n' || c === '\r') {
+            agregarCampo();
+            if (fila.some(valor => valor !== '')) filas.push(fila);
+            fila = [];
+            if (c === '\r' && texto[i + 1] === '\n') i++;
+        } else if (c === '"' && !campo.trim() && !cerrada) { campo = ''; entreComillas = true; }
+        else if (c === '"' || (cerrada && c.trim())) throw new Error('CSV inválido: revisa las comillas de los campos.');
+        else campo += c;
+    }
+    if (entreComillas) throw new Error('CSV inválido: hay comillas sin cerrar.');
+    agregarCampo();
+    if (fila.some(valor => valor !== '')) filas.push(fila);
+    if (!filas.length) throw new Error('El CSV está vacío.');
+    filas.forEach((valores, indice) => {
+        if (valores.length !== filas[0].length) throw new Error(`Registro ${indice + 1}: número de columnas incorrecto. Revisa las comas y comillas.`);
+    });
+    return filas;
+}
+
 const { ref, reactive, computed, watch } = Vue;
 
 // Panel global: productos recientes, competencia mensual u oculto.
@@ -82,6 +114,7 @@ const CaracteristicasView = {
                 <legend>Comisiones</legend>
                 <label><input type="checkbox" v-model="comisionesHabilitadas"><span><strong>Habilitar Comisiones para empleados</strong><small>Permite registrar y consultar las comisiones de su sucursal. Admin conserva el acceso aunque esté desactivado.</small></span></label>
             </fieldset>
+            <fieldset :disabled="cargando || guardando || !disponible" class="features-options"><legend>Apartados</legend><label><input type="checkbox" v-model="apartadosHabilitados"><span><strong>Habilitar Apartados para empleados</strong><small>Requiere permisos en Usuarios → Accesos. Admin conserva acceso.</small></span></label></fieldset>
             <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
             <p v-if="mensaje" class="alert alert-success" role="status">{{ mensaje }}</p>
             <button class="btn btn-primary" @click="guardar" :disabled="cargando || guardando || !disponible">{{ guardando ? 'Guardando…' : 'Guardar configuración' }}</button>
@@ -89,13 +122,13 @@ const CaracteristicasView = {
             <p class="cash-register-help">Los cambios se reflejan al abrir Ventas o, en pantallas abiertas, en un máximo de 30 segundos.</p>
         </section>
     `,
-    data() { return { modo: 'productos', comisionesHabilitadas: false, cargando: true, guardando: false, disponible: false, error: '', mensaje: '' }; },
+    data() { return { modo: 'productos', apartadosHabilitados: false, comisionesHabilitadas: false, cargando: true, guardando: false, disponible: false, error: '', mensaje: '' }; },
     methods: {
         async cargar() {
             this.cargando = true; this.error = ''; this.disponible = false;
             try {
                 const res = await axios.get('/api/caracteristicas', { headers: { Authorization: `Bearer ${this.token}` } });
-                this.modo = res.data.panel_ventas; this.comisionesHabilitadas = !!res.data.comisiones_habilitadas; this.disponible = true;
+                this.apartadosHabilitados = !!res.data.apartados_habilitados; this.modo = res.data.panel_ventas; this.comisionesHabilitadas = !!res.data.comisiones_habilitadas; this.disponible = true;
             } catch (err) { this.error = err.response?.data?.error || 'No se pudo cargar la configuración'; }
             finally { this.cargando = false; }
         },
@@ -103,7 +136,7 @@ const CaracteristicasView = {
             if (this.guardando || !this.disponible) return;
             this.guardando = true; this.error = ''; this.mensaje = '';
             try {
-                await axios.put('/api/caracteristicas', { panel_ventas: this.modo, comisiones_habilitadas: this.comisionesHabilitadas }, { headers: { Authorization: `Bearer ${this.token}` } });
+                await axios.put('/api/caracteristicas', { panel_ventas: this.modo, apartados_habilitados: this.apartadosHabilitados, comisiones_habilitadas: this.comisionesHabilitadas }, { headers: { Authorization: `Bearer ${this.token}` } });
                 this.mensaje = 'Configuración guardada para todas las sucursales.';
                 window.dispatchEvent(new Event('caracteristicas-actualizadas'));
             } catch (err) { this.error = err.response?.data?.error || 'No se pudo guardar la configuración'; }
@@ -145,7 +178,7 @@ const VentasView = {
                         </div>
                         
                         <div v-if="searchResults.length > 0" class="search-results">
-                            <div 
+                            <div v-if="$root.puede('ventas', 'crear')"
                                 v-for="producto in searchResults" 
                                 :key="producto.id"
                                 class="search-result-item"
@@ -178,7 +211,7 @@ const VentasView = {
                     </div>
                     
                     <div v-else style="max-height: auto; overflow-y: auto;">
-                        <div 
+                        <div v-if="$root.puede('ventas', 'crear')"
                             v-for="producto in productos.slice(0, 2)" 
                             :key="producto.id"
                             style="padding: 0.75rem; border-bottom: 1px solid var(--gray-200); cursor: pointer; transition: background-color 0.2s;"
@@ -354,7 +387,7 @@ const VentasView = {
                     </div>
                     <div class="modal-footer">
                         <button @click="mostrarModalPrecioFlexible = false" class="btn btn-secondary">Cancelar</button>
-                        <button @click="agregarProductoFlexibleAlCarrito" class="btn btn-success">Agregar al Carrito</button>
+                        <button v-if="$root.puede('ventas', 'crear')" @click="agregarProductoFlexibleAlCarrito" class="btn btn-success">Agregar al Carrito</button>
                     </div>
                 </div>
             </div>
@@ -735,13 +768,13 @@ const ProductosView = {
                 <div class="card-header">
                     <h3>Gestión de Productos</h3>
                     <div class="btn-group">
-                        <button @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
+                        <button v-if="$root.puede('productos', 'crear')" @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
                             {{ mostrarFormulario ? '← Ocultar' : '+ Nuevo Producto' }}
                         </button>
                         <button @click="abrirModalExportacion" class="btn btn-secondary" :disabled="loading || productos.length === 0">
                             📥 Exportar CSV
                         </button>
-                        <button @click="mostrarImportacion = !mostrarImportacion" class="btn btn-success">
+                        <button v-if="$root.puede('productos', 'importar')" @click="mostrarImportacion = !mostrarImportacion" class="btn btn-success">
                             📤 Importar Excel/CSV
                         </button>
                     </div>
@@ -789,7 +822,7 @@ const ProductosView = {
                     </div>
                     <div v-if="error" class="alert alert-danger">{{ error }}</div>
                     <div class="btn-group">
-                        <button @click="guardarProducto" class="btn btn-success">
+                        <button v-if="$root.puede('productos', 'crear') || $root.puede('productos', 'editar')" @click="guardarProducto" class="btn btn-success">
                             {{ editandoProductoId ? 'Actualizar' : 'Guardar' }} Producto
                         </button>
                         <button @click="cancelarEdicion" class="btn btn-secondary">Cancelar</button>
@@ -837,7 +870,7 @@ const ProductosView = {
                                 💡 Formato sugerido de archivo: <code style="background: var(--gray-100); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">productos_Sucursal_Centro.csv</code>
                             </small>
                         </div>
-                        <button @click="procesarImportacion" class="btn btn-success" :disabled="importandoProductos || !sucursalImportacion">
+                        <button v-if="$root.puede('productos', 'importar')" @click="procesarImportacion" class="btn btn-success" :disabled="importandoProductos || !sucursalImportacion">
                             <span v-if="!importandoProductos">✓ Importar Productos</span>
                             <span v-else><span class="spinner"></span> Procesando...</span>
                         </button>
@@ -917,14 +950,14 @@ const ProductosView = {
                                 <td>{{ obtenerSubcategoria(producto) }}</td>
                                 <td>
                                     <span v-if="producto.precio && producto.precio > 0">\${{ producto.precio }}</span>
-                                    <button v-else @click="abrirModalPrecio(producto)" class="btn btn-warning btn-sm" style="background-color: #ffc107; color: #000;">
+                                    <button v-if="$root.puede('productos', 'editar')" v-else @click="abrirModalPrecio(producto)" class="btn btn-warning btn-sm" style="background-color: #ffc107; color: #000;">
                                         ⚠ Sin precio
                                     </button>
                                 </td>
                                 <td>{{ producto.impuesto }}%</td>
                                 <td>
-                                    <button class="btn btn-primary btn-sm" @click="editarProducto(producto)">Editar</button>
-                                    <button class="btn btn-danger btn-sm" @click="eliminarProducto(producto.id)">Eliminar</button>
+                                    <button v-if="$root.puede('productos', 'editar')" class="btn btn-primary btn-sm" @click="editarProducto(producto)">Editar</button>
+                                    <button v-if="$root.puede('productos', 'eliminar')" class="btn btn-danger btn-sm" @click="eliminarProducto(producto.id)">Eliminar</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -991,7 +1024,7 @@ const ProductosView = {
                             <button @click="cerrarModalPrecio" class="btn" style="padding: 0.625rem 1.25rem;">
                                 Cancelar
                             </button>
-                            <button @click="guardarPrecio" class="btn btn-primary" style="padding: 0.625rem 1.25rem;">
+                            <button v-if="$root.puede('productos', 'editar')" @click="guardarPrecio" class="btn btn-primary" style="padding: 0.625rem 1.25rem;">
                                 Guardar Precio
                             </button>
                         </div>
@@ -1291,8 +1324,8 @@ const ProductosView = {
                 reader.onload = async (e) => {
                     try {
                         const csv = e.target.result;
-                        const lineas = csv.split('\n');
-                        const encabezados = lineas[0].split(',').map(h => h.trim());
+                        const lineas = leerCSVProductos(csv);
+                        const encabezados = lineas[0];
                         
                         // Encontrar índices de columnas - Soportar múltiples nombres
                         const idxCodigo = encabezados.findIndex(h => 
@@ -1364,10 +1397,7 @@ const ProductosView = {
                         }
                         
                         for (let i = 1; i < lineas.length; i++) {
-                            const linea = lineas[i].trim();
-                            if (!linea) continue;
-                            
-                            const valores = linea.split(',').map(v => v.trim().replace(/"/g, ''));
+                            const valores = lineas[i];
                             
                             const codigo = valores[idxCodigo]?.trim();
                             const nombre = valores[idxNombre]?.trim();
@@ -1384,8 +1414,8 @@ const ProductosView = {
                                             productosProcesados.push({
                                                 codigo,
                                                 nombre,
-                                                categoria: categoria || 'General',
-                                                subcategoria: subcategoria || categoria || '',
+                                                categoria,
+                                                subcategoria,
                                                 precio,
                                                 stock,
                                                 sucursal_id: sucCol.sucursal_id
@@ -1398,8 +1428,8 @@ const ProductosView = {
                                     productosProcesados.push({
                                         codigo,
                                         nombre,
-                                        categoria: categoria || 'General',
-                                        subcategoria: subcategoria || categoria || '',
+                                        categoria,
+                                        subcategoria,
                                         precio,
                                         stock,
                                         sucursal_id: this.sucursalImportacion
@@ -1551,10 +1581,10 @@ const InventarioView = {
                 <div class="card-header">
                     <h3>Gestión de Inventario</h3>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button @click="mostrarEntrada = !mostrarEntrada" class="btn btn-primary">
+                        <button v-if="$root.puede('inventario', 'entradas')" @click="mostrarEntrada = !mostrarEntrada; mensajeEntrada = ''" class="btn btn-primary">
                             {{ mostrarEntrada ? '← Ocultar' : '+ Registrar Entrada' }}
                         </button>
-                        <button @click="exportarInventario" class="btn btn-success">
+                        <button v-if="$root.puede('inventario', 'ver_stock') && $root.puede('inventario', 'exportar')" @click="exportarInventario" class="btn btn-success">
                             📥 Exportar Inventario
                         </button>
                     </div>
@@ -1566,8 +1596,8 @@ const InventarioView = {
                     <div class="grid grid-3">
                         <div class="form-group">
                             <label for="entrada-sucursal">Sucursal</label>
-                            <select v-model="entrada.sucursal_id" id="entrada-sucursal" name="entrada_sucursal" required>
-                                <option value="">Selecciona sucursal</option>
+                            <select v-model="entrada.sucursal_id" id="entrada-sucursal" name="entrada_sucursal" :disabled="userRole !== 'admin'" required>
+                                <option v-if="userRole === 'admin'" value="">Selecciona sucursal</option>
                                 <option v-for="suc in sucursales" :key="suc.id" :value="suc.id">
                                     {{ suc.nombre }}
                                 </option>
@@ -1604,7 +1634,7 @@ const InventarioView = {
                             <input v-model.number="entrada.cantidad" id="entrada-cantidad" name="entrada_cantidad" type="number" min="1" required>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div v-if="$root.puede('inventario', 'ajustar')" class="form-group">
                         <label for="entrada-cantidad-minima">Cantidad Mínima (default: 5)</label>
                         <input v-model.number="entrada.cantidad_minima" id="entrada-cantidad-minima" type="number" name="entrada_cantidad_minima" min="1" placeholder="5" />
                     </div>
@@ -1613,7 +1643,7 @@ const InventarioView = {
                         <textarea v-model="entrada.observaciones" id="entrada-observaciones" name="entrada_observaciones" rows="2"></textarea>
                     </div>
                     <div class="btn-group">
-                        <button @click="registrarEntrada" class="btn btn-success">{{ entrada.stock_id ? 'Actualizar Stock' : 'Registrar Entrada' }}</button>
+                        <button v-if="$root.puede('inventario', 'entradas') || $root.puede('inventario', 'ajustar')" @click="registrarEntrada" class="btn btn-success">{{ entrada.stock_id ? 'Actualizar Stock' : 'Registrar Entrada' }}</button>
                         <button @click="cancelarEdicion" class="btn btn-secondary">Cancelar</button>
                     </div>
                 </div>
@@ -1622,6 +1652,7 @@ const InventarioView = {
                     {{ mensajeEntrada }}
                 </div>
 
+                <template v-if="$root.puede('inventario', 'ver_stock')">
                 <!-- Tabla de stock por sucursal -->
                 <h4 style="margin-bottom: 1rem; margin-top: 2rem;">Stock Actual por Sucursal</h4>
                 
@@ -1748,8 +1779,8 @@ const InventarioView = {
                                 <td>\${{ stock.precio }}</td>
                                 <td>
                                     <div class="btn-group">
-                                        <button @click="editarStock(stock)" class="btn btn-primary btn-sm">✏️ Editar</button>
-                                        <button @click="eliminarStock(stock.id)" class="btn btn-danger btn-sm">🗑️ Eliminar</button>
+                                        <button v-if="$root.puede('inventario', 'ajustar')" @click="editarStock(stock)" class="btn btn-primary btn-sm">✏️ Editar</button>
+                                        <button v-if="$root.puede('inventario', 'eliminar')" @click="eliminarStock(stock.id)" class="btn btn-danger btn-sm">🗑️ Eliminar</button>
                                     </div>
                                 </td>
                             </tr>
@@ -1792,6 +1823,7 @@ const InventarioView = {
                         </div>
                     </div>
                 </div>
+                </template>
             </div>
         </div>
     `,
@@ -1834,9 +1866,9 @@ const InventarioView = {
         productosEncontrados() {
             if (!this.busquedaProductoEntrada) return [];
             return this.productos.filter(p => 
-                p.nombre.toLowerCase().includes(this.busquedaProductoEntrada.toLowerCase()) ||
-                p.codigo.toLowerCase().includes(this.busquedaProductoEntrada.toLowerCase())
-            ).slice(0, 5);
+                String(p.nombre || '').toLowerCase().includes(this.busquedaProductoEntrada.toLowerCase()) ||
+                String(p.codigo || '').toLowerCase().includes(this.busquedaProductoEntrada.toLowerCase())
+            );
         },
         totalPaginas() {
             return Math.ceil(this.stocks.length / this.itemsPorPagina);
@@ -1939,7 +1971,11 @@ const InventarioView = {
                 this.sucursales = Array.isArray(res.data) ? res.data.filter(s => s && s.nombre) : [];
                 console.log('[INVENTARIO] Sucursales después del filtro:', this.sucursales);
                 if (this.sucursales.length > 0) {
-                    this.entrada.sucursal_id = this.sucursales[0].id;
+                    const preferida = this.userRole === 'admin' ? this.$root.userSucursal : this.$root.sucursalPrincipal;
+                    const activa = this.sucursales.find(s => s.id === preferida) || (this.userRole === 'admin' ? this.sucursales[0] : null);
+                    if (!activa) return;
+                    this.entrada.sucursal_id = activa.id;
+                    this.sucursalSeleccionada = activa.id;
                 }
             } catch (err) {
                 console.error('[INVENTARIO] Error - Status:', err.response?.status);
@@ -1948,28 +1984,45 @@ const InventarioView = {
             }
         },
         async cargarStock() {
+            if (!this.$root.puede('inventario', 'ver_stock')) { this.stocks = []; return; }
+            const solicitud = this.solicitudStock = (this.solicitudStock || 0) + 1;
             this.cargandoStock = true;
             try {
-                const res = await axios.get(
-                    `${window.location.origin}/api/inventario/stock/${this.sucursalSeleccionada}?per_page=9999`,
+                const ids = this.sucursalSeleccionada ? [this.sucursalSeleccionada] : this.sucursales.map(s => s.id);
+                const respuestas = await Promise.all(ids.map(id => axios.get(
+                    `${window.location.origin}/api/inventario/stock/${id}?per_page=9999`,
                     { headers: { Authorization: `Bearer ${this.token}` } }
-                );
-                this.stocks = res.data.stocks || [];
+                )));
+                if (solicitud !== this.solicitudStock) return;
+                this.stocks = respuestas.flatMap(res => res.data.stocks || []);
+                this.paginaActual = 1;
             } catch (err) {
-                console.error(err);
+                if (solicitud !== this.solicitudStock) return;
+                this.stocks = [];
+                this.mensajeEntrada = 'No se pudo cargar el inventario: ' + (err.response?.data?.error || err.message);
+                this.tipoMensajeEntrada = 'danger';
             } finally {
-                this.cargandoStock = false;
+                if (solicitud === this.solicitudStock) this.cargandoStock = false;
             }
         },
         async cargarProductos() {
             try {
-                const res = await axios.get(
-                    `${window.location.origin}/api/productos?per_page=9999`,
-                    { headers: { Authorization: `Bearer ${this.token}` } }
-                );
-                this.productos = res.data.productos || [];
+                const productos = [];
+                let pagina = 1;
+                let paginas = 1;
+                do {
+                    const res = await axios.get(
+                        `${window.location.origin}/api/productos?per_page=1000&page=${pagina}`,
+                        { headers: { Authorization: `Bearer ${this.token}` } }
+                    );
+                    productos.push(...(res.data.productos || []));
+                    paginas = res.data.pages || 1;
+                    pagina += 1;
+                } while (pagina <= paginas);
+                this.productos = productos;
             } catch (err) {
-                console.error(err);
+                this.mensajeEntrada = 'No se pudo cargar el catálogo de productos: ' + (err.response?.data?.error || err.message);
+                this.tipoMensajeEntrada = 'danger';
             }
         },
         async registrarEntrada() {
@@ -1996,7 +2049,7 @@ const InventarioView = {
                 } else {
                     // Si es nueva entrada
                     const postData = {
-                        sucursal_id: this.entrada.sucursal_id,
+                        sucursal_id: this.userRole === 'admin' ? this.entrada.sucursal_id : this.$root.sucursalPrincipal,
                         producto_id: this.entrada.producto_id,
                         cantidad: this.entrada.cantidad,
                         observaciones: this.entrada.observaciones
@@ -2009,7 +2062,7 @@ const InventarioView = {
                         { headers: { Authorization: `Bearer ${this.token}` } }
                     );
                     
-                    this.mensajeEntrada = `✓ Entrada registrada. Nuevo stock: ${res.data.nuevo_stock}`;
+                    this.mensajeEntrada = this.$root.puede('inventario', 'ver_stock') ? `✓ Entrada registrada. Nuevo stock: ${res.data.nuevo_stock}` : '✓ Entrada registrada correctamente.';
                 }
                 
                 this.tipoMensajeEntrada = 'success';
@@ -2069,7 +2122,7 @@ const InventarioView = {
             }
         },
         cancelarEdicion() {
-            this.entrada = { sucursal_id: this.sucursales[0]?.id || '', producto_id: '', cantidad: 1, cantidad_minima: null, observaciones: '', stock_id: null };
+            this.entrada = { sucursal_id: (this.userRole === 'admin' ? this.entrada.sucursal_id : this.$root.sucursalPrincipal) || '', producto_id: '', cantidad: 1, cantidad_minima: null, observaciones: '', stock_id: null };
             this.busquedaProductoEntrada = '';
             this.mostrarEntrada = false;
         },
@@ -2155,12 +2208,7 @@ const InventarioView = {
             this.cargarProductos();
             this.cargarCategorias();
             this.cargarSubcategorias();
-            // Cargar stock con la sucursal por defecto (la primera que está seleccionada)
-            setTimeout(() => {
-                if (this.sucursalSeleccionada) {
-                    this.cargarStock();
-                }
-            }, 500);
+
         }
     },
     watch: {
@@ -2173,9 +2221,7 @@ const InventarioView = {
             }
         },
         sucursalSeleccionada() {
-            if (this.sucursalSeleccionada) {
-                this.cargarStock();
-            }
+            this.cargarStock();
         },
         categoriaSeleccionada() {
             // Cuando cambia la categoría, resetear subcategoría pero no filtrar automáticamente
@@ -2186,7 +2232,7 @@ const InventarioView = {
 
 // ============= COMPONENTE: REPORTES (Admin) =============
 const ReportesView = {
-    props: ['apiUrl', 'token', 'userRole'],
+    props: ['apiUrl', 'token', 'userRole', 'modo'],
     template: `
         <div>
             <div class="stats-grid">
@@ -2208,8 +2254,8 @@ const ReportesView = {
                 </div>
             </div>
 
-            <div class="grid grid-2" style="gap: 2rem;">
-                <div class="card">
+            <div class="grid" :class="{ 'grid-2': !modo }" style="gap: 2rem;">
+                <div v-if="!modo || modo === 'diario'" class="card">
                     <div class="card-header">
                         <h3>Reporte Diario</h3>
                     </div>
@@ -2229,7 +2275,7 @@ const ReportesView = {
                     </button>
                 </div>
 
-                <div class="card">
+                <div v-if="!modo || modo === 'mensual'" class="card">
                     <div class="card-header">
                         <h3>Reporte Mensual</h3>
                     </div>
@@ -2443,9 +2489,11 @@ const ReportesView = {
 
 // ============= COMPONENTE: USUARIOS (Admin) =============
 const UsuariosView = {
+    components: { 'permisos-usuario': PermisosUsuario },
     props: ['apiUrl', 'token', 'userRole'],
     template: `
         <div>
+            <permisos-usuario v-if="usuarioAccesos" :key="usuarioAccesos.id" :usuario="usuarioAccesos" :token="token" :sucursales="sucursales" @cerrar="usuarioAccesos = null" @guardado="usuarioAccesos = null; cargarUsuarios()"></permisos-usuario>
             <div class="card">
                 <div class="card-header">
                     <h3>Gestión de Usuarios</h3>
@@ -2490,6 +2538,7 @@ const UsuariosView = {
                         </div>
                     </div>
                     <div v-if="error" class="alert alert-danger" style="margin-bottom: 1rem;">{{ error }}</div>
+                    <p class="cash-register-help">Los empleados nuevos empiezan sin permisos. Después de guardar, usa el botón Accesos para habilitar sus apartados.</p>
                     <div class="btn-group">
                         <button @click="guardarUsuario" class="btn btn-success" :disabled="procesando">
                             <span v-if="!procesando">✓ Guardar Usuario</span>
@@ -2567,6 +2616,7 @@ const UsuariosView = {
                                 <td>{{ usuario.is_active ? '✓ Activo' : '✗ Inactivo' }}</td>
                                 <td>
                                     <div class="btn-group">
+                                        <button class="btn btn-secondary btn-sm" @click="usuarioAccesos = usuario">Accesos</button>
                                         <button class="btn btn-primary btn-sm" @click="editarUsuario(usuario)">✏️ Editar</button>
                                         <button class="btn btn-danger btn-sm" @click="desactivarUsuario(usuario.id)">🗑 Desactivar</button>
                                     </div>
@@ -2581,6 +2631,7 @@ const UsuariosView = {
     data() {
         return {
             usuarios: [],
+            usuarioAccesos: null,
             sucursales: [],
             mostrarFormulario: false,
             usuarioEditandoId: null,
@@ -3020,7 +3071,7 @@ const VentasSinStockView = {
                             Fecha Inicio
                         </label>
                         <input 
-                            v-model="filtros.fecha_inicio" 
+                            v-model="filtros.fecha_inicio"
                             type="date"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
                             @change="cargarDatos(1)"
@@ -3031,7 +3082,7 @@ const VentasSinStockView = {
                             Fecha Fin
                         </label>
                         <input 
-                            v-model="filtros.fecha_fin" 
+                            v-model="filtros.fecha_fin"
                             type="date"
                             style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem;"
                             @change="cargarDatos(1)"
@@ -3443,7 +3494,7 @@ const CategoriasView = {
                 <div class="card-header">
                     <h3>Gestión de Categorías</h3>
                     <div class="btn-group">
-                        <button @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
+                        <button v-if="$root.puede('categorias', 'crear')" @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
                             {{ mostrarFormulario ? '← Ocultar' : '+ Nueva Categoría' }}
                         </button>
                     </div>
@@ -3466,7 +3517,7 @@ const CategoriasView = {
                     <div v-if="error" class="alert alert-danger" style="margin-bottom: 1rem;">{{ error }}</div>
 
                     <div class="btn-group">
-                        <button @click="guardarCategoria" class="btn btn-success" :disabled="procesando">
+                        <button v-if="$root.puede('categorias', 'crear') || $root.puede('categorias', 'editar')" @click="guardarCategoria" class="btn btn-success" :disabled="procesando">
                             <span v-if="!procesando">✓ Guardar</span>
                             <span v-else><span class="spinner"></span> Guardando...</span>
                         </button>
@@ -3497,8 +3548,8 @@ const CategoriasView = {
                             <td>{{ categoria.descripcion || '-' }}</td>
                             <td>
                                 <div class="btn-group">
-                                    <button @click="editarCategoria(categoria)" class="btn btn-primary btn-sm">✏️ Editar</button>
-                                    <button @click="eliminarCategoria(categoria)" class="btn btn-danger btn-sm">🗑 Eliminar</button>
+                                    <button v-if="$root.puede('categorias', 'editar')" @click="editarCategoria(categoria)" class="btn btn-primary btn-sm">✏️ Editar</button>
+                                    <button v-if="$root.puede('categorias', 'eliminar')" @click="eliminarCategoria(categoria)" class="btn btn-danger btn-sm">🗑 Eliminar</button>
                                 </div>
                             </td>
                         </tr>
@@ -3655,7 +3706,7 @@ const SubcategoriasView = {
                 <div class="card-header">
                     <h3>Gestión de Subcategorías</h3>
                     <div class="btn-group">
-                        <button @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
+                        <button v-if="$root.puede('subcategorias', 'crear')" @click="mostrarFormulario = !mostrarFormulario" class="btn btn-primary">
                             {{ mostrarFormulario ? '← Ocultar' : '+ Nueva Subcategoría' }}
                         </button>
                     </div>
@@ -3687,7 +3738,7 @@ const SubcategoriasView = {
                     <div v-if="error" class="alert alert-danger" style="margin-bottom: 1rem;">{{ error }}</div>
 
                     <div class="btn-group">
-                        <button @click="guardarSubcategoria" class="btn btn-success" :disabled="procesando">
+                        <button v-if="$root.puede('subcategorias', 'crear') || $root.puede('subcategorias', 'editar')" @click="guardarSubcategoria" class="btn btn-success" :disabled="procesando">
                             <span v-if="!procesando">{{ nuevoFormulario.id ? '✓ Actualizar' : '✓ Guardar' }}</span>
                             <span v-else><span class="spinner"></span> Guardando...</span>
                         </button>
@@ -3720,8 +3771,8 @@ const SubcategoriasView = {
                             <td>{{ subcat.descripcion || '-' }}</td>
                             <td>
                                 <div class="btn-group">
-                                    <button @click="editarSubcategoria(subcat)" class="btn btn-primary btn-sm">✏️ Editar</button>
-                                    <button @click="eliminarSubcategoria(subcat)" class="btn btn-danger btn-sm">🗑 Eliminar</button>
+                                    <button v-if="$root.puede('subcategorias', 'editar')" @click="editarSubcategoria(subcat)" class="btn btn-primary btn-sm">✏️ Editar</button>
+                                    <button v-if="$root.puede('subcategorias', 'eliminar')" @click="eliminarSubcategoria(subcat)" class="btn btn-danger btn-sm">🗑 Eliminar</button>
                                 </div>
                             </td>
                         </tr>
@@ -3984,7 +4035,7 @@ const VentasDelDiaView = {
                                         </span>
                                     </div>
                                     <button 
-                                        v-if="ventaPagosEditables(venta)" 
+                                        v-if="ventaPagosEditables(venta) && $root.puede('ventas', 'editar_pagos')"
                                         class="btn btn-sm btn-outline-primary mt-2"
                                         @click="mostrarFormularioPago(venta)"
                                     >
@@ -4071,7 +4122,7 @@ const VentasDelDiaView = {
                     <!-- Action Buttons -->
                     <div style="display: flex; gap: 0.5rem;">
                         <button @click="ventaSeleccionada = null" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
-                        <button @click="guardarPagosMixtos" class="btn btn-success" style="flex: 1;" :disabled="calcularTotalPagos() !== parseFloat(ventaSeleccionada.total)">
+                        <button v-if="$root.puede('ventas', 'editar_pagos')" @click="guardarPagosMixtos" class="btn btn-success" style="flex: 1;" :disabled="calcularTotalPagos() !== parseFloat(ventaSeleccionada.total)">
                             ✓ Guardar Pagos
                         </button>
                     </div>
@@ -4245,7 +4296,7 @@ const CierreCajaView = {
                     <h3>Cierres de ayer que aún puedes corregir</h3>
                     <div v-for="anterior in cierre.cierres_editables_dia_anterior" :key="anterior.id" class="cash-close-card cash-shift-summary">
                         <strong>{{ anterior.fecha }} · {{ formatoHora(anterior.closed_at) }}</strong>
-                        <button type="button" class="btn btn-secondary btn-sm" @click="abrirEdicionCierre(anterior)">Editar cierre · hasta {{ formatoHora(anterior.editable_hasta) }}</button>
+                        <button v-if="$root.puede('cierre-caja', 'corregir')" type="button" class="btn btn-secondary btn-sm" @click="abrirEdicionCierre(anterior)">Editar cierre · hasta {{ formatoHora(anterior.editable_hasta) }}</button>
                     </div>
                 </section>
                 <section v-if="!loading && cierre && cierre.cierres_anteriores && cierre.cierres_anteriores.length" class="cash-shift-history" aria-label="Cierres anteriores de la sucursal">
@@ -4258,7 +4309,7 @@ const CierreCajaView = {
                             <span class="cash-register-help">Ver desglose</span>
                         </summary>
                         <detalle-turno-caja :cierre="anterior"></detalle-turno-caja>
-                        <button v-if="anterior.puede_corregir && !editandoCierre" type="button" class="btn btn-secondary btn-sm" @click="abrirEdicionCierre(anterior)">Editar cierre · hasta {{ formatoHora(anterior.editable_hasta) }}</button>
+                        <button v-if="(anterior.puede_corregir && !editandoCierre) && ($root.puede('cierre-caja', 'corregir'))" type="button" class="btn btn-secondary btn-sm" @click="abrirEdicionCierre(anterior)">Editar cierre · hasta {{ formatoHora(anterior.editable_hasta) }}</button>
                     </details>
                 </section>
                 <h3 v-if="!loading && cierre">Turno {{ cierre.numero_turno || 1 }} · {{ cierre.empleado_nombre }}</h3>
@@ -4388,7 +4439,7 @@ const CierreCajaView = {
                         <button type="button" class="btn btn-secondary btn-sm" @click="formulario.egresos.push({ monto: '', concepto: '', comprobante: '' })">+ Agregar egreso</button>
                         <p style="margin-top: 1rem;"><strong>Total de egresos: {{ formatoMoneda(totalEgresos(formulario)) }}</strong></p>
                     </section>
-                    <button 
+                    <button v-if="$root.puede('cierre-caja', 'cerrar')"
                         @click="guardarCierre" 
                         class="btn btn-success"
                         style="padding: 0.75rem 2rem; font-weight: 600; border-radius: 0.5rem; transition: all 0.3s ease;"
@@ -4411,7 +4462,7 @@ const CierreCajaView = {
                         <button 
                             @click="abrirEdicionCierre()"
                             class="btn btn-sm btn-warning"
-                            v-if="!editandoCierre && cierre.puede_corregir"
+                            v-if="(!editandoCierre && cierre.puede_corregir) && ($root.puede('cierre-caja', 'corregir'))"
                         >
                             ✏️ Editar
                         </button>
@@ -4421,7 +4472,7 @@ const CierreCajaView = {
                     <p class="cash-register-help" v-else>El plazo para modificar este cierre terminó. Solo se permiten cambios durante la primera hora.</p>
                     <div v-if="!editandoCierre" style="margin-top: 1.5rem;">
                         <p class="cash-register-help">Puedes realizar otro cierre hoy. Sus movimientos empezarán desde cero y conservará el efectivo reportado acumulado de la sucursal.</p>
-                        <button type="button" class="btn btn-primary" @click="iniciarOtroCierre" :disabled="iniciandoCierre || guardandoCierre">{{ iniciandoCierre ? 'Preparando…' : '+ Iniciar otro cierre de caja' }}</button>
+                        <button v-if="$root.puede('cierre-caja', 'cerrar')" type="button" class="btn btn-primary" @click="iniciarOtroCierre" :disabled="iniciandoCierre || guardandoCierre">{{ iniciandoCierre ? 'Preparando…' : '+ Iniciar otro cierre de caja' }}</button>
                     </div>
 
                     <!-- Modo edición para correcciones -->
@@ -4463,7 +4514,7 @@ const CierreCajaView = {
                         <button type="button" class="btn btn-secondary btn-sm" @click="formularioEdicion.egresos.push({ monto: '', concepto: '', comprobante: '' })">+ Agregar egreso</button>
                         <p style="margin-top: 1rem;"><strong>Total de egresos: {{ formatoMoneda(totalEgresos(formularioEdicion)) }}</strong></p>
                     </section>
-                    <button 
+                    <button v-if="$root.puede('cierre-caja', 'corregir')"
                             @click="guardarCorreccion" :disabled="guardandoCierre"
                             class="btn btn-primary btn-sm me-2"
                             style="padding: 0.5rem 1.5rem; font-weight: 600; border-radius: 0.375rem;"
@@ -4683,50 +4734,50 @@ const ReportesVentasView = {
     template: `
         <div class="card">
             <div class="card-header bg-info text-white">
-                <h5 class="mb-0">📊 Reportes de Ventas</h5>
+                <h5 class="mb-0">{{ modo === 'cierres' ? 'Cierres de caja' : 'Ventas y gráficas' }}</h5>
             </div>
             <div class="card-body">
                 <!-- Filtros mejorados y responsivos -->
-                <div class="filtros-container bg-light p-3 p-md-4 rounded mb-4">
-                    <h6 class="mb-3 text-muted fw-bold">🔍 Filtros de Búsqueda</h6>
-                    <div class="row g-2 g-md-3">
+                <div class="filtros-container reportes-filtros">
+                    <h6 class="reportes-filtros-titulo">Filtros de búsqueda</h6>
+                    <div class="reportes-filtros-grid">
                         <!-- Fecha Inicio -->
-                        <div class="col-12 col-md-6 col-lg-2">
-                            <label class="form-label small fw-500 text-secondary">📅 Desde</label>
+                        <div class="reportes-filtro">
+                            <label :for="'reporte-' + (modo || 'general') + '-desde'" class="form-label">Desde</label>
                             <input 
-                                v-model="filtros.fecha_inicio" 
+                                :id="'reporte-' + (modo || 'general') + '-desde'" v-model="filtros.fecha_inicio"
                                 type="date" 
                                 class="form-control form-control-fecha"
                                 @input="filtros.mes = ''"
                             >
                         </div>
                         <!-- Fecha Fin -->
-                        <div class="col-12 col-md-6 col-lg-2">
-                            <label class="form-label small fw-500 text-secondary">📅 Hasta</label>
+                        <div class="reportes-filtro">
+                            <label :for="'reporte-' + (modo || 'general') + '-hasta'" class="form-label">Hasta</label>
                             <input 
-                                v-model="filtros.fecha_fin" 
+                                :id="'reporte-' + (modo || 'general') + '-hasta'" v-model="filtros.fecha_fin"
                                 type="date" 
                                 class="form-control form-control-fecha"
                                 @input="filtros.mes = ''"
                             >
                         </div>
                         <!-- Mes completo -->
-                        <div class="col-12 col-md-6 col-lg-2">
-                            <label class="form-label small fw-500 text-secondary">📆 Mes completo</label>
-                            <input v-model="filtros.mes" type="month" class="form-control form-control-fecha" @change="aplicarMes">
+                        <div class="reportes-filtro">
+                            <label :for="'reporte-' + (modo || 'general') + '-mes'" class="form-label">Mes completo</label>
+                            <input :id="'reporte-' + (modo || 'general') + '-mes'" v-model="filtros.mes" type="month" class="form-control form-control-fecha" @change="aplicarMes">
                         </div>
                         <!-- Tipo Reporte -->
-                        <div class="col-12 col-md-6 col-lg-2">
-                            <label class="form-label small fw-500 text-secondary">📋 Tipo de Reporte</label>
-                            <select v-model="tipoReporte" class="form-select form-control-fecha">
+                        <div v-if="!modo" class="reportes-filtro">
+                            <label :for="'reporte-' + (modo || 'general') + '-tipo'" class="form-label">Tipo de Reporte</label>
+                            <select :id="'reporte-' + (modo || 'general') + '-tipo'" v-model="tipoReporte" class="form-select form-control-fecha">
                                 <option value="ventas">Ventas por Día</option>
                                 <option value="cierres">Cierres de Caja</option>
                             </select>
                         </div>
                         <!-- Sucursal -->
-                        <div class="col-12 col-md-6 col-lg-2">
-                            <label class="form-label small fw-500 text-secondary">Sucursal</label>
-                            <select v-model="filtros.sucursal_id" class="form-select form-control-fecha">
+                        <div class="reportes-filtro">
+                            <label :for="'reporte-' + (modo || 'general') + '-sucursal'" class="form-label">Sucursal</label>
+                            <select :id="'reporte-' + (modo || 'general') + '-sucursal'" v-model="filtros.sucursal_id" class="form-select form-control-fecha">
                                 <option value="">Todas las sucursales</option>
                                 <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">
                                     {{ sucursal.nombre }}
@@ -4734,7 +4785,7 @@ const ReportesVentasView = {
                             </select>
                         </div>
                         <!-- Botón -->
-                        <div class="col-12 col-md-6 col-lg-2 d-flex align-items-end">
+                        <div class="reportes-filtros-accion">
                             <button 
                                 @click="cargarReporte" 
                                 class="btn btn-primary w-100"
@@ -5090,10 +5141,10 @@ const ReportesVentasView = {
             </div>
         </div>
     `,
-    props: ['apiUrl', 'token', 'userRole'],
+    props: ['apiUrl', 'token', 'userRole', 'modo'],
     data() {
         return {
-            tipoReporte: 'ventas',
+            tipoReporte: this.modo || 'ventas',
             filtros: {
                 fecha_inicio: '',
                 fecha_fin: '',
@@ -5925,7 +5976,7 @@ const DevolucionesView = {
                                                                     <span v-else class="text-muted">-</span>
                                                                 </td>
                                                                 <td>
-                                                                    <button class="btn btn-sm btn-danger" 
+                                                                    <button v-if="$root.puede('devoluciones', 'crear')" class="btn btn-sm btn-danger"
                                                                             @click="mostrarModalDevolucion(venta, detalle)"
                                                                             :disabled="detalle.cantidad <= devoluciones.filter(d => d.detalle_venta_id === detalle.id).reduce((sum, d) => sum + d.cantidad_devuelta, 0)">
                                                                         Devolver
@@ -6021,7 +6072,7 @@ const DevolucionesView = {
                     <!-- Action Buttons -->
                     <div style="display: flex; gap: 0.5rem;">
                         <button @click="modalDevolucion = false" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
-                        <button @click="registrarDevolucion" class="btn btn-danger" style="flex: 1;" :disabled="loading || cantidadDevoluciones <= 0 || !!ventaSeleccionada.error_conciliacion">
+                        <button v-if="$root.puede('devoluciones', 'crear')" @click="registrarDevolucion" class="btn btn-danger" style="flex: 1;" :disabled="loading || cantidadDevoluciones <= 0 || !!ventaSeleccionada.error_conciliacion">
                             ↩️ Registrar Devolución
                         </button>
                     </div>
@@ -6064,7 +6115,7 @@ const DevolucionesView = {
                                     <td>{{ dev.usuario_nombre }}</td>
                                     <td>{{ formatoFecha(dev.created_at) }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-danger" @click="cancelarDevolucion(dev.id)">
+                                        <button v-if="$root.puede('devoluciones', 'eliminar')" class="btn btn-sm btn-outline-danger" @click="cancelarDevolucion(dev.id)">
                                             Revertir
                                         </button>
                                     </td>
@@ -6272,7 +6323,7 @@ const CompatibilidadView = {
                 </div>
                 
                 <div class="btn-group">
-                    <button 
+                    <button v-if="$root.puede('compatibilidad', 'buscar')"
                         @click="buscarCompatibilidad(false)" 
                         class="btn btn-primary"
                         :disabled="!modeloCelular || cargando"
@@ -6280,7 +6331,7 @@ const CompatibilidadView = {
                         {{ cargando ? '🔄 Buscando...' : '🔍 Buscar Compatibilidad' }}
                     </button>
                     <button @click="limpiar" class="btn btn-secondary">Limpiar</button>
-                    <button @click="buscarCompatibilidad(true)" class="btn btn-secondary" :disabled="cargando || !modeloCelular.trim()">Consultar nuevas sugerencias de IA</button>
+                    <button v-if="$root.puede('compatibilidad', 'buscar')" @click="buscarCompatibilidad(true)" class="btn btn-secondary" :disabled="cargando || !modeloCelular.trim()">Consultar nuevas sugerencias de IA</button>
                 </div>
             </div>
             
@@ -6318,8 +6369,8 @@ const CompatibilidadView = {
                                     </p>
                                     <p><strong>{{ mica.verificada ? 'Verificada por el personal' : 'Sin verificar físicamente' }}</strong></p>
                                     <p v-if="mica.verificada">{{ mica.notas }} · {{ mica.verificada_por }}</p>
-                                    <button v-if="!mica.verificada" class="btn btn-secondary btn-sm" @click="iniciarVerificacion(mica)">Registrar comprobación</button>
-                                    <button v-else-if="mica.puede_retirar" class="btn btn-secondary btn-sm" @click="retirarVerificacion(mica)" :disabled="guardandoVerificacion">Retirar verificación</button>
+                                    <button v-if="(!mica.verificada) && ($root.puede('compatibilidad', 'verificar'))" class="btn btn-secondary btn-sm" @click="iniciarVerificacion(mica)">Registrar comprobación</button>
+                                    <button v-if="$root.puede('compatibilidad', 'eliminar')" v-else-if="mica.puede_retirar" class="btn btn-secondary btn-sm" @click="retirarVerificacion(mica)" :disabled="guardandoVerificacion">Retirar verificación</button>
                                     <!-- Razón desactivada para simplificar los resultados.
                                     <p style="margin: 0.3rem 0; color: var(--gray-700);">
                                         <strong>Razón:</strong> {{ mica.razon }}
@@ -6357,7 +6408,7 @@ const CompatibilidadView = {
                 <div class="form-group"><label>Marca de la mica</label><input v-model="verificacion.marca" maxlength="100"></div>
                 <div class="form-group"><label>Resultado de la comprobación *</label><textarea v-model="verificacion.notas" rows="2" maxlength="2000" placeholder="Describe el ajuste y cualquier limitación"></textarea></div>
                 <label><input type="checkbox" v-model="verificacion.confirmada"> Confirmo que se comprobó físicamente la compatibilidad</label>
-                <button class="btn btn-success" style="margin-top: 1rem;" @click="guardarVerificacion" :disabled="guardandoVerificacion || !verificacion.confirmada">Guardar verificación</button>
+                <button v-if="$root.puede('compatibilidad', 'verificar')" class="btn btn-success" style="margin-top: 1rem;" @click="guardarVerificacion" :disabled="guardandoVerificacion || !verificacion.confirmada">Guardar verificación</button>
             </section>
             <section class="card" style="margin-top: 1.5rem;">
                 <h3>Historial de consultas</h3>
@@ -6535,7 +6586,7 @@ const ReparacionesView = {
     template: `
         <div style="padding: 1rem;">
             <!-- Sección Admin: Catálogos -->
-            <div v-if="userRoleLocal === 'admin'" style="margin-bottom: 2rem;">
+            <div v-if="$root.puede('reparaciones', 'catalogo')" style="margin-bottom: 2rem;">
                 <div class="tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--gray-300); margin-bottom: 1.5rem;">
                     <button 
                         v-for="tab in tabs" 
@@ -6771,7 +6822,7 @@ const ReparacionesView = {
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-header">
                     <h3>Catálogo de Reparaciones</h3>
-                    <button v-if="userRoleLocal === 'admin' && !editandoCatalogoId" @click="mostrarFormularioCatalogo = !mostrarFormularioCatalogo" class="btn btn-primary btn-sm">
+                    <button v-if="$root.puede('reparaciones', 'catalogo') && !editandoCatalogoId" @click="mostrarFormularioCatalogo = !mostrarFormularioCatalogo" class="btn btn-primary btn-sm">
                         {{ mostrarFormularioCatalogo ? 'Cancelar' : '+ Agregar al Catálogo' }}
                     </button>
                 </div>
@@ -6803,7 +6854,7 @@ const ReparacionesView = {
                     </div>
                 </div>
 
-                <div v-if="mostrarFormularioCatalogo && !editandoCatalogoId && userRoleLocal === 'admin'" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                <div v-if="mostrarFormularioCatalogo && !editandoCatalogoId && $root.puede('reparaciones', 'catalogo')" class="form-group" style="background: var(--gray-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem;">
                     <label>Marca</label>
                     <select v-model="formularioCatalogo.marca_id" @change="cargarModelosDeMarca" required>
                         <option value="">Selecciona una marca</option>
@@ -6827,7 +6878,7 @@ const ReparacionesView = {
                     </div>
                 </div>
                 
-                <div v-if="editandoCatalogoId && userRoleLocal === 'admin'" class="form-group" style="background: var(--yellow-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; border-left: 4px solid var(--warning);">
+                <div v-if="editandoCatalogoId && $root.puede('reparaciones', 'catalogo')" class="form-group" style="background: var(--yellow-100); padding: 1rem; border-radius: 0.375rem; margin-bottom: 1rem; border-left: 4px solid var(--warning);">
                     <h4 style="margin-top: 0;">Editar Catálogo</h4>
                     <label>Marca</label>
                     <select v-model="formularioCatalogo.marca_id" @change="cargarModelosDeMarca" required>
@@ -6859,7 +6910,7 @@ const ReparacionesView = {
                             <th>Modelo</th>
                             <th>Tipo de Reparación</th>
                             <th>Costo</th>
-                            <th v-if="userRoleLocal === 'admin'">Acciones</th>
+                            <th v-if="$root.puede('reparaciones', 'catalogo')">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -6868,7 +6919,7 @@ const ReparacionesView = {
                             <td>{{ item.modelo_nombre }}</td>
                             <td>{{ item.tipo_reparacion_nombre }}</td>
                             <td>\${{ item.costo }}</td>
-                            <td v-if="userRoleLocal === 'admin'">
+                            <td v-if="$root.puede('reparaciones', 'catalogo')">
                                 <button @click="iniciarEdicionCatalogo(item)" class="btn btn-primary btn-sm">Editar</button>
                                 <button @click="eliminarCatalogo(item.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
                             </td>
@@ -6900,7 +6951,7 @@ const ReparacionesView = {
                 <div class="card-header">
                     <h3>{{ mostrarNuevaReparacion ? (editandoReparacionId ? 'Editar Reparación' : 'Nueva Reparación') : 'Listado de Reparaciones' }}</h3>
                     <button v-if="mostrarNuevaReparacion" @click="cerrarFormularioReparacion" class="btn btn-primary btn-sm" :disabled="guardandoReparacion">Ver Listado</button>
-                    <button v-else @click="nuevaReparacion" class="btn btn-primary btn-sm">+ Nueva Reparación</button>
+                    <button v-if="$root.puede('reparaciones', 'crear')" v-else @click="nuevaReparacion" class="btn btn-primary btn-sm">+ Nueva Reparación</button>
                 </div>
 
                 <!-- Formulario Nueva Reparación -->
@@ -6953,7 +7004,7 @@ const ReparacionesView = {
                             <label>Fecha</label>
                             <input v-model="formularioReparacion.fecha" type="date" required>
                         </div>
-                        <div class="form-group"><label>Estado</label><select v-model="formularioReparacion.estado"><option v-for="(nombre, estado) in estadosReparacion" :key="estado" :value="estado" :disabled="estado === 'entregada' && userRoleLocal !== 'admin'">{{ nombre }}</option></select></div>
+                        <div class="form-group"><label>Estado</label><select v-model="formularioReparacion.estado"><option v-for="(nombre, estado) in estadosReparacion" :key="estado" :value="estado" :disabled="estado === 'entregada' && !$root.puede('reparaciones', 'entregar')">{{ nombre }}</option></select></div>
                         <div class="form-group"><label>Técnico responsable</label><input v-model.trim="formularioReparacion.tecnico" maxlength="120" placeholder="Nombre del técnico"></div>
                         <div class="form-group"><label>Fecha prometida</label><input v-model="formularioReparacion.fecha_prometida" type="date"></div>
                         <div class="form-group"><label>Diagnóstico</label><textarea v-model="formularioReparacion.diagnostico" rows="3" maxlength="4000" placeholder="Falla encontrada y trabajo a realizar"></textarea></div>
@@ -6961,7 +7012,7 @@ const ReparacionesView = {
                         <div class="form-group"><label>Saldo pendiente</label><strong>{{ monedaReparacion(Number(formularioReparacion.costo || 0) - Number(formularioReparacion.anticipo || 0)) }}</strong></div>
                     </div>
                     <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                        <button @click="guardarReparacion" class="btn btn-success" :disabled="guardandoReparacion">{{ guardandoReparacion ? 'Guardando…' : 'Guardar Reparación' }}</button>
+                        <button v-if="$root.puede('reparaciones', 'crear') || $root.puede('reparaciones', 'editar')" @click="guardarReparacion" class="btn btn-success" :disabled="guardandoReparacion">{{ guardandoReparacion ? 'Guardando…' : 'Guardar Reparación' }}</button>
                         <button @click="cerrarFormularioReparacion" class="btn btn-secondary" :disabled="guardandoReparacion">Cancelar</button>
                     </div>
                 </div>
@@ -7024,9 +7075,9 @@ const ReparacionesView = {
                                 <td>Abonado: {{ monedaReparacion(rep.anticipo) }}<br>Saldo: {{ monedaReparacion(rep.saldo) }}</td>
                                 <td>{{ estadosReparacion[rep.estado] || rep.estado }}</td>
                                 <td>
-                                    <button v-if="userRoleLocal === 'admin' && !['entregada', 'cancelada'].includes(rep.estado)" @click="marcarEntregada(rep.id)" class="btn btn-success btn-sm" title="Marcar como entregada">✓</button>
-                                    <button @click="editarReparacion(rep)" class="btn btn-primary btn-sm" style="margin-left: 0.25rem;">Editar</button>
-                                    <button v-if="userRoleLocal === 'admin'" @click="eliminarReparacion(rep.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
+                                    <button v-if="($root.puede('reparaciones', 'entregar') && !['entregada', 'cancelada'].includes(rep.estado)) && ($root.puede('reparaciones', 'entregar'))" @click="marcarEntregada(rep.id)" class="btn btn-success btn-sm" title="Marcar como entregada">✓</button>
+                                    <button v-if="$root.puede('reparaciones', 'editar')" @click="editarReparacion(rep)" class="btn btn-primary btn-sm" style="margin-left: 0.25rem;">Editar</button>
+                                    <button v-if="($root.puede('reparaciones', 'eliminar')) && ($root.puede('reparaciones', 'eliminar'))" @click="eliminarReparacion(rep.id)" class="btn btn-danger btn-sm" style="margin-left: 0.25rem;">Eliminar</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -7493,7 +7544,7 @@ const ReparacionesView = {
                 // Si es empleado, usar su sucursal_id; si es admin, ya está en el formulario
                 if (this.userRoleLocal === 'employee') {
                     const userRes = await axios.get(`/api/auth/profile`, { headers });
-                    datos.sucursal_id = userRes.data.sucursal_id;
+                    datos.sucursal_id = this.$root.userSucursal || userRes.data.sucursal_id;
                 }
                 
                 // Buscar el costo en el catálogo si no está especificado
@@ -7874,4 +7925,201 @@ const AyudaView = {
             });
         }
     }
+};
+
+
+const ReporteCategoriasView = {
+    props: ['token'],
+    data() {
+        const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        return { desde: hoy.slice(0, 7) + '-01', hasta: hoy, sucursal: '', orden: 'importe', ordenGenerado: 'importe', categorias: [], sucursales: [], cargando: false, generado: false, error: '', periodo: '' };
+    },
+    methods: {
+        moneda(valor) { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(valor); },
+        async generar() {
+            if (!this.desde || !this.hasta || this.desde > this.hasta) { this.error = 'Selecciona un rango de fechas válido.'; return; }
+            this.cargando = true; this.error = ''; this.generado = false; this.categorias = [];
+            try {
+                const res = await axios.get('/api/reportes/ventas-categorias', { headers: { Authorization: 'Bearer ' + this.token }, params: { fecha_inicio: this.desde, fecha_fin: this.hasta, sucursal_id: this.sucursal || undefined, orden: this.orden } });
+                this.categorias = res.data.categorias;
+                this.ordenGenerado = res.data.orden;
+                this.periodo = res.data.fecha_inicio + ' al ' + res.data.fecha_fin;
+                this.generado = true;
+            } catch (err) { this.error = err.response?.data?.error || 'No se pudo generar el reporte.'; }
+            finally { this.cargando = false; }
+        }
+    },
+    async mounted() {
+        try { const res = await axios.get('/api/admin/sucursales-publico', { headers: { Authorization: 'Bearer ' + this.token } }); this.sucursales = res.data; }
+        catch (err) { this.error = 'No se pudieron cargar las sucursales.'; }
+    },
+    template: `
+        <div class="card">
+            <div class="card-header"><h3>Top 10 categorías</h3></div>
+            <form class="filtros-container reportes-filtros" @submit.prevent="generar">
+                <div class="reportes-filtros-grid">
+                    <div class="reportes-filtro"><label class="form-label" for="cat-desde">Desde</label><input class="form-control-fecha" id="cat-desde" type="date" v-model="desde" required :disabled="cargando"></div>
+                    <div class="reportes-filtro"><label class="form-label" for="cat-hasta">Hasta</label><input class="form-control-fecha" id="cat-hasta" type="date" v-model="hasta" required :disabled="cargando"></div>
+                    <div class="reportes-filtro"><label class="form-label" for="cat-sucursal">Sucursal</label><select class="form-select form-control-fecha" id="cat-sucursal" v-model="sucursal" :disabled="cargando"><option value="">Todas las sucursales autorizadas</option><option v-for="s in sucursales" :key="s.id" :value="s.id">{{ s.nombre }}</option></select></div>
+                    <div class="reportes-filtro"><label class="form-label" for="cat-orden">Ordenar por</label><select class="form-select form-control-fecha" id="cat-orden" v-model="orden" :disabled="cargando"><option value="importe">Mayor importe vendido</option><option value="cantidad">Mayor cantidad vendida</option></select></div>
+                    <div class="reportes-filtros-accion"><button class="btn btn-primary" :disabled="cargando">{{ cargando ? 'Generando…' : 'Generar reporte' }}</button></div>
+                </div>
+            </form>
+            <p class="reportes-descripcion">Unidades vendidas e importe con impuestos, antes de devoluciones. Se usa la categoría actual de cada producto y fechas de CDMX.</p>
+            <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
+            <p v-if="generado">Período: {{ periodo }} · Orden: {{ ordenGenerado === 'cantidad' ? 'Mayor cantidad vendida' : 'Mayor importe vendido' }}</p>
+            <div v-if="generado && !categorias.length" class="alert alert-info">No hay ventas en el período seleccionado.</div>
+            <div v-if="categorias.length" style="overflow-x: auto;">
+                <table><thead><tr><th>Posición</th><th>Categoría</th><th>Unidades vendidas</th><th>Total vendido</th></tr></thead>
+                    <tbody><tr v-for="(categoria, indice) in categorias" :key="categoria.id"><td>{{ indice + 1 }}</td><td><strong>{{ categoria.nombre }}</strong></td><td>{{ categoria.cantidad }}</td><td>{{ moneda(categoria.total) }}</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    `
+};
+
+// Un solo punto de acceso; los permisos existentes conservan su alcance.
+const CentroReportesView = {
+    components: { ReportesView, ReportesVentasView, ReporteCategoriasView },
+    props: ['apiUrl', 'token', 'userRole'],
+    data() { return { seleccion: '' }; },
+    computed: {
+        tabs() {
+            const opciones = [];
+            if (this.$root.puede('reportes')) opciones.push(
+                { id: 'diario', titulo: 'Diario', descripcion: 'Consulta las ventas de un día por sucursal.', componente: 'ReportesView' },
+                { id: 'mensual', titulo: 'Mensual', descripcion: 'Revisa el comportamiento de las ventas durante el mes.', componente: 'ReportesView' }
+            );
+            if (this.$root.puede('reportes-ventas')) opciones.push(
+                { id: 'ventas', titulo: 'Ventas y gráficas', descripcion: 'Compara períodos y sucursales, y descarga el reporte en HTML.', componente: 'ReportesVentasView' },
+                { id: 'cierres', titulo: 'Cierres de caja', descripcion: 'Consulta los cierres por período y sucursal.', componente: 'ReportesVentasView' }
+            );
+            if (this.$root.puede('reportes') || this.$root.puede('reportes-ventas')) opciones.push({ id: 'categorias', titulo: 'Top 10 categorías', descripcion: 'Consulta las categorías líderes por importe o unidades vendidas.', componente: 'ReporteCategoriasView' });
+            return opciones;
+        },
+        activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; }
+    },
+    methods: {
+        moverTab(event, indice) {
+            const teclas = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+            if (!teclas.includes(event.key)) return;
+            event.preventDefault();
+            const total = this.tabs.length;
+            const siguiente = event.key === 'Home' ? 0 : event.key === 'End' ? total - 1 :
+                (indice + (event.key === 'ArrowRight' ? 1 : -1) + total) % total;
+            this.seleccion = this.tabs[siguiente].id;
+            this.$nextTick(() => this.$el.querySelector('[aria-selected="true"]').focus());
+        }
+    },
+    template: `
+        <section class="centro-reportes" v-if="activa">
+            <header class="reportes-intro">
+                <div class="reportes-icono" aria-hidden="true">▥</div>
+                <div><h1>Reportes</h1><p>Consulta y compara los resultados de tus sucursales en un solo lugar.</p></div>
+            </header>
+            <div class="reportes-tabs" role="tablist" aria-label="Tipos de reporte">
+                <button v-for="(tab, indice) in tabs" :key="tab.id" type="button" role="tab"
+                    :id="'tab-reporte-' + tab.id" :aria-controls="'panel-reporte-' + tab.id"
+                    :aria-selected="activa.id === tab.id" :tabindex="activa.id === tab.id ? 0 : -1"
+                    :class="{ activo: activa.id === tab.id }" @click="seleccion = tab.id" @keydown="moverTab($event, indice)">
+                    {{ tab.titulo }}
+                </button>
+            </div>
+            <section role="tabpanel" :id="'panel-reporte-' + activa.id" :aria-labelledby="'tab-reporte-' + activa.id">
+                <p class="reportes-descripcion">{{ activa.descripcion }}</p>
+                <KeepAlive>
+                    <component :is="activa.componente" :key="activa.id" :modo="activa.id"
+                        :apiUrl="apiUrl" :token="token" :userRole="userRole" />
+                </KeepAlive>
+            </section>
+        </section>
+    `
+};
+
+
+const CentroCategoriasView = {
+    components: { CategoriasView, SubcategoriasView },
+    props: ['apiUrl', 'token', 'userRole'],
+    data() { return { seleccion: '' }; },
+    computed: {
+        tabs() {
+            return [
+                { id: 'categorias', titulo: 'Categorías', componente: 'CategoriasView', descripcion: 'Organiza los grupos principales de tu catálogo.' },
+                { id: 'subcategorias', titulo: 'Subcategorías', componente: 'SubcategoriasView', descripcion: 'Organiza las subcategorías dentro de cada categoría.' }
+            ].filter(tab => this.$root.puede(tab.id));
+        },
+        activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; }
+    },
+    methods: {
+        moverTab(event, indice) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const total = this.tabs.length;
+            const siguiente = event.key === 'Home' ? 0 : event.key === 'End' ? total - 1 :
+                (indice + (event.key === 'ArrowRight' ? 1 : -1) + total) % total;
+            this.seleccion = this.tabs[siguiente].id;
+            this.$nextTick(() => this.$el.querySelector('[aria-selected="true"]').focus());
+        }
+    },
+    template: `
+        <section v-if="activa">
+            <header class="reportes-intro">
+                <div><h1>Categorías y subcategorías</h1><p>Organiza tu catálogo en un solo lugar.</p></div>
+            </header>
+            <div class="reportes-tabs" role="tablist" aria-label="Organización del catálogo">
+                <button v-for="(tab, indice) in tabs" :key="tab.id" type="button" role="tab"
+                    :id="'tab-catalogo-' + tab.id" :aria-controls="'panel-catalogo-' + tab.id"
+                    :aria-selected="activa.id === tab.id" :tabindex="activa.id === tab.id ? 0 : -1"
+                    :class="{ activo: activa.id === tab.id }" @click="seleccion = tab.id" @keydown="moverTab($event, indice)">
+                    {{ tab.titulo }}
+                </button>
+            </div>
+            <section role="tabpanel" :id="'panel-catalogo-' + activa.id" :aria-labelledby="'tab-catalogo-' + activa.id">
+                <p class="reportes-descripcion">{{ activa.descripcion }}</p>
+                <component :is="activa.componente" :key="activa.id" :api-url="apiUrl" :token="token" :user-role="userRole" />
+            </section>
+        </section>
+    `
+};
+
+
+const AdministracionView = {
+    components: { CaracteristicasView, UsuariosView, SucursalesView, CentroCategoriasView },
+    props: ['apiUrl', 'token', 'userRole'],
+    data() {
+        return { seleccion: 'caracteristicas', tabs: [
+            { id: 'caracteristicas', titulo: 'Características', componente: 'CaracteristicasView' },
+            { id: 'usuarios', titulo: 'Usuarios', componente: 'UsuariosView' },
+            { id: 'sucursales', titulo: 'Sucursales', componente: 'SucursalesView' },
+            { id: 'categorias', titulo: 'Categorías', componente: 'CentroCategoriasView' }
+        ] };
+    },
+    computed: { activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; } },
+    methods: {
+        moverTab(event, indice) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const total = this.tabs.length;
+            const siguiente = event.key === 'Home' ? 0 : event.key === 'End' ? total - 1 :
+                (indice + (event.key === 'ArrowRight' ? 1 : -1) + total) % total;
+            this.seleccion = this.tabs[siguiente].id;
+            this.$nextTick(() => this.$el.querySelector('#tab-admin-' + this.seleccion).focus());
+        }
+    },
+    template: `
+        <section v-if="userRole === 'admin'">
+            <header class="reportes-intro"><div><h1>Administración</h1><p>Configura las funciones del sistema, los accesos y la organización de tu negocio.</p></div></header>
+            <div class="reportes-tabs" role="tablist" aria-label="Administración">
+                <button v-for="(tab, indice) in tabs" :key="tab.id" type="button" role="tab"
+                    :id="'tab-admin-' + tab.id" :aria-controls="'panel-admin-' + tab.id"
+                    :aria-selected="seleccion === tab.id" :tabindex="seleccion === tab.id ? 0 : -1"
+                    :class="{ activo: seleccion === tab.id }" @click="seleccion = tab.id" @keydown="moverTab($event, indice)">
+                    {{ tab.titulo }}
+                </button>
+            </div>
+            <section style="margin-top: 1.5rem;" role="tabpanel" :id="'panel-admin-' + activa.id" :aria-labelledby="'tab-admin-' + activa.id">
+                <component :is="activa.componente" :key="activa.id" :api-url="apiUrl" :token="token" :user-role="userRole" />
+            </section>
+        </section>
+    `
 };

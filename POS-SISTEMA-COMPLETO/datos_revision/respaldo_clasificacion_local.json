@@ -1,0 +1,29 @@
+{
+  "fecha_utc": "2026-11-06T04:28:37.595417+00:00",
+  "cambios": [
+    {
+      "codigo": "10960",
+      "nombre": "Adaptador micro SD a usb",
+      "subcategoria_id_anterior": "e23ecd78-2494-4bfd-b1a2-dbb0af9f03d8",
+      "subcategoria_id_nueva": "844d44b5-251c-48bb-8e94-ece338985e32",
+      "antes": "Micas / Cerámica",
+      "despues": "Adaptadores / Adaptadores"
+    },
+    {
+      "codigo": "10985",
+      "nombre": "Bastón selfie Bluetooth",
+      "subcategoria_id_anterior": "2ad15027-a9e9-4f15-ae86-21baeeeaf400",
+      "subcategoria_id_nueva": "074976f4-759f-470e-8b9d-c475e463b17a",
+      "antes": "Micas / Privacidad",
+      "despues": "Soportes / Bastón Selfie"
+    },
+    {
+      "codigo": "11126",
+      "nombre": "Funda a07",
+      "subcategoria_id_anterior": "e93e6422-8c86-4029-99e1-629fd779c140",
+      "subcategoria_id_nueva": "baaf869c-c871-47fd-9194-801a1828b64e",
+      "antes": "Micas / Mica Hidrogel",
+      "despues": "Fundas / Funda"
+    }
+  ]
+}

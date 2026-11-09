@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Venta, DetalleVenta, Producto, Stock, Sucursal, PagoVenta, CierreCaja
@@ -17,7 +18,7 @@ def crear_venta():
     try:
         user_id = get_jwt_identity()
         user = User.query.filter_by(id=user_id).with_for_update().first()
-        lock_branch(user.sucursal_id)
+        lock_branch(current_branch(user))
         
         # Empleados y admin pueden crear ventas
         if user.role not in ['employee', 'admin']:
@@ -38,7 +39,7 @@ def crear_venta():
         # Crear venta
         venta = Venta(
             numero_venta=numero_venta,
-            sucursal_id=user.sucursal_id,
+            sucursal_id=current_branch(user),
             cajero_id=user_id,
             forma_pago=data['forma_pago'],
             observaciones=data.get('observaciones')
@@ -64,10 +65,13 @@ def crear_venta():
             # Verificar stock disponible
             stock = Stock.query.filter_by(
                 producto_id=producto_id,
-                sucursal_id=user.sucursal_id
-            ).first()
+                sucursal_id=current_branch(user)
+            ).with_for_update().first()
             
             # Determinar si hay stock disponible (sin restricción de rol)
+            if stock and stock.reservado > 0 and stock.cantidad < cantidad:
+                db.session.rollback()
+                return jsonify(error='Hay unidades reservadas en apartados. Cantidad disponible insuficiente.'), 409
             hay_stock = stock and stock.cantidad >= cantidad
             
             # Determinar precio unitario
@@ -155,7 +159,7 @@ def validar_stock(producto_id):
         # Verificar stock en la sucursal
         stock = Stock.query.filter_by(
             producto_id=producto_id,
-            sucursal_id=user.sucursal_id
+            sucursal_id=current_branch(user)
         ).first()
         
         cantidad_disponible = stock.cantidad if stock else 0
@@ -190,8 +194,8 @@ def get_ventas():
         query = Venta.query
         
         # Filtrar por sucursal
-        if user.role == 'employee':
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None:
+            query = query.filter_by(sucursal_id=current_branch(user))
         elif sucursal_id:
             query = query.filter_by(sucursal_id=sucursal_id)
         
@@ -234,7 +238,7 @@ def get_venta(venta_id):
             return jsonify({'error': 'Venta no encontrada'}), 404
         
         # Verificar acceso: admin ve todo, empleado solo su sucursal
-        if user.role == 'employee' and venta.sucursal_id != user.sucursal_id:
+        if user.role == 'employee' and user.permisos is None and venta.sucursal_id != current_branch(user):
             return jsonify({'error': 'Acceso denegado'}), 403
         
         return jsonify(venta.to_dict(include_detalles=True)), 200
@@ -255,7 +259,7 @@ def get_ticket(venta_id):
             return jsonify({'error': 'Venta no encontrada'}), 404
         
         # Verificar acceso
-        if user.role == 'employee' and venta.sucursal_id != user.sucursal_id:
+        if user.role == 'employee' and user.permisos is None and venta.sucursal_id != current_branch(user):
             return jsonify({'error': 'Acceso denegado'}), 403
         
         # Formatear ticket
@@ -300,7 +304,7 @@ def get_ventas_del_dia():
         user = User.query.get(user_id)
         
         # Solo empleados pueden ver sus ventas del día
-        if user.role != 'employee':
+        if user.role not in ('employee', 'admin'):
             return jsonify({'error': 'Solo empleados pueden acceder a este endpoint'}), 403
         
         # Obtener inicio y fin del día actual (CDMX)
@@ -371,7 +375,7 @@ def guardar_pagos_venta(venta_id):
             return jsonify({'error': 'Venta no encontrada'}), 404
         
         # Solo empleados de la misma sucursal o admin
-        if user.role == 'employee' and venta.sucursal_id != user.sucursal_id:
+        if user.role == 'employee' and user.permisos is None and venta.sucursal_id != current_branch(user):
             return jsonify({'error': 'Acceso denegado'}), 403
         
         if any(d.reembolsos is not None for d in venta.devoluciones):
@@ -481,7 +485,7 @@ def cierre_con_contexto(cierre):
 
 
 def cierres_del_dia(user):
-    return CierreCaja.query.filter_by(empleado_id=user.id, sucursal_id=user.sucursal_id, fecha=get_cdmx_now().date())
+    return CierreCaja.query.filter_by(empleado_id=user.id, sucursal_id=current_branch(user), fecha=get_cdmx_now().date())
 
 
 def cierre_abierto(user):
@@ -489,7 +493,7 @@ def cierre_abierto(user):
 
 
 def nuevo_cierre(user):
-    cierre = CierreCaja(empleado_id=user.id, sucursal_id=user.sucursal_id,
+    cierre = CierreCaja(empleado_id=user.id, sucursal_id=current_branch(user),
                         fecha=get_cdmx_now().date(), estado='abierto')
     db.session.add(cierre)
     db.session.flush()
@@ -501,11 +505,13 @@ def nuevo_cierre(user):
 def get_cierre_caja_hoy():
     try:
         user = User.query.filter_by(id=get_jwt_identity()).with_for_update().first()
-        lock_branch(user.sucursal_id)
-        if user.role != 'employee':
+        lock_branch(current_branch(user))
+        if user.role not in ('employee', 'admin'):
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         cierre = cierre_abierto(user) or cierres_del_dia(user).order_by(CierreCaja.created_at.desc(), CierreCaja.id.desc()).first()
         if not cierre:
+            if user.permisos is not None and not can(user, 'cierre-caja', 'cerrar'):
+                return jsonify(None), 200
             cierre = nuevo_cierre(user)
         if cierre.estado == 'abierto':
             refresh_cash(cierre)
@@ -521,8 +527,8 @@ def get_cierre_caja_hoy():
 def iniciar_nuevo_cierre():
     try:
         user = User.query.filter_by(id=get_jwt_identity()).with_for_update().first()
-        lock_branch(user.sucursal_id)
-        if user.role != 'employee':
+        lock_branch(current_branch(user))
+        if user.role not in ('employee', 'admin'):
             return jsonify({'error': 'Solo empleados pueden iniciar un cierre'}), 403
         # Repetir la solicitud nunca crea dos cajas abiertas.
         cierre = cierre_abierto(user) or nuevo_cierre(user)
@@ -567,9 +573,9 @@ def crear_cierre_caja():
     try:
         user_id = get_jwt_identity()
         user = User.query.filter_by(id=user_id).with_for_update().first()
-        lock_branch(user.sucursal_id)
+        lock_branch(current_branch(user))
         
-        if user.role != 'employee':
+        if user.role not in ('employee', 'admin'):
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
         data = request.get_json() or {}
@@ -620,7 +626,7 @@ def reportes_por_fecha():
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        if user.role != 'admin':
+        if user.role != 'admin' and not delegated_access():
             return jsonify({'error': 'Solo admins pueden acceder a reportes'}), 403
         
         fecha_inicio_str = request.args.get('fecha_inicio')
@@ -701,7 +707,7 @@ def reportes_cierres_caja():
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        if user.role != 'admin':
+        if user.role != 'admin' and not delegated_access():
             return jsonify({'error': 'Solo admins pueden acceder a reportes'}), 403
         
         fecha_inicio_str = request.args.get('fecha_inicio')
@@ -748,7 +754,7 @@ def reportes_cierres_caja_detalle():
     """Consultar cierres confirmados y productos vendidos por empleado/caja."""
     try:
         user = User.query.get(get_jwt_identity())
-        if not user or user.role != 'admin':
+        if not user or (user.role != 'admin' and not delegated_access()):
             return jsonify({'error': 'Solo administradores pueden consultar cierres de caja'}), 403
 
         fecha_inicio_str = request.args.get('fecha_inicio')
@@ -802,14 +808,14 @@ def corregir_cierre_caja():
     try:
         user_id = get_jwt_identity()
         user = User.query.filter_by(id=user_id).with_for_update().first()
-        lock_branch(user.sucursal_id)
+        lock_branch(current_branch(user))
         
-        if user.role != 'employee':
+        if user.role not in ('employee', 'admin'):
             return jsonify({'error': 'Solo empleados pueden acceder a esto'}), 403
         
         data = request.get_json() or {}
         if data.get('cierre_id'):
-            cierre = CierreCaja.query.filter_by(empleado_id=user.id, sucursal_id=user.sucursal_id, id=data['cierre_id'], estado='cerrado').first()
+            cierre = CierreCaja.query.filter_by(empleado_id=user.id, sucursal_id=current_branch(user), id=data['cierre_id'], estado='cerrado').first()
         else:
             candidates = cierres_del_dia(user).filter_by(estado='cerrado').all()
             cierre = candidates[0] if len(candidates) == 1 else None
@@ -855,7 +861,7 @@ def get_ventas_sin_stock():
         # Verificar que sea admin
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-        if user.role != 'admin':
+        if user.role != 'admin' and not delegated_access():
             return jsonify({'error': 'Acceso denegado. Solo administradores'}), 403
         
         # Parámetros de filtro
@@ -922,3 +928,7 @@ def get_ventas_sin_stock():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+ventas_bp.before_request(authorize_request)

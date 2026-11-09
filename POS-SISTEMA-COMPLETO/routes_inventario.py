@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Producto, Stock, EntradaInventario, Sucursal, Subcategoria, Categoria
@@ -17,7 +18,7 @@ def admin_required(fn):
     def wrapper(*args, **kwargs):
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
-        if not user or user.role != 'admin':
+        if not user or (user.role != 'admin' and not delegated_access()):
             return jsonify({'error': 'Acceso denegado'}), 403
         return fn(*args, **kwargs)
     return wrapper
@@ -31,7 +32,7 @@ def get_stock_sucursal(sucursal_id):
         user = User.query.get(user_id)
         
         # Verificar acceso: admin ve todo, empleado solo su sucursal
-        if user.role == 'employee' and user.sucursal_id != sucursal_id:
+        if user.role == 'employee' and user.permisos is None and current_branch(user) != sucursal_id:
             return jsonify({'error': 'Acceso denegado'}), 403
         
         # Verificar que la sucursal existe
@@ -78,10 +79,17 @@ def registrar_entrada_inventario():
         if not data.get('producto_id') or not data.get('sucursal_id') or not data.get('cantidad'):
             return jsonify({'error': 'Producto, sucursal y cantidad son requeridos'}), 400
         
+        user = db.session.get(User, get_jwt_identity())
+        if user.role != 'admin' and data['sucursal_id'] != user.sucursal_id:
+            return jsonify({'error': 'Solo puedes registrar entradas en tu sucursal asignada'}), 403
+
         cantidad = int(data['cantidad'])
         if cantidad <= 0:
             return jsonify({'error': 'La cantidad debe ser mayor a 0'}), 400
         
+        if data.get('cantidad_minima') is not None and not can(db.session.get(User, get_jwt_identity()), 'inventario', 'ajustar'):
+            return jsonify({'error': 'No tienes permiso para cambiar el stock mínimo'}), 403
+
         # Verificar producto
         producto = Producto.query.get(data['producto_id'])
         if not producto:
@@ -96,7 +104,7 @@ def registrar_entrada_inventario():
         stock = Stock.query.filter_by(
             producto_id=data['producto_id'],
             sucursal_id=data['sucursal_id']
-        ).first()
+        ).with_for_update().first()
         
         if not stock:
             stock = Stock(
@@ -126,12 +134,11 @@ def registrar_entrada_inventario():
         db.session.add(entrada)
         db.session.commit()
         
-        return jsonify({
-            'message': f'Entrada de inventario registrada. Stock actualizado: {stock.cantidad}',
-            'entrada': entrada.to_dict(),
-            'nuevo_stock': stock.cantidad
-        }), 201
-    
+        respuesta = {'message': 'Entrada de inventario registrada.', 'entrada': entrada.to_dict()}
+        if can(db.session.get(User, get_jwt_identity()), 'inventario', 'ver_stock'):
+            respuesta['nuevo_stock'] = stock.cantidad
+        return jsonify(respuesta), 201
+
     except ValueError:
         return jsonify({'error': 'La cantidad debe ser un número válido'}), 400
     except Exception as e:
@@ -153,8 +160,8 @@ def get_entradas_inventario():
         query = EntradaInventario.query
         
         # Filtrar por sucursal si es empleado
-        if user.role == 'employee':
-            query = query.filter_by(sucursal_id=user.sucursal_id)
+        if user.role == 'employee' and user.permisos is None:
+            query = query.filter_by(sucursal_id=current_branch(user))
         elif sucursal_id:
             query = query.filter_by(sucursal_id=sucursal_id)
         
@@ -177,7 +184,7 @@ def get_entradas_inventario():
 def update_stock(stock_id):
     """Actualizar cantidad de stock directamente (ajuste manual)"""
     try:
-        stock = Stock.query.get(stock_id)
+        stock = Stock.query.filter_by(id=stock_id).with_for_update().first()
         if not stock:
             return jsonify({'error': 'Stock no encontrado'}), 404
         
@@ -215,7 +222,7 @@ def get_bajo_stock(sucursal_id):
         user = User.query.get(user_id)
         
         # Verificar acceso
-        if user.role == 'employee' and user.sucursal_id != sucursal_id:
+        if user.role == 'employee' and user.permisos is None and current_branch(user) != sucursal_id:
             return jsonify({'error': 'Acceso denegado'}), 403
         
         # Obtener productos con stock menor a la cantidad mínima
@@ -245,7 +252,7 @@ def exportar_inventario():
         user = User.query.get(user_id)
         
         # Solo admin puede exportar
-        if user.role != 'admin':
+        if user.role != 'admin' and not delegated_access():
             return jsonify({'error': 'Acceso denegado'}), 403
         
         # Crear CSV en memoria
@@ -310,3 +317,20 @@ def exportar_inventario():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@inventario_bp.route('/<stock_id>', methods=['DELETE'])
+@admin_required
+def delete_stock(stock_id):
+    stock = Stock.query.filter_by(id=stock_id).with_for_update().first()
+    if not stock:
+        return jsonify({'error': 'Stock no encontrado'}), 404
+    if stock.reservado:
+        return jsonify(error='No puedes eliminar stock con apartados reservados'), 409
+    db.session.delete(stock)
+    db.session.commit()
+    return jsonify({'message': 'Stock eliminado'})
+
+
+from permissions import authorize_request
+inventario_bp.before_request(authorize_request)

@@ -1,0 +1,71 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+let root;
+let access = { role: 'employee', permisos: { inventario: ['ver', 'entradas'] }, sucursales: [{ id: 's1' }, { id: 's2' }], sucursal_id: 's1' };
+const sandbox = { console, Intl, Date, Vue: { createApp(config) { root = config; return { mount() {} }; } },
+    window: { location: { origin: '' }, scrollTo() {} },
+    axios: { async get(url) { return { data: url.includes('mi-acceso') ? access : { comisiones_habilitadas: false } }; } } };
+vm.createContext(sandbox);
+for (const file of ['permisos.js', 'components.js', 'comisiones.js', 'apartados.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
+vm.runInContext('this.editor = PermisosUsuario; this.centroReportes = CentroReportesView; this.reporteVentas = ReportesVentasView;', sandbox);
+function instance(component) {
+    const obj = { ...component.data(), token: 'test', userRole: 'employee' };
+    for (const [key, fn] of Object.entries(component.methods)) obj[key] = fn.bind(obj);
+    return obj;
+}
+(async () => {
+    const app = instance(root);
+    await app.cargarAcceso();
+    assert.equal(app.currentView, 'inventario');
+    assert.equal(app.userSucursal, 's1');
+    assert.equal(app.puede('inventario', 'entradas'), true);
+    assert.equal(app.puede('inventario', 'ajustar'), false);
+    assert.equal(app.puedeVista('usuarios'), false);
+    assert.equal(app.puedeVista('administracion'), false);
+    app.irAVista('ventas'); assert.equal(app.currentView, 'inventario');
+    access = { ...access, permisos: { 'cierres-caja': ['ver'] } };
+    await app.cargarAcceso(); assert.equal(app.currentView, 'cierres-caja');
+    assert.equal(app.puede('cierre-caja', 'cerrar'), false);
+    access = { ...access, permisos: { comisiones: ['ver'] } };
+    await app.cargarAcceso(); assert.equal(app.currentView, 'sin-acceso');
+    access = { ...access, role: 'admin' };
+    await app.cargarAcceso(); assert.equal(app.puede('inventario', 'eliminar'), true);
+    assert.equal(app.puedeVista('usuarios'), true);
+    assert.equal(app.puedeVista('administracion'), true);
+    app.irAVista('usuarios');
+    assert.equal(app.currentView, 'administracion');
+    assert.equal(app.puedeVista('cierre-caja'), false);
+    assert.equal(app.puedeVista('cierres-caja'), true);
+    app.userRole = 'employee';
+    app.permisos = { 'cierre-caja': ['ver', 'cerrar'], 'cierres-caja': ['ver'] };
+    assert.equal(app.puedeVista('cierre-caja'), true);
+    assert.equal(app.puedeVista('cierres-caja'), false);
+    app.irAVista('cierre-caja');
+    app.irAVista('cierres-caja');
+    assert.equal(app.currentView, 'cierre-caja');
+    app.permisos = {};
+    assert.equal(app.puedeVista('cierre-caja'), false);
+    assert.equal(app.puedeVista('cierres-caja'), false);
+    // Unificación de navegación sin ampliar permisos a otros reportes.
+    app.userRole = 'employee'; app.accesosListos = true;
+    app.permisos = { 'reportes-ventas': ['ver'] };
+    assert.equal(app.puedeVista('reportes'), true);
+    assert.equal(app.vistaInicial(), 'reportes');
+    app.irAVista('reportes-ventas'); assert.equal(app.currentView, 'reportes');
+    const tabs = () => sandbox.centroReportes.computed.tabs.call({ $root: app });
+    assert.deepEqual(Array.from(tabs(), tab => tab.id), ['ventas', 'cierres', 'categorias']);
+    app.permisos = { reportes: ['ver'] };
+    assert.deepEqual(Array.from(tabs(), tab => tab.id), ['diario', 'mensual', 'categorias']);
+    app.userRole = 'admin';
+    assert.deepEqual(Array.from(tabs(), tab => tab.id), ['diario', 'mensual', 'ventas', 'cierres', 'categorias']);
+    assert.equal(sandbox.reporteVentas.data.call({ modo: 'cierres' }).tipoReporte, 'cierres');
+    assert.equal(sandbox.reporteVentas.data.call({ modo: 'ventas' }).tipoReporte, 'ventas');
+    const editor = instance(sandbox.editor);
+    editor.cambiar('inventario', 'entradas', true);
+    assert.deepEqual(Array.from(editor.permisos.inventario).sort(), ['entradas', 'ver']);
+    editor.cambiar('inventario', 'ver', false);
+    assert.equal(editor.permisos.inventario.length, 0);
+    console.log('OK: acciones individuales, navegación, revocación, sucursales y prioridad de Características.');
+})().catch(err => { console.error(err); process.exitCode = 1; });

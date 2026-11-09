@@ -1,0 +1,14 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const sandbox = { Vue: {}, PermisosUsuario: {} };
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname, '../static/components.js'), 'utf8'), sandbox);
+const leer = sandbox.leerCSVProductos;
+const filas = leer('\uFEFFcodigo,nombre,categoria,subcategoria\r\n1,"Sabritas (Chetos, Doritos)",Dulces,Snack\r\n2,"Audífono ""Bluetooth""\nNegro",Audio,Audifonos');
+assert.equal(filas[1][1], 'Sabritas (Chetos, Doritos)');
+assert.equal(filas[1][2], 'Dulces');
+assert.equal(filas[2][1], 'Audífono "Bluetooth"\nNegro');
+assert.throws(() => leer('codigo,nombre\n1,Audífono,extra'), /columnas/);
+assert.throws(() => leer('codigo,nombre\n1,"Sin cierre'), /comillas/);
+console.log('OK: CSV con comas, comillas, BOM, saltos internos y rechazo de filas desalineadas.');

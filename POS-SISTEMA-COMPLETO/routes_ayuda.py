@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 """
 Rutas para el módulo de Ayuda
 Integración con IA para proporcionar soluciones de troubleshooting de dispositivos
@@ -389,3 +390,7 @@ def obtener_solucion():
     except Exception as e:
         logger.error(f"Error en obtener_solucion: {str(e)}")
         return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+
+
+from permissions import authorize_request
+ayuda_bp.before_request(authorize_request)

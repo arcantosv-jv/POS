@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 """
 Rutas para consultar compatibilidad de accesorios (micas de cristal para celulares)
 Integración con IA para recomendaciones inteligentes
@@ -674,3 +675,7 @@ def retirar_verificacion(registro_id):
     row.activa = False
     db.session.commit()
     return jsonify({'message': 'Verificación retirada'})
+
+
+from permissions import authorize_request
+compatibilidad_bp.before_request(authorize_request)

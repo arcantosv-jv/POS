@@ -1,3 +1,4 @@
+from permissions import delegated_access, current_branch, can
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import (db, User, MarcaDispositivo, ModeloDispositivo, 
@@ -17,7 +18,7 @@ def admin_required(fn):
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         
-        if not user or user.role != 'admin':
+        if not user or (user.role != 'admin' and not delegated_access()):
             return jsonify({'error': 'Acceso denegado. Se requieren permisos de administrador'}), 403
         
         return fn(*args, **kwargs)
@@ -443,7 +444,7 @@ ESTADOS_REPARACION = ('registrada', 'diagnostico', 'esperando_refaccion', 'en_re
 
 
 def editar_seguimiento(reparacion, data, user):
-    if user.role not in ('admin', 'employee') or (user.role == 'employee' and reparacion.empleado_id != user.id):
+    if user.role not in ('admin', 'employee') or (user.role == 'employee' and user.permisos is None and reparacion.empleado_id != user.id):
         raise PermissionError('No tienes permiso para modificar esta reparación')
     costo = money(data.get('costo', reparacion.costo), 'Costo')
     anticipo = money(data.get('anticipo', reparacion.anticipo or 0) or 0, 'Abonado acumulado')
@@ -452,7 +453,7 @@ def editar_seguimiento(reparacion, data, user):
     estado = data.get('estado', reparacion.estado or 'registrada')
     if estado not in ESTADOS_REPARACION:
         raise ValueError('Estado de reparación inválido')
-    if estado == 'entregada' and user.role != 'admin' and reparacion.estado != 'entregada':
+    if estado == 'entregada' and not can(user, 'reparaciones', 'entregar') and reparacion.estado != 'entregada':
         raise PermissionError('Solo un administrador puede confirmar la entrega')
     fields = {'costo': costo, 'anticipo': anticipo, 'estado': estado}
     for field, maximum in [('diagnostico', 4000), ('tecnico', 120), ('nombre_cliente', 100), ('telefono_cliente', 20)]:
@@ -513,7 +514,7 @@ def get_reparaciones():
             query = query.filter(Reparacion.fecha_prometida < get_cdmx_now().date(), Reparacion.estado.notin_(['entregada', 'cancelada']))
         
         # Si es empleado, solo ver sus propias reparaciones
-        if user.role == 'employee':
+        if user.role == 'employee' and user.permisos is None:
             query = query.filter_by(empleado_id=user_id)
         # Si es admin, permitir filtrar por sucursal
         elif user.role == 'admin' and sucursal_id:
@@ -573,11 +574,11 @@ def create_reparacion():
             return jsonify({'error': 'modelo_nombre es requerido'}), 400
         
         # Determinar sucursal_id
-        sucursal_id = data.get('sucursal_id')
+        sucursal_id = current_branch(user) if user.role == 'employee' else data.get('sucursal_id')
         if not sucursal_id:
             # Si es empleado, usar su sucursal_id; si es admin, es requerido
             if user.role == 'employee':
-                sucursal_id = user.sucursal_id
+                sucursal_id = current_branch(user)
                 if not sucursal_id:
                     return jsonify({'error': 'El empleado no tiene una sucursal asignada'}), 400
             else:
@@ -651,7 +652,7 @@ def get_reparacion(reparacion_id):
             return jsonify({'error': 'Reparación no encontrada'}), 404
         
         user = db.session.get(User, get_jwt_identity())
-        if user.role != 'admin' and reparacion.empleado_id != user.id:
+        if user.role != 'admin' and user.permisos is None and reparacion.empleado_id != user.id:
             return jsonify({'error': 'Acceso denegado'}), 403
         return jsonify(reparacion.to_dict()), 200
     except PermissionError as e:
@@ -676,7 +677,7 @@ def update_reparacion(reparacion_id):
             return jsonify({'error': 'Reparación no encontrada'}), 404
         
         # Verificar permisos
-        if user.role == 'employee' and reparacion.empleado_id != user_id:
+        if user.role == 'employee' and user.permisos is None and reparacion.empleado_id != user_id:
             return jsonify({'error': 'No tienes permiso para editar esta reparación'}), 403
         
         data = request.get_json()
@@ -741,3 +742,7 @@ def delete_reparacion(reparacion_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+reparaciones_bp.before_request(authorize_request)

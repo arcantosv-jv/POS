@@ -15,6 +15,7 @@ const sandbox = {
     }
 };
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/permisos.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/components.js'), 'utf8') + '\nthis.views = { CierreCajaView, ReparacionesView, CompatibilidadView, DevolucionesView };', sandbox);
 function instance(name) {
     const component = sandbox.views[name];

@@ -1,0 +1,87 @@
+﻿codigo,nombre,subcategoria_id_actual,categoria_actual,subcategoria_actual,categoria_destino,subcategoria_destino
+10120,Funda iPhone 7/8,00f765a3-4889-4ca5-bb6c-2fe93bd05f78,Reloj,Reloj Genérico,Fundas,Funda
+10121,Funda iPhone X/Xs,74139a2f-7500-4ece-bde1-41535d99fed6,Ventilador,Ventilador,Fundas,Funda
+10122,Funda iPhone XR,74139a2f-7500-4ece-bde1-41535d99fed6,Ventilador,Ventilador,Fundas,Funda
+10123,Funda iPhone XS Max,b25c4b34-c0ed-4ef4-ab5d-6be5d1cdc399,Tablet,Tablet,Fundas,Funda
+10124,Funda iPhone 11,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10125,Funda iPhone 11 Pro Max,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10126,Funda iPhone 7+/8+,74139a2f-7500-4ece-bde1-41535d99fed6,Ventilador,Ventilador,Fundas,Funda
+10127,Funda iPhone 12/12 pro,facaf42c-39e0-4d7e-b74a-573904b229e8,Camaras,Camaras,Fundas,Funda
+10128,Funda iPhone 12 Pro Max,facaf42c-39e0-4d7e-b74a-573904b229e8,Camaras,Camaras,Fundas,Funda
+10129,Funda iPhone 12 mini,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10130,Funda iPhone 13/14,6e77574b-a830-464e-83f6-aa1cce2baa55,Computo,Computo,Fundas,Funda
+10131,Funda iPhone 13 Pro Max,6e77574b-a830-464e-83f6-aa1cce2baa55,Computo,Computo,Fundas,Funda
+10132,Funda iPhone 14 Pro Max,6e77574b-a830-464e-83f6-aa1cce2baa55,Computo,Computo,Fundas,Funda
+10133,Funda iPhone 14 Pro,6e77574b-a830-464e-83f6-aa1cce2baa55,Computo,Computo,Fundas,Funda
+10134,Funda iPhone 15,6e77574b-a830-464e-83f6-aa1cce2baa55,Computo,Computo,Fundas,Funda
+10135,Funda iPhone 15 pro,ad663df8-8253-4409-9164-966d8bc34adb,Consolas,Consola de Videojuegos,Fundas,Funda
+10136,Funda iPhone 15 pro Max,ad663df8-8253-4409-9164-966d8bc34adb,Consolas,Consola de Videojuegos,Fundas,Funda
+10137,Funda iPhone 16,f129cc60-98a0-4d23-815c-c2605007c906,Cables,Cable,Fundas,Funda
+10138,Funda iPhone 16 pro,26bfb991-cbb4-4616-9c2a-8315dc92dca9,Pilas,Pilas Alcalina,Fundas,Funda
+10139,Funda iPhone 16 pro Max,82bead3b-d6d8-402c-8d9f-04b15f05fa7a,Electricidad,Multicontacto,Fundas,Funda
+10199,Funda honor X5,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10200,Funda honor x7,074976f4-759f-470e-8b9d-c475e463b17a,Soportes,Bastón Selfie,Fundas,Funda
+10201,Funda honor x8,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+10202,Funda honor x9,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+10203,Funda honor x6B,ecb596a2-da1d-4e03-bbb2-6e582613425a,Plumas,Pluma Tablet Celular,Fundas,Funda
+10204,Funda honor x7B/ 50 plus,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+10205,Funda honor x8B,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+10206,Funda honor x6/x8 se,ecb596a2-da1d-4e03-bbb2-6e582613425a,Plumas,Pluma Tablet Celular,Fundas,Funda
+10207,Funda honor x6 plus,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10208,Funda honor x5 plus/X6A,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10209,Funda honor x9A/magic 5 lite,3596a003-cde2-4d03-ae6e-85eaa4a04d7e,Soportes,Soporte TV,Fundas,Funda
+10210,Funda honor x7A,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+10211,Funda honor 70,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10212,Funda honor 90,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10213,Funda honor x9B/x50/magic 60 lite,3596a003-cde2-4d03-ae6e-85eaa4a04d7e,Soportes,Soporte TV,Fundas,Funda
+10214,Funda honor x8A,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+10351,Funda cinto,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10375,Funda Huawei y9 prime,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10376,Funda Huawei y9 2019,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10377,Funda Huawei y9 s,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10378,Funda Huawei y9 a,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10379,Funda Huawei y9 2018,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10380,Funda Huawei nova 9se,d71e4ab9-e6fd-4369-ae94-0099b263dd03,SmartWatch,SmartWatch,Fundas,Funda
+10381,Funda Huawei nova 9,d71e4ab9-e6fd-4369-ae94-0099b263dd03,SmartWatch,SmartWatch,Fundas,Funda
+10382,Funda Huawei nova 8i,d71e4ab9-e6fd-4369-ae94-0099b263dd03,SmartWatch,SmartWatch,Fundas,Funda
+10383,Funda Huawei nova 8,d71e4ab9-e6fd-4369-ae94-0099b263dd03,SmartWatch,SmartWatch,Fundas,Funda
+10384,Funda Huawei nova 5i/5t,d71e4ab9-e6fd-4369-ae94-0099b263dd03,SmartWatch,SmartWatch,Fundas,Funda
+10385,Funda Huawei nova 10se,3596a003-cde2-4d03-ae6e-85eaa4a04d7e,Soportes,Soporte TV,Fundas,Funda
+10386,Funda Huawei nova y60,d71e4ab9-e6fd-4369-ae94-0099b263dd03,SmartWatch,SmartWatch,Fundas,Funda
+10387,Funda Huawei nova y70/y70 plus,c45057be-6170-4674-b411-a09d71c9ec58,Papeleria,Papeleria,Fundas,Funda
+10390,Funda Huawei p20,c45057be-6170-4674-b411-a09d71c9ec58,Papeleria,Papeleria,Fundas,Funda
+10392,Funda Huawei p20 pro,c45057be-6170-4674-b411-a09d71c9ec58,Papeleria,Papeleria,Fundas,Funda
+10394,Funda Huawei p30 lite,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10395,Funda Huawei p30 pro,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10396,Funda Huawei p40,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10397,Funda Huawei p40 lite,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10398,Funda Huawei p40 pro,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10399,Funda Huawei p50,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10400,Funda Huawei p50 pro,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10401,Funda Huawei p50 lite,2eed62dc-1d5c-438a-bb16-a0ede78578a0,Memoria,Memoria,Fundas,Funda
+10518,Funda iphone 6 plus,a8629434-a3e5-42ea-bedd-e1b57de2ef39,Proyector,Proyector,Fundas,Funda
+10603,Funda iPhone 13 Pro,e2920406-9223-4aae-b0c9-47e9291d0d08,Celulares,Celulares,Fundas,Funda
+10604,Funda iphone 16 plus,26bfb991-cbb4-4616-9c2a-8315dc92dca9,Pilas,Pilas Alcalina,Fundas,Funda
+10607,Funda iphone 14 plus/15 plus,6e77574b-a830-464e-83f6-aa1cce2baa55,Computo,Computo,Fundas,Funda
+10608,Funda iphone 11 pro,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10620,Funda A23,ca255741-e605-467a-8478-a7cb0dfad088,Bebidas,Bebidas,Fundas,Funda
+10628,Funda A20/A30,ca255741-e605-467a-8478-a7cb0dfad088,Bebidas,Bebidas,Fundas,Funda
+10636,Funda j4 plus/core,5b258db7-c931-4f79-ac4d-47a2622ee67f,Luces,Luces,Fundas,Funda
+10736,Funda axon 40 lite,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10823,Funda j7 prime,be45a297-954b-4716-8246-dd5f4a034e79,Hogar,Hogar,Fundas,Funda
+10824,Funda a6 2018,ca255741-e605-467a-8478-a7cb0dfad088,Bebidas,Bebidas,Fundas,Funda
+10920,Funda honor 200,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+10942,Funda ipad 10.9,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10943,Funda ipad 12.9,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10944,Funda ipad 9.7,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10948,Funda ipad mini 1/2/3,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+10949,Funda ipad mini 4,44464a61-a1e3-419a-b09d-d0697086ac2f,Powerbank,Powerbank,Fundas,Funda
+11041,Funda iphone 16e,82bead3b-d6d8-402c-8d9f-04b15f05fa7a,Electricidad,Multicontacto,Fundas,Funda
+11057,Funda honor x8c,f7946cc2-f1f7-4f55-ad04-d8bf29a02a3a,Soportes,Soporte para Celular,Fundas,Funda
+11061,Funda A5 Xiaomi,ca255741-e605-467a-8478-a7cb0dfad088,Bebidas,Bebidas,Fundas,Funda
+11106,Funda e5 play go,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda
+11111,Funda iphone 17,978d33c5-3aeb-430b-8a5e-5eb39c06db72,Dulces,Dulces,Fundas,Funda
+11112,Funda iphone 17 pro,978d33c5-3aeb-430b-8a5e-5eb39c06db72,Dulces,Dulces,Fundas,Funda
+11113,Funda iphone 17 air,978d33c5-3aeb-430b-8a5e-5eb39c06db72,Dulces,Dulces,Fundas,Funda
+11114,Funda iphone 17 pro max,978d33c5-3aeb-430b-8a5e-5eb39c06db72,Dulces,Dulces,Fundas,Funda
+11125,Funda g5 plus,3503b623-24c6-4a96-a87f-c6c74c839872,Juguetes,Juguetes,Fundas,Funda

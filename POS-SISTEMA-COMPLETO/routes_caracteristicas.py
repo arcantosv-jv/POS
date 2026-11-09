@@ -20,7 +20,7 @@ def modo_panel():
 @caracteristicas_bp.route('', methods=['GET'])
 @admin_required
 def consultar():
-    return jsonify({'panel_ventas': modo_panel(), 'comisiones_habilitadas': comisiones_habilitadas()})
+    return jsonify({'panel_ventas': modo_panel(), 'apartados_habilitados': apartados_habilitados(), 'comisiones_habilitadas': comisiones_habilitadas()})
 
 
 @caracteristicas_bp.route('', methods=['PUT'])
@@ -35,6 +35,10 @@ def guardar():
         db.session.add(config)
     if 'comisiones_habilitadas' in data and not isinstance(data['comisiones_habilitadas'], bool):
         return jsonify({'error': 'Comisiones debe ser verdadero o falso'}), 400
+    if 'apartados_habilitados' in data:
+        if not isinstance(data['apartados_habilitados'], bool):
+            return jsonify(error='Apartados debe ser verdadero o falso'), 400
+        config.apartados_habilitados = data['apartados_habilitados']
     config.panel_ventas = data['panel_ventas']
     if 'comisiones_habilitadas' in data:
         config.comisiones_habilitadas = data['comisiones_habilitadas']
@@ -43,7 +47,7 @@ def guardar():
     except Exception:
         db.session.rollback()
         return jsonify({'error': 'No se pudo guardar la configuración. Intenta nuevamente.'}), 409
-    return jsonify({'panel_ventas': config.panel_ventas, 'comisiones_habilitadas': config.comisiones_habilitadas})
+    return jsonify({'panel_ventas': config.panel_ventas, 'apartados_habilitados': config.apartados_habilitados, 'comisiones_habilitadas': config.comisiones_habilitadas})
 
 
 @caracteristicas_bp.route('/panel-ventas', methods=['GET'])
@@ -83,6 +87,15 @@ def comisiones_habilitadas():
 @caracteristicas_bp.route('/acceso', methods=['GET'])
 @jwt_required()
 def acceso():
-    response = jsonify({'comisiones_habilitadas': comisiones_habilitadas()})
+    response = jsonify({'apartados_habilitados': apartados_habilitados(), 'comisiones_habilitadas': comisiones_habilitadas()})
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+from permissions import authorize_request
+caracteristicas_bp.before_request(authorize_request)
+
+
+def apartados_habilitados():
+    config = db.session.get(ConfiguracionSistema, 1)
+    return bool(config and config.apartados_habilitados)

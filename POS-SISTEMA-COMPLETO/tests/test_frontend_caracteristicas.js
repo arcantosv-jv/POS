@@ -8,6 +8,7 @@ const sandbox = { Vue: {}, console, Intl, Date, Event: class { constructor(type)
     axios: { async get() { requests++; return { data: response }; }, async put(url, payload) { response = { modo: payload.panel_ventas }; return { data: payload }; } }
 };
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/permisos.js'), 'utf8'), sandbox);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/components.js'), 'utf8') + '\nthis.views = { PanelVentas, CaracteristicasView, VentasView };', sandbox);
 function instance(name) {
     const component = sandbox.views[name];

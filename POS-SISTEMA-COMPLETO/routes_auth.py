@@ -17,6 +17,8 @@ def register():
     try:
         data = request.get_json()
         
+        if data.get('role', 'employee') not in ('admin', 'employee'):
+            return jsonify({'error': 'Rol inválido'}), 400
         # Validaciones
         if not data.get('username') or not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Username, email y password son requeridos'}), 400
@@ -36,7 +38,7 @@ def register():
         
         # Verificar sucursal si es empleado
         sucursal_id = None
-        if data.get('role') == 'employee':
+        if data.get('role', 'employee') == 'employee':
             if not data.get('sucursal_id'):
                 return jsonify({'error': 'Sucursal es requerida para empleados'}), 400
             
@@ -51,7 +53,9 @@ def register():
             username=data['username'],
             email=data['email'],
             role=data.get('role', 'employee'),
-            sucursal_id=sucursal_id
+            sucursal_id=sucursal_id,
+            permisos={} if data.get('role', 'employee') != 'admin' else None,
+            sucursales_permitidas=[sucursal_id] if sucursal_id else None
         )
         user.set_password(data['password'])
         
@@ -140,3 +144,7 @@ def change_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+from permissions import authorize_request
+auth_bp.before_request(authorize_request)

@@ -39,8 +39,10 @@ def create_app(config_name=None):
     
     # Registrar blueprints
     from routes_auth import auth_bp
+    from routes_permisos import permisos_bp
     from routes_admin import admin_bp
     from routes_caracteristicas import caracteristicas_bp
+    from routes_apartados import apartados_bp
     from routes_comisiones import comisiones_bp
     from routes_productos import productos_bp
     from routes_inventario import inventario_bp
@@ -53,9 +55,11 @@ def create_app(config_name=None):
     from routes_ayuda import ayuda_bp
     
     app.register_blueprint(auth_bp)
+    app.register_blueprint(permisos_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(caracteristicas_bp)
     app.register_blueprint(comisiones_bp)
+    app.register_blueprint(apartados_bp)
     app.register_blueprint(productos_bp)
     app.register_blueprint(inventario_bp)
     app.register_blueprint(ventas_bp)
@@ -66,6 +70,14 @@ def create_app(config_name=None):
     app.register_blueprint(reparaciones_bp)
     app.register_blueprint(ayuda_bp)
     
+    @app.after_request
+    def actualizar_frontend(response):
+        # Incluye la ruta static incorporada de Flask y la ruta raíz.
+        # Evitar que el HTML o JS anteriores oculten funcionalidades nuevas.
+        if response.mimetype in ('text/html', 'text/javascript', 'application/javascript', 'text/css'):
+            response.headers['Cache-Control'] = 'no-store'
+        return response
+
     # Ruta raíz
     @app.route('/', methods=['GET'])
     def index():
@@ -108,7 +120,12 @@ def create_app(config_name=None):
     return app
 
 def create_initial_data():
-    """Crear datos iniciales si no existen"""
+    """Crear datos iniciales cuando el esquema esté actualizado."""
+    from sqlalchemy import inspect
+    columns = {c['name'] for c in inspect(db.engine).get_columns('users')}
+    if not {'permisos', 'sucursales_permitidas'}.issubset(columns):
+        return  # Alembic debe actualizar users antes de consultar el modelo nuevo.
+
     
     # Crear usuario admin por defecto
     admin = User.query.filter_by(username='admin').first()

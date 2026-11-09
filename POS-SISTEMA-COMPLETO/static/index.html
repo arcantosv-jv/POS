@@ -1377,6 +1377,47 @@
         .commission-record { padding: 1.25rem; }
         .commission-record header, .commission-actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
         .commission-actions { justify-content: flex-start; align-items: end; }
+        .access-options { display: flex; flex-wrap: wrap; gap: 1rem; margin: .75rem 0; }
+        .access-options label { display: flex; gap: .5rem; align-items: center; }
+        .access-section { padding: 1rem; margin: 1rem 0; border: 1px solid var(--gray-300); border-radius: .5rem; }
+        .access-section h4 { font-weight: 700; }
+
+        .reportes-intro { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        .reportes-intro h1 { margin: 0 0 .35rem; }
+        .reportes-intro p, .reportes-descripcion { color: var(--gray-600); line-height: 1.5; }
+        .reportes-intro p { margin: 0; }
+        .reportes-icono { background: #eff6ff; color: #2563eb; border-radius: 1rem; padding: .65rem 1rem; font-size: 2rem; }
+        .reportes-tabs { display: flex; gap: .5rem; flex-wrap: wrap; padding: .5rem; background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: .9rem; }
+        .reportes-tabs button { flex: 1 1 145px; padding: .85rem 1rem; border: 0; border-radius: .65rem; background: transparent; color: var(--gray-600); font: inherit; font-weight: 700; cursor: pointer; }
+        .reportes-tabs button:hover { background: #eff6ff; color: #1d4ed8; }
+        .reportes-tabs button.activo { background: #2563eb; color: white; box-shadow: 0 2px 6px #2563eb26; }
+        .reportes-tabs button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+        .reportes-descripcion { margin: 1.25rem 0; }
+
+        /* La cuadrícula es propia: no depende de utilidades de Bootstrap. */
+        .reportes-filtros { border-radius: .9rem; margin-bottom: 1.5rem; }
+        .reportes-filtros-titulo { margin: 0 0 1.1rem; font-size: 1rem; font-weight: 700; color: var(--gray-800); }
+        .reportes-filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; align-items: end; }
+        .reportes-filtro { min-width: 0; }
+        .reportes-filtros .form-label { display: block; margin: 0 0 .5rem; font-weight: 700; color: var(--gray-700); }
+        .reportes-filtros .form-control-fecha { display: block; box-sizing: border-box; width: 100%; min-width: 0; height: 48px; margin: 0; font-family: inherit; }
+        .reportes-filtros-accion .btn { width: 100%; height: 48px; margin: 0; white-space: nowrap; border-radius: .5rem; }
+        @media (max-width: 575.98px) {
+            .reportes-filtros-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
+        .sucursal-activa { display: flex; align-items: center; gap: .7rem; padding: .5rem .75rem; border: 1px solid #dbeafe; border-radius: .8rem; background: #eff6ff; min-width: 0; max-width: 320px; }
+        .sucursal-activa-icono { width: 24px; height: 24px; flex-shrink: 0; color: #2563eb; }
+        .sucursal-activa-campo { flex: 1; min-width: 0; }
+        .sucursal-activa label { display: block; margin: 0 0 .15rem; color: #475569; font-size: .72rem; font-weight: 700; }
+        .sucursal-activa select { display: block; width: 100%; min-width: 0; max-width: 250px; min-height: 32px; margin: 0; padding: .2rem 1.6rem .2rem 0; border: 0; border-radius: .25rem; background-color: transparent; color: #1e3a8a; font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; text-overflow: ellipsis; }
+        .sucursal-activa:focus-within { border-color: #2563eb; box-shadow: 0 0 0 3px #2563eb1a; }
+        .sucursal-activa select:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+        @media (max-width: 768px) {
+            .navbar-user { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; gap: .75rem; }
+            .sucursal-activa { flex: 1 1 200px; max-width: none; }
+            .sucursal-activa select { max-width: none; font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -1453,111 +1494,79 @@
                         </button>
                         
                         <div :class="['navbar-menu', menuAbierto ? 'expanded' : 'collapsed']">
-                            <a 
-                                v-if="userRole === 'admin'" 
+                            <a v-if="puedeVista('dashboard')"
                                 :class="['dashboard', currentView === 'dashboard' ? 'active' : '']"
                                 @click.prevent="irAVista('dashboard')"
                                 href="#"
                             >Dashboard</a>
-                            <a v-if="userRole === 'admin' || (userRole === 'employee' && comisionesHabilitadas)" :class="['commissions', currentView === 'comisiones' ? 'active' : '']" @click.prevent="irAVista('comisiones')" href="#">Comisiones</a>
-                            <a v-if="userRole === 'admin'" :class="['features', currentView === 'caracteristicas' ? 'active' : '']" @click.prevent="irAVista('caracteristicas')" href="#">Características</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
+                            <a v-if="puedeVista('comisiones')" :class="['commissions', currentView === 'comisiones' ? 'active' : '']" @click.prevent="irAVista('comisiones')" href="#">Comisiones</a>
+                            <a v-if="puedeVista('administracion')" :class="['features', currentView === 'administracion' ? 'active' : '']" @click.prevent="irAVista('administracion')" href="#">Administración</a>
+                            <a v-if="puedeVista('productos')"
                                 :class="['products', currentView === 'productos' ? 'active' : '']"
                                 @click.prevent="irAVista('productos')"
                                 href="#"
                             >Productos</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
+                            <a v-if="puedeVista('inventario')"
                                 :class="['inventory', currentView === 'inventario' ? 'active' : '']"
                                 @click.prevent="irAVista('inventario')"
                                 href="#"
                             >Inventario</a>
-                            <a 
+                            <a v-if="puedeVista('ventas')"
                                 :class="['sales', currentView === 'ventas' ? 'active' : '']"
                                 @click.prevent="irAVista('ventas')"
                                 href="#"
                             >Ventas</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
+                            <a v-if="puedeVista('apartados')" :class="['sales', currentView === 'apartados' ? 'active' : '']" @click.prevent="irAVista('apartados')" href="#">Apartados</a>
+                            <a v-if="puedeVista('reportes')"
                                 :class="['reports', currentView === 'reportes' ? 'active' : '']"
                                 @click.prevent="irAVista('reportes')"
                                 href="#"
                             >Reportes</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
-                                :class="['users', currentView === 'usuarios' ? 'active' : '']"
-                                @click.prevent="irAVista('usuarios')"
-                                href="#"
-                            >Usuarios</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
-                                :class="['branches', currentView === 'sucursales' ? 'active' : '']"
-                                @click.prevent="irAVista('sucursales')"
-                                href="#"
-                            >Sucursales</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
+
+
+                            <a v-if="userRole !== 'admin' && puedeVista('categorias')"
                                 :class="['categories', currentView === 'categorias' ? 'active' : '']"
                                 @click.prevent="irAVista('categorias')"
                                 href="#"
                             >Categorías</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
-                                :class="['subcategories', currentView === 'subcategorias' ? 'active' : '']"
-                                @click.prevent="irAVista('subcategorias')"
-                                href="#"
-                            >Subcategorías</a>
-                            <a 
-                                v-if="userRole === 'employee'" 
+
+                            <a v-if="puedeVista('ventas-del-dia')"
                                 :class="['sales-day', currentView === 'ventas-del-dia' ? 'active' : '']"
                                 @click.prevent="irAVista('ventas-del-dia')"
                                 href="#"
                             >Ventas del Día</a>
-                            <a 
-                                v-if="userRole === 'employee'" 
+                            <a v-if="puedeVista('cierre-caja')"
                                 :class="['cash-close', currentView === 'cierre-caja' ? 'active' : '']"
                                 @click.prevent="irAVista('cierre-caja')"
                                 href="#"
                             >Cierre de Caja</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
-                                :class="['reports', currentView === 'reportes-ventas' ? 'active' : '']"
-                                @click.prevent="irAVista('reportes-ventas')"
-                                href="#"
-                            >Reportes Ventas</a>
-                            <a
-                                v-if="userRole === 'admin'"
+
+                            <a v-if="puedeVista('cierres-caja')"
                                 :class="['cash-close', currentView === 'cierres-caja' ? 'active' : '']"
                                 @click.prevent="irAVista('cierres-caja')"
                                 href="#"
                             >Cierres de Caja</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
+                            <a v-if="puedeVista('devoluciones')"
                                 :class="['returns', currentView === 'devoluciones' ? 'active' : '']"
                                 @click.prevent="irAVista('devoluciones')"
                                 href="#"
                             >Devoluciones</a>
-                            <a 
-                                v-if="userRole === 'admin' || userRole === 'employee'" 
+                            <a v-if="puedeVista('compatibilidad')"
                                 :class="['compatibility', currentView === 'compatibilidad' ? 'active' : '']"
                                 @click.prevent="irAVista('compatibilidad')"
                                 href="#"
                             >🔍 Compatibilidad</a>
-                            <a 
-                                v-if="userRole === 'admin' || userRole === 'employee'" 
+                            <a v-if="puedeVista('reparaciones')"
                                 :class="['repairs', currentView === 'reparaciones' ? 'active' : '']"
                                 @click.prevent="irAVista('reparaciones')"
                                 href="#"
                             >🔧 Reparaciones</a>
-                            <a 
-                                v-if="userRole === 'admin' || userRole === 'employee'" 
+                            <a v-if="puedeVista('ayuda')"
                                 :class="['help', currentView === 'ayuda' ? 'active' : '']"
                                 @click.prevent="irAVista('ayuda')"
                                 href="#"
                             >❓ Ayuda</a>
-                            <a 
-                                v-if="userRole === 'admin'" 
+                            <a v-if="puedeVista('ventas-sin-stock')"
                                 :class="['stock-sales', currentView === 'ventas-sin-stock' ? 'active' : '']"
                                 @click.prevent="irAVista('ventas-sin-stock')"
                                 href="#"
@@ -1565,6 +1574,17 @@
                         </div>
                         
                         <div class="navbar-user">
+                            <div v-if="sucursalesAcceso.length > 1" class="sucursal-activa">
+                                <svg class="sucursal-activa-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M3 10h18l-2-6H5l-2 6Z M5 10v10h14V10 M9 20v-6h6v6 M3 10v2h18v-2" />
+                                </svg>
+                                <div class="sucursal-activa-campo">
+                                    <label for="sucursal-activa-select">Sucursal activa</label>
+                                    <select id="sucursal-activa-select" v-model="userSucursal" @change="cambiarSucursal">
+                                        <option v-for="sucursal in sucursalesAcceso" :key="sucursal.id" :value="sucursal.id">{{ sucursal.nombre }}</option>
+                                    </select>
+                                </div>
+                            </div>
                             <span>👤 {{ userName }}</span>
                             <button @click="logout" class="btn btn-secondary btn-sm">Salir</button>
                         </div>
@@ -1573,116 +1593,99 @@
             </nav>
 
             <!-- Contenido principal -->
-            <div class="container" style="padding: 2rem 1rem;">
+            <div class="container" style="padding: 2rem 1rem;" :key="userSucursal + JSON.stringify(permisos)">
+                <p v-if="currentView === 'sin-acceso'" class="alert alert-info">No tienes apartados disponibles. Solicita a un administrador que revise tus accesos.</p>
                 <!-- Dashboard (Admin) -->
-                <div v-if="currentView === 'dashboard' && userRole === 'admin'">
+                <div v-if="currentView === 'dashboard' && puedeVista('dashboard')">
                     <h1 style="margin-bottom: 2rem;">Dashboard</h1>
                     <dashboard-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></dashboard-view>
                 </div>
 
                 <!-- Productos (Admin) -->
-                <div v-if="currentView === 'productos' && userRole === 'admin'">
+                <div v-if="currentView === 'productos' && puedeVista('productos')">
                     <h1 style="margin-bottom: 2rem;">Gestión de Productos</h1>
                     <productos-view :apiUrl="apiUrl" :token="token"></productos-view>
                 </div>
 
                 <!-- Inventario (Admin) -->
-                <div v-if="currentView === 'inventario' && userRole === 'admin'">
+                <div v-if="currentView === 'inventario' && puedeVista('inventario')">
                     <h1 style="margin-bottom: 2rem;">Gestión de Inventario</h1>
-                    <inventario-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></inventario-view>
+                    <inventario-view :api-url="apiUrl" :token="token" :user-role="userRole"></inventario-view>
                 </div>
 
-                <div v-if="currentView === 'comisiones' && (userRole === 'admin' || comisionesHabilitadas)">
+                <div v-if="currentView === 'comisiones' && puedeVista('comisiones')">
                     <comisiones-view :token="token" :user-role="userRole" :user-id="userId"></comisiones-view>
                 </div>
-                <div v-if="currentView === 'caracteristicas' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Características</h1>
-                    <caracteristicas-view :token="token"></caracteristicas-view>
-                </div>
+
 
                 <!-- Ventas (Todos) -->
-                <div v-show="currentView === 'ventas'">
+                <div v-if="puedeVista('ventas')" v-show="currentView === 'ventas'">
                     <h1 style="margin-bottom: 2rem;">Punto de Venta</h1>
                     <ventas-view :activo="currentView === 'ventas'" :apiUrl="apiUrl" :token="token" :userSucursal="userSucursal" :userRole="userRole"></ventas-view>
                 </div>
 
+                <apartados-view v-if="currentView === 'apartados' && puedeVista('apartados')" :token="token" :user-role="userRole"></apartados-view>
                 <!-- Reportes (Admin) -->
-                <div v-if="currentView === 'reportes' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Reportes y Estadísticas</h1>
-                    <reportes-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reportes-view>
+                <div v-if="currentView === 'reportes' && puedeVista('reportes')">
+                    <centro-reportes-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></centro-reportes-view>
                 </div>
 
                 <!-- Usuarios (Admin) -->
-                <div v-if="currentView === 'usuarios' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Gestión de Usuarios</h1>
-                    <usuarios-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></usuarios-view>
-                </div>
+
 
                 <!-- Sucursales (Admin) -->
-                <div v-if="currentView === 'sucursales' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Gestión de Sucursales</h1>
-                    <sucursales-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></sucursales-view>
+
+
+                <div v-if="currentView === 'administracion' && puedeVista('administracion')">
+                    <administracion-view :api-url="apiUrl" :token="token" :user-role="userRole"></administracion-view>
                 </div>
 
-                <!-- Categorías (Admin) -->
-                <div v-if="currentView === 'categorias' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Gestión de Categorías</h1>
-                    <categorias-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></categorias-view>
-                </div>
-
-                <!-- Subcategorías (Admin) -->
-                <div v-if="currentView === 'subcategorias' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Gestión de Subcategorías</h1>
-                    <subcategorias-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></subcategorias-view>
+                <!-- Organización del catálogo -->
+                <div v-if="userRole !== 'admin' && currentView === 'categorias' && puedeVista('categorias')">
+                    <centro-categorias-view :api-url="apiUrl" :token="token" :user-role="userRole"></centro-categorias-view>
                 </div>
 
                 <!-- Ventas del Día (Empleado) -->
-                <div v-if="currentView === 'ventas-del-dia' && userRole === 'employee'">
+                <div v-if="currentView === 'ventas-del-dia' && puedeVista('ventas-del-dia')">
                     <h1 style="margin-bottom: 2rem;">Mis Ventas del Día</h1>
                     <ventas-del-dia-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ventas-del-dia-view>
                 </div>
 
                 <!-- Cierre de Caja (Empleado) -->
-                <div v-if="currentView === 'cierre-caja' && userRole === 'employee'">
+                <div v-if="currentView === 'cierre-caja' && puedeVista('cierre-caja')">
                     <h1 style="margin-bottom: 2rem;">Cierre de Caja</h1>
                     <cierre-caja-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></cierre-caja-view>
                 </div>
 
-                <!-- Reportes de Ventas (Admin) -->
-                <div v-if="currentView === 'reportes-ventas' && userRole === 'admin'">
-                    <h1 style="margin-bottom: 2rem;">Reportes de Ventas</h1>
-                    <reportes-ventas-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reportes-ventas-view>
-                </div>
-
                 <!-- Consulta detallada de cierres de caja (Admin) -->
-                <div v-if="currentView === 'cierres-caja' && userRole === 'admin'">
+                <div v-if="currentView === 'cierres-caja' && puedeVista('cierres-caja')">
                     <cierres-caja-admin-view :token="token"></cierres-caja-admin-view>
                 </div>
 
                 <!-- Devoluciones (Admin) -->
-                <div v-if="currentView === 'devoluciones' && userRole === 'admin'">
+                <div v-if="currentView === 'devoluciones' && puedeVista('devoluciones')">
                     <devoluciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></devoluciones-view>
                 </div>
 
                 <!-- Compatibilidad (Admin y Empleados) -->
-                <div v-if="currentView === 'compatibilidad' && (userRole === 'admin' || userRole === 'employee')">
+                <div v-if="currentView === 'compatibilidad' && puedeVista('compatibilidad')">
                     <compatibilidad-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></compatibilidad-view>
                 </div>
 
                 <!-- Reparaciones (Admin y Empleados) -->
-                <div v-if="currentView === 'reparaciones'">
+                <div v-if="currentView === 'reparaciones' && puedeVista('reparaciones')">
                     <h1 style="margin-bottom: 2rem;">🔧 Reparaciones</h1>
                     <reparaciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reparaciones-view>
                 </div>
 
                 <!-- Ayuda (Admin y Empleados) -->
-                <div v-if="currentView === 'ayuda'">
+                <div v-if="currentView === 'ayuda' && puedeVista('ayuda')">
                     <h1 style="margin-bottom: 2rem;">❓ Ayuda</h1>
                     <ayuda-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ayuda-view>
                 </div>
 
                 <!-- Ventas sin Stock (Admin) -->
-                <div v-if="currentView === 'ventas-sin-stock' && userRole === 'admin'">
+                <div v-if="currentView === 'ventas-sin-stock' && puedeVista('ventas-sin-stock')">
                     <h1 style="margin-bottom: 2rem;">📦 Ventas Sin Stock</h1>
                     <ventas-sin-stock-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ventas-sin-stock-view>
                 </div>
@@ -1691,8 +1694,10 @@
     </div>
 
     <!-- Scripts de componentes -->
-    <script src="/static/components.js?v=20261009-comisiones"></script>
-    <script src="/static/comisiones.js?v=20261009-comisiones"></script>
-    <script src="/static/app.js?v=20261009-comisiones"></script>
+    <script src="/static/permisos.js?v=20261106-apartados"></script>
+    <script src="/static/components.js?v=20261106-apartados"></script>
+    <script src="/static/comisiones.js?v=20261106-apartados"></script>
+    <script src="/static/apartados.js?v=20261109-apartados-venta"></script>
+    <script src="/static/app.js?v=20261106-apartados"></script>
 </body>
 </html>
