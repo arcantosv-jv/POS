@@ -34,6 +34,10 @@ function instance(component) {
     await app.cargarAcceso(); assert.equal(app.puede('inventario', 'eliminar'), true);
     assert.equal(app.puedeVista('usuarios'), true);
     assert.equal(app.puedeVista('administracion'), true);
+    app.irAVista('reportes');
+    app.irAVista('productos');
+    assert.equal(app.currentView, 'productos');
+    assert.ok(root.components['productos-view'].template.includes('Productos'));
     app.irAVista('usuarios');
     assert.equal(app.currentView, 'administracion');
     assert.equal(app.puedeVista('cierre-caja'), false);

@@ -950,9 +950,12 @@ const ProductosView = {
                                 <td>{{ obtenerSubcategoria(producto) }}</td>
                                 <td>
                                     <span v-if="producto.precio && producto.precio > 0">\${{ producto.precio }}</span>
-                                    <button v-if="$root.puede('productos', 'editar')" v-else @click="abrirModalPrecio(producto)" class="btn btn-warning btn-sm" style="background-color: #ffc107; color: #000;">
-                                        ⚠ Sin precio
-                                    </button>
+                                    <template v-else>
+                                        <button v-if="$root.puede('productos', 'editar')" @click="abrirModalPrecio(producto)" class="btn btn-warning btn-sm" style="background-color: #ffc107; color: #000;">
+                                            ⚠ Sin precio
+                                        </button>
+                                        <span v-else>Sin precio</span>
+                                    </template>
                                 </td>
                                 <td>{{ producto.impuesto }}%</td>
                                 <td>
