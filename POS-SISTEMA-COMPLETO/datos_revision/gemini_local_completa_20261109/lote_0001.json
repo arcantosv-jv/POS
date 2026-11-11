@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10000",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10001",
+    "categoria": "Micas",
+    "subcategoria": "Mica Hidrogel",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10002",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo de celular, no el producto."
+  },
+  {
+    "codigo": "10003",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo de celular, no el producto."
+  },
+  {
+    "codigo": "10004",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Corregido de categoría General a Micas."
+  },
+  {
+    "codigo": "10005",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10006",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10007",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10008",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10009",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10010",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10011",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10012",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10013",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo de celular, no el producto."
+  },
+  {
+    "codigo": "10014",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10015",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo de celular, no el producto."
+  },
+  {
+    "codigo": "10016",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10017",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Corregido de Fundas a Micas."
+  },
+  {
+    "codigo": "10018",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo de celular, no el producto."
+  },
+  {
+    "codigo": "10019",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10020",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10021",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10022",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10023",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10024",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  }
+]

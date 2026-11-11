@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "1102B",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "El nombre 'Vacío' no permite identificar el producto."
+  },
+  {
+    "codigo": "11030",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "11031",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para dispositivo móvil."
+  },
+  {
+    "codigo": "11032",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Batería portátil."
+  },
+  {
+    "codigo": "11033",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para dispositivo móvil."
+  },
+  {
+    "codigo": "11034",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para dispositivo móvil."
+  },
+  {
+    "codigo": "11035",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para dispositivo móvil."
+  },
+  {
+    "codigo": "11036",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11037",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Audífonos inalámbricos."
+  },
+  {
+    "codigo": "11038",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11039",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11040",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla tipo 9D."
+  },
+  {
+    "codigo": "11041",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Corrección de categoría, es una funda para celular."
+  },
+  {
+    "codigo": "11042",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para dispositivo móvil."
+  },
+  {
+    "codigo": "11043",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Audífonos alámbricos."
+  },
+  {
+    "codigo": "11044",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Dispositivo de audio."
+  },
+  {
+    "codigo": "11045",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Accesorio de carga."
+  },
+  {
+    "codigo": "11046",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad."
+  },
+  {
+    "codigo": "11047",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad."
+  },
+  {
+    "codigo": "11048",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad."
+  },
+  {
+    "codigo": "11049",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Dispositivo de seguridad para el hogar."
+  },
+  {
+    "codigo": "11050",
+    "categoria": "Camaras",
+    "subcategoria": "Camaras",
+    "ambiguo": false,
+    "motivo": "Dispositivo de vigilancia."
+  },
+  {
+    "codigo": "11051",
+    "categoria": "Camaras",
+    "subcategoria": "Camaras",
+    "ambiguo": false,
+    "motivo": "Dispositivo de vigilancia."
+  },
+  {
+    "codigo": "11052",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Audífonos inalámbricos."
+  },
+  {
+    "codigo": "11053",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Producto de limpieza para equipos."
+  }
+]

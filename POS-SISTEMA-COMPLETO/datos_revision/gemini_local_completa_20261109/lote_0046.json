@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "11079",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Son figuras coleccionables tipo juguete."
+  },
+  {
+    "codigo": "11080",
+    "categoria": "Luces",
+    "subcategoria": "Luces",
+    "ambiguo": false,
+    "motivo": "Es un producto de iluminación."
+  },
+  {
+    "codigo": "11081",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte TV",
+    "ambiguo": false,
+    "motivo": "Soporte para pantalla de televisión."
+  },
+  {
+    "codigo": "11082",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte TV",
+    "ambiguo": false,
+    "motivo": "Soporte para pantalla de televisión."
+  },
+  {
+    "codigo": "11083",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete recreativo."
+  },
+  {
+    "codigo": "11084",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete sorpresa, no una mica."
+  },
+  {
+    "codigo": "11085",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Es un accesorio personal, no un cargador."
+  },
+  {
+    "codigo": "11086",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Protector de pantalla para celular."
+  },
+  {
+    "codigo": "11087",
+    "categoria": "Adaptadores",
+    "subcategoria": "Adaptadores",
+    "ambiguo": false,
+    "motivo": "Adaptador para toma de corriente de auto."
+  },
+  {
+    "codigo": "11088",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Dispositivo tipo reloj inteligente."
+  },
+  {
+    "codigo": "11089",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Accesorio de almacenamiento tipo funda."
+  },
+  {
+    "codigo": "11090",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": true,
+    "motivo": "El nombre es ambiguo y no describe un producto claro."
+  },
+  {
+    "codigo": "11091",
+    "categoria": "Doritos)",
+    "subcategoria": "Snack",
+    "ambiguo": false,
+    "motivo": "Producto alimenticio tipo snack."
+  },
+  {
+    "codigo": "11092",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Juego de destreza."
+  },
+  {
+    "codigo": "11093",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Artículo decorativo para eventos."
+  },
+  {
+    "codigo": "11094",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica protectora con filtro de privacidad."
+  },
+  {
+    "codigo": "11095",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica protectora con filtro de privacidad."
+  },
+  {
+    "codigo": "11096",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda protectora para celular."
+  },
+  {
+    "codigo": "11097",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Objeto recreativo."
+  },
+  {
+    "codigo": "11098",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Electrodoméstico pequeño, no es un cargador."
+  },
+  {
+    "codigo": "11099",
+    "categoria": "Dulces",
+    "subcategoria": "Dulces",
+    "ambiguo": false,
+    "motivo": "Producto alimenticio."
+  },
+  {
+    "codigo": "11100",
+    "categoria": "Micas",
+    "subcategoria": "Mica Hidrogel",
+    "ambiguo": false,
+    "motivo": "Protector de pantalla de hidrogel."
+  },
+  {
+    "codigo": "11101",
+    "categoria": "Micas",
+    "subcategoria": "Mica Hidrogel",
+    "ambiguo": false,
+    "motivo": "Protector de pantalla de hidrogel."
+  },
+  {
+    "codigo": "11102",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda protectora impermeable."
+  },
+  {
+    "codigo": "11103",
+    "categoria": "Bebidas",
+    "subcategoria": "Bebidas",
+    "ambiguo": false,
+    "motivo": "Producto de consumo líquido."
+  }
+]

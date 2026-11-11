@@ -1418,6 +1418,35 @@
             .sucursal-activa { flex: 1 1 200px; max-width: none; }
             .sucursal-activa select { max-width: none; font-size: 16px; }
         }
+
+        .reclasificacion .card { margin-bottom: 1.5rem; padding: 1.5rem; }
+        .reclasificacion h2, .reclasificacion h3 { margin-bottom: .6rem; }
+        .reclasificacion p, .reclasificacion small { color: #64748b; }
+        .reclasificacion-encabezado, .reclasificacion-destino, .reclasificacion-paginacion { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+        .reclasificacion-nota { margin:1rem 0; line-height:1.6; }
+        .reclasificacion-filtros { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; align-items:end; margin:1rem 0; }
+        .reclasificacion label { display:block; font-weight:600; }
+        .reclasificacion input:not([type=checkbox]), .reclasificacion select { display:block; width:100%; min-height:44px; margin-top:.5rem; border:1px solid #cbd5e1; border-radius:8px; padding:.65rem .8rem; background:white; color:#0f172a; font:inherit; font-weight:400; }
+        .reclasificacion-progreso { display:grid; gap:.6rem; margin:1rem 0; }
+        .reclasificacion progress { width:100%; height:12px; accent-color:#2563eb; }
+        .reclasificacion-acciones { display:flex; gap:.75rem; flex-wrap:wrap; margin:1rem 0; }
+        .reclasificacion-resumen { display:flex; gap:.7rem; flex-wrap:wrap; }
+        .reclasificacion-resumen span { padding:.6rem .8rem; border-radius:8px; background:#eff6ff; color:#1e40af; }
+        .reclasificacion-destino { border-top:1px solid #e2e8f0; padding:1rem 0; margin-top:.7rem; }
+        .reclasificacion-editor { border:2px solid #93c5fd; }
+        .reclasificacion-checkbox { margin:1rem 0; }
+        .reclasificacion-tabla { overflow-x:auto; }
+        .reclasificacion table { width:100%; min-width:780px; }
+        .reclasificacion th, .reclasificacion td { padding:.9rem; text-align:left; vertical-align:top; }
+        .reclasificacion small { display:block; margin-top:.35rem; line-height:1.45; max-width:320px; }
+        .reclasificacion-estado { display:inline-block; border-radius:6px; padding:.25rem .5rem; background:#f1f5f9; font-size:.85rem; font-weight:600; }
+        .reclasificacion-estado.listo, .reclasificacion-estado.aplicado { background:#dcfce7; color:#166534; }
+        .reclasificacion-estado.pendiente, .reclasificacion-estado.nueva { background:#fef3c7; color:#92400e; }
+        .reclasificacion-paginacion { margin-top:1rem; }
+        @media(max-width:600px) { .reclasificacion .card { padding:1rem; } .reclasificacion-filtros { grid-template-columns:1fr; } }
+        .devoluciones-filtros { display: grid; grid-template-columns: minmax(0, 420px) max-content; gap: 1rem; align-items: end; margin-top: 1.5rem; }
+        .devoluciones-filtros .form-group { margin: 0; min-width: 0; }
+        @media (max-width: 640px) { .devoluciones-filtros { grid-template-columns: minmax(0, 1fr); } }
     </style>
 </head>
 <body>
@@ -1598,13 +1627,13 @@
                 <!-- Dashboard (Admin) -->
                 <div v-if="currentView === 'dashboard' && puedeVista('dashboard')">
                     <h1 style="margin-bottom: 2rem;">Dashboard</h1>
-                    <dashboard-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></dashboard-view>
+                    <dashboard-view :api-url="apiUrl" :token="token" :user-role="userRole"></dashboard-view>
                 </div>
 
                 <!-- Productos (Admin) -->
                 <div v-if="currentView === 'productos' && puedeVista('productos')">
                     <h1 style="margin-bottom: 2rem;">Gestión de Productos</h1>
-                    <productos-view :apiUrl="apiUrl" :token="token"></productos-view>
+                    <productos-view :api-url="apiUrl" :token="token"></productos-view>
                 </div>
 
                 <!-- Inventario (Admin) -->
@@ -1621,13 +1650,13 @@
                 <!-- Ventas (Todos) -->
                 <div v-if="puedeVista('ventas')" v-show="currentView === 'ventas'">
                     <h1 style="margin-bottom: 2rem;">Punto de Venta</h1>
-                    <ventas-view :activo="currentView === 'ventas'" :apiUrl="apiUrl" :token="token" :userSucursal="userSucursal" :userRole="userRole"></ventas-view>
+                    <ventas-view :activo="currentView === 'ventas'" :api-url="apiUrl" :token="token" :user-sucursal="userSucursal" :user-role="userRole"></ventas-view>
                 </div>
 
                 <apartados-view v-if="currentView === 'apartados' && puedeVista('apartados')" :token="token" :user-role="userRole"></apartados-view>
                 <!-- Reportes (Admin) -->
                 <div v-if="currentView === 'reportes' && puedeVista('reportes')">
-                    <centro-reportes-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></centro-reportes-view>
+                    <centro-reportes-view :api-url="apiUrl" :token="token" :user-role="userRole"></centro-reportes-view>
                 </div>
 
                 <!-- Usuarios (Admin) -->
@@ -1648,13 +1677,13 @@
                 <!-- Ventas del Día (Empleado) -->
                 <div v-if="currentView === 'ventas-del-dia' && puedeVista('ventas-del-dia')">
                     <h1 style="margin-bottom: 2rem;">Mis Ventas del Día</h1>
-                    <ventas-del-dia-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ventas-del-dia-view>
+                    <ventas-del-dia-view :api-url="apiUrl" :token="token" :user-role="userRole"></ventas-del-dia-view>
                 </div>
 
                 <!-- Cierre de Caja (Empleado) -->
                 <div v-if="currentView === 'cierre-caja' && puedeVista('cierre-caja')">
                     <h1 style="margin-bottom: 2rem;">Cierre de Caja</h1>
-                    <cierre-caja-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></cierre-caja-view>
+                    <cierre-caja-view :api-url="apiUrl" :token="token" :user-role="userRole"></cierre-caja-view>
                 </div>
 
                 <!-- Consulta detallada de cierres de caja (Admin) -->
@@ -1664,30 +1693,30 @@
 
                 <!-- Devoluciones (Admin) -->
                 <div v-if="currentView === 'devoluciones' && puedeVista('devoluciones')">
-                    <devoluciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></devoluciones-view>
+                    <devoluciones-view :api-url="apiUrl" :token="token" :user-role="userRole"></devoluciones-view>
                 </div>
 
                 <!-- Compatibilidad (Admin y Empleados) -->
                 <div v-if="currentView === 'compatibilidad' && puedeVista('compatibilidad')">
-                    <compatibilidad-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></compatibilidad-view>
+                    <compatibilidad-view :api-url="apiUrl" :token="token" :user-role="userRole"></compatibilidad-view>
                 </div>
 
                 <!-- Reparaciones (Admin y Empleados) -->
                 <div v-if="currentView === 'reparaciones' && puedeVista('reparaciones')">
                     <h1 style="margin-bottom: 2rem;">🔧 Reparaciones</h1>
-                    <reparaciones-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></reparaciones-view>
+                    <reparaciones-view :api-url="apiUrl" :token="token" :user-role="userRole"></reparaciones-view>
                 </div>
 
                 <!-- Ayuda (Admin y Empleados) -->
                 <div v-if="currentView === 'ayuda' && puedeVista('ayuda')">
                     <h1 style="margin-bottom: 2rem;">❓ Ayuda</h1>
-                    <ayuda-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ayuda-view>
+                    <ayuda-view :api-url="apiUrl" :token="token" :user-role="userRole"></ayuda-view>
                 </div>
 
                 <!-- Ventas sin Stock (Admin) -->
                 <div v-if="currentView === 'ventas-sin-stock' && puedeVista('ventas-sin-stock')">
                     <h1 style="margin-bottom: 2rem;">📦 Ventas Sin Stock</h1>
-                    <ventas-sin-stock-view :apiUrl="apiUrl" :token="token" :userRole="userRole"></ventas-sin-stock-view>
+                    <ventas-sin-stock-view :api-url="apiUrl" :token="token" :user-role="userRole"></ventas-sin-stock-view>
                 </div>
             </div>
         </template>
@@ -1695,7 +1724,7 @@
 
     <!-- Scripts de componentes -->
     <script src="/static/permisos.js?v=20261106-apartados"></script>
-    <script src="/static/components.js?v=20261109-productos-render"></script>
+    <script src="/static/components.js?v=20261110-devoluciones-activa"></script>
     <script src="/static/comisiones.js?v=20261106-apartados"></script>
     <script src="/static/apartados.js?v=20261109-apartados-venta"></script>
     <script src="/static/app.js?v=20261106-apartados"></script>

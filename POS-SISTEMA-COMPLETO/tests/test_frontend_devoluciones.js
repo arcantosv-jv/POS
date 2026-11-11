@@ -1,0 +1,24 @@
+const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
+const pendientes = [];
+const ctx = { Vue: {}, PermisosUsuario: {}, window: {location:{origin:''}}, localStorage:{getItem:()=> 'test'}, axios:{get(url, config){return new Promise(resolve=>pendientes.push({url, config, resolve}));}} };
+vm.createContext(ctx); vm.runInContext(fs.readFileSync('static/components.js','utf8')+'\nthis.c=DevolucionesView;',ctx);
+const c=ctx.c, obj={...c.data(),$root:{userSucursal:'a',sucursalesAcceso:[{id:'a',nombre:'Centro'},{id:'b',nombre:'Norte'}]}};
+for(const [k,f] of Object.entries(c.methods)) obj[k]=f.bind(obj);
+for(const [k,f] of Object.entries(c.computed)) Object.defineProperty(obj,k,{get:()=>f.call(obj)});
+(async()=>{
+ const primera=obj.obtenerVentasDelDia();
+ assert.equal(pendientes[0].config.params.sucursal_id,'a');
+ obj.$root.userSucursal='b'; obj.modalDevolucion=true;
+ c.watch.sucursal_id.call(obj);
+ assert.equal(obj.modalDevolucion,false);
+ assert.equal(obj.nombreSucursalActiva,'Norte');
+ assert.equal(pendientes[2].config.params.sucursal_id,'b');
+ pendientes[2].resolve({data:{ventas:[{id:'b'}]}}); pendientes[3].resolve({data:{devoluciones:[{id:'b'}]}});
+ await new Promise(setImmediate);
+ pendientes[0].resolve({data:{ventas:[{id:'a'}]}}); pendientes[1].resolve({data:{devoluciones:[{id:'a'}]}});
+ await primera;
+ assert.equal(obj.ventas[0].id,'b'); assert.equal(obj.devoluciones[0].id,'b');
+ obj.$root.userSucursal=''; await obj.obtenerVentasDelDia();
+ assert.equal(pendientes.length,4); assert.equal(obj.ventas.length,0);
+ console.log('OK: sucursal activa, actualización de ventas e historial y descarte de respuestas anteriores.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

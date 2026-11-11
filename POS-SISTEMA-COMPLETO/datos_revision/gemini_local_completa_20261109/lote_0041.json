@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10954",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora para celular."
+  },
+  {
+    "codigo": "10955",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora para reloj inteligente."
+  },
+  {
+    "codigo": "10956",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Mica protectora tipo 9D para iPhone."
+  },
+  {
+    "codigo": "10957",
+    "categoria": "Audio",
+    "subcategoria": "Transmisor Bluetooth",
+    "ambiguo": false,
+    "motivo": "Dispositivo transmisor de audio."
+  },
+  {
+    "codigo": "10958",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Reloj inteligente."
+  },
+  {
+    "codigo": "10959",
+    "categoria": "Adaptadores",
+    "subcategoria": "Adaptadores",
+    "ambiguo": false,
+    "motivo": "Adaptador para tarjetas de memoria."
+  },
+  {
+    "codigo": "10960",
+    "categoria": "Adaptadores",
+    "subcategoria": "Adaptadores",
+    "ambiguo": false,
+    "motivo": "Adaptador de memoria a USB."
+  },
+  {
+    "codigo": "10961",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda protectora para celular."
+  },
+  {
+    "codigo": "10962",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda protectora para celular."
+  },
+  {
+    "codigo": "10964",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Cable de carga para iPhone."
+  },
+  {
+    "codigo": "10965",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para celular."
+  },
+  {
+    "codigo": "10966",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Reloj inteligente."
+  },
+  {
+    "codigo": "10967",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora para celular."
+  },
+  {
+    "codigo": "10968",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora para celular."
+  },
+  {
+    "codigo": "10969",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": true,
+    "motivo": "El nombre es muy breve y no especifica si es entrada tipo C o genérico."
+  },
+  {
+    "codigo": "10970",
+    "categoria": "Plumas",
+    "subcategoria": "Pluma Tablet Celular",
+    "ambiguo": false,
+    "motivo": "Lápiz óptico para dispositivos táctiles."
+  },
+  {
+    "codigo": "10971",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Artículos escolares."
+  },
+  {
+    "codigo": "10972",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Audífonos de diadema con cable."
+  },
+  {
+    "codigo": "10973",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Audífonos inalámbricos."
+  },
+  {
+    "codigo": "10974",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora para celular."
+  },
+  {
+    "codigo": "10975",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para celular."
+  },
+  {
+    "codigo": "10976",
+    "categoria": "Reloj",
+    "subcategoria": "Reloj Genérico",
+    "ambiguo": false,
+    "motivo": "Reloj decorativo o temático."
+  },
+  {
+    "codigo": "10977",
+    "categoria": "Electricidad",
+    "subcategoria": "Multicontacto",
+    "ambiguo": false,
+    "motivo": "Dispositivo de conexión eléctrica."
+  },
+  {
+    "codigo": "10978",
+    "categoria": "Electricidad",
+    "subcategoria": "Multicontacto",
+    "ambiguo": false,
+    "motivo": "Dispositivo de conexión eléctrica con puertos USB."
+  },
+  {
+    "codigo": "10979",
+    "categoria": "Ventilador",
+    "subcategoria": "Ventilador",
+    "ambiguo": false,
+    "motivo": "Aparato de ventilación."
+  }
+]

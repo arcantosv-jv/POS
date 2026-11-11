@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "11054",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador de pared completo."
+  },
+  {
+    "codigo": "11055",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador de pared completo."
+  },
+  {
+    "codigo": "11056",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad para celular."
+  },
+  {
+    "codigo": "11057",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, no un soporte."
+  },
+  {
+    "codigo": "11058",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "11059",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": false,
+    "motivo": "Es un modelo de teléfono móvil."
+  },
+  {
+    "codigo": "11060",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "El nombre es demasiado vago para determinar si es funda o mica."
+  },
+  {
+    "codigo": "11061",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "11062",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Es una batería portátil."
+  },
+  {
+    "codigo": "11063",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Son audífonos inalámbricos."
+  },
+  {
+    "codigo": "11064",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Son audífonos con conexión cableada."
+  },
+  {
+    "codigo": "11065",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11066",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11067",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11068",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11069",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11070",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "Nombre sin información suficiente para clasificar."
+  },
+  {
+    "codigo": "11071",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11072",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11073",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11074",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11075",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Es una mica de privacidad."
+  },
+  {
+    "codigo": "11076",
+    "categoria": "Doritos)",
+    "subcategoria": "Snack",
+    "ambiguo": false,
+    "motivo": "Es un producto alimenticio tipo snack."
+  },
+  {
+    "codigo": "11077",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete tipo squishy."
+  },
+  {
+    "codigo": "11078",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete tipo squishy."
+  }
+]

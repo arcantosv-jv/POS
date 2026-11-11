@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "11104",
+    "categoria": "Bebidas",
+    "subcategoria": "Bebidas",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11105",
+    "categoria": "Bebidas",
+    "subcategoria": "Bebidas",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11106",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda, no un juguete."
+  },
+  {
+    "codigo": "11107",
+    "categoria": "Tablet",
+    "subcategoria": "Tablet",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11108",
+    "categoria": "Tablet",
+    "subcategoria": "Tablet",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11109",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Inalámbrico",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11110",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11111",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda, no un dulce."
+  },
+  {
+    "codigo": "11112",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda, no un dulce."
+  },
+  {
+    "codigo": "11113",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda, no un dulce."
+  },
+  {
+    "codigo": "11114",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda, no un dulce."
+  },
+  {
+    "codigo": "11115",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11116",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte para Celular",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11117",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11118",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11119",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11120",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11121",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11122",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "El término 'Reparación' es ambiguo y no encaja en categorías de venta de productos."
+  },
+  {
+    "codigo": "11123",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11124",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11125",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda, no un juguete."
+  },
+  {
+    "codigo": "11126",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11127",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  },
+  {
+    "codigo": "11128",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Producto correctamente clasificado."
+  }
+]

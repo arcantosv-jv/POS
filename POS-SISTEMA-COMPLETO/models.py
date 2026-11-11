@@ -677,3 +677,15 @@ class Apartado(db.Model):
                     venta_id=next((m.get('venta_id') for m in self.movimientos if m.get('tipo') == 'entregar'), None),
                     fecha_entrega=next((m['fecha'] for m in self.movimientos if m.get('tipo') == 'entregar'), None),
                     productos=self.productos, movimientos=self.movimientos)
+
+
+class RevisionClasificacion(db.Model):
+    """Revisión persistente; propuestas y respaldo por producto, sin tocar existencias."""
+    __tablename__ = 'revisiones_clasificacion'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    creado_por_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=get_cdmx_now, nullable=False)
+    filas = db.Column(db.JSON, nullable=False, default=list)
+    version = db.Column(db.Integer, nullable=False, default=1)
+    token_lote = db.Column(db.String(36), nullable=True)
+    bloqueado_hasta = db.Column(db.Float, nullable=False, default=0)

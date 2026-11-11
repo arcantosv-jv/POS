@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10929",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10930",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo móvil, no una funda."
+  },
+  {
+    "codigo": "10931",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo móvil, no una funda."
+  },
+  {
+    "codigo": "10932",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10933",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10934",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10935",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10936",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Es una batería externa."
+  },
+  {
+    "codigo": "10937",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Es una batería externa, no una funda."
+  },
+  {
+    "codigo": "10938",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Es una batería externa."
+  },
+  {
+    "codigo": "10939",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10940",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador."
+  },
+  {
+    "codigo": "10941",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador para reloj, no solo un cable."
+  },
+  {
+    "codigo": "10942",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet."
+  },
+  {
+    "codigo": "10943",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet."
+  },
+  {
+    "codigo": "10944",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet."
+  },
+  {
+    "codigo": "10945",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10946",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10947",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10948",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet."
+  },
+  {
+    "codigo": "10949",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet."
+  },
+  {
+    "codigo": "10950",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10951",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10952",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet."
+  },
+  {
+    "codigo": "10953",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador."
+  }
+]

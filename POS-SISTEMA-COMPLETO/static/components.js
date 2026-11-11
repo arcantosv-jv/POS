@@ -5894,19 +5894,13 @@ const DevolucionesView = {
                 <button type="button" class="btn-close" @click="error = ''"></button>
             </div>
             
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <label class="form-label">Sucursal</label>
-                    <select v-model="sucursal_id" class="form-control" @change="obtenerVentasDelDia">
-                        <option value="">Todas las sucursales</option>
-                        <option v-for="sucursal in sucursales" :key="sucursal.id" :value="sucursal.id">
-                            {{ sucursal.nombre }}
-                        </option>
-                    </select>
+            <div class="card reportes-filtros devoluciones-filtros">
+                <div class="form-group">
+                    <label class="form-label" for="devoluciones-sucursal">Sucursal activa</label>
+                    <input id="devoluciones-sucursal" class="form-control-fecha" :value="nombreSucursalActiva" readonly>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">&nbsp;</label>
-                    <button class="btn btn-primary form-control" @click="obtenerVentasDelDia" :disabled="loading">
+                <div class="reportes-filtros-accion">
+                    <button class="btn btn-primary" @click="obtenerVentasDelDia" :disabled="loading">
                         <span v-if="loading">Cargando...</span>
                         <span v-else>Cargar Ventas</span>
                     </button>
@@ -6135,8 +6129,7 @@ const DevolucionesView = {
             apiUrl: window.location.origin,
             token: localStorage.getItem('token'),
             userRole: localStorage.getItem('userRole'),
-            sucursal_id: '',
-            sucursales: [],
+            consultaVersion: 0,
             ventas: [],
             devoluciones: [],
             ventaSeleccionada: null,
@@ -6150,7 +6143,20 @@ const DevolucionesView = {
             error: ''
         };
     },
+    watch: {
+        sucursal_id() {
+            this.modalDevolucion = false;
+            this.detalleSeleccionado = null;
+            this.ventaSeleccionada = null;
+            this.ventas = []; this.devoluciones = [];
+            this.obtenerVentasDelDia();
+        }
+    },
     computed: {
+        sucursal_id() { return this.$root.userSucursal || ''; },
+        nombreSucursalActiva() {
+            return (this.$root.sucursalesAcceso || []).find(s => s.id === this.sucursal_id)?.nombre || 'Sin sucursal activa';
+        },
         cantidadDisponible() {
             if (!this.detalleSeleccionado) return 0;
             const yaDevueltas = this.devoluciones
@@ -6160,38 +6166,27 @@ const DevolucionesView = {
         }
     },
     methods: {
-        obtenerSucursales() {
-            axios.get(`${this.apiUrl}/api/admin/sucursales`, {
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            })
-            .then(response => {
-                this.sucursales = response.data.sucursales || [];
-            })
-            .catch(err => {
-                console.error('Error:', err);
-            });
-        },
-        obtenerVentasDelDia() {
+        async obtenerVentasDelDia() {
+            const version = ++this.consultaVersion;
+            const sucursal = this.sucursal_id;
+            this.error = '';
+            this.ventaSeleccionada = null;
+            if (!sucursal) { this.ventas = []; this.devoluciones = []; this.loading = false; return; }
             this.loading = true;
-            const params = {};
-            if (this.sucursal_id) params.sucursal_id = this.sucursal_id;
-            
-            axios.get(`${this.apiUrl}/api/devoluciones/ventas-dia`, {
-                params,
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            })
-            .then(response => {
-                this.ventas = response.data.ventas || [];
-                this.ventaSeleccionada = null;
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                this.error = err.response?.data?.error || 'Error cargando ventas';
-            })
-            .finally(() => {
-                this.loading = false;
-                this.cargarHistorialDevoluciones();
-            });
+            try {
+                const config = { params: { sucursal_id: sucursal }, headers: { Authorization: `Bearer ${this.token}` } };
+                const [ventas, historial] = await Promise.all([
+                    axios.get(`${this.apiUrl}/api/devoluciones/ventas-dia`, config),
+                    axios.get(`${this.apiUrl}/api/devoluciones`, config)
+                ]);
+                if (version !== this.consultaVersion || sucursal !== this.sucursal_id) return;
+                this.ventas = ventas.data.ventas || [];
+                this.devoluciones = historial.data.devoluciones || [];
+            } catch (err) {
+                if (version === this.consultaVersion) this.error = err.response?.data?.error || 'Error cargando devoluciones';
+            } finally {
+                if (version === this.consultaVersion) this.loading = false;
+            }
         },
         seleccionarVenta(venta) {
             if (this.ventaSeleccionada && this.ventaSeleccionada.id === venta.id) {
@@ -6242,21 +6237,7 @@ const DevolucionesView = {
                 this.loading = false;
             });
         },
-        cargarHistorialDevoluciones() {
-            const params = {};
-            if (this.sucursal_id) params.sucursal_id = this.sucursal_id;
-            
-            axios.get(`${this.apiUrl}/api/devoluciones`, {
-                params,
-                headers: { 'Authorization': `Bearer ${this.token}` }
-            })
-            .then(response => {
-                this.devoluciones = response.data.devoluciones || [];
-            })
-            .catch(err => {
-                console.error('Error:', err);
-            });
-        },
+        cargarHistorialDevoluciones() { return this.obtenerVentasDelDia(); },
         cancelarDevolucion(devolucionId) {
             if (!confirm('¿Estás seguro de que deseas revertir esta devolución?')) return;
             
@@ -6293,7 +6274,6 @@ const DevolucionesView = {
         }
     },
     mounted() {
-        this.obtenerSucursales();
         this.obtenerVentasDelDia();
     }
 };
@@ -6373,7 +6353,7 @@ const CompatibilidadView = {
                                     <p><strong>{{ mica.verificada ? 'Verificada por el personal' : 'Sin verificar físicamente' }}</strong></p>
                                     <p v-if="mica.verificada">{{ mica.notas }} · {{ mica.verificada_por }}</p>
                                     <button v-if="(!mica.verificada) && ($root.puede('compatibilidad', 'verificar'))" class="btn btn-secondary btn-sm" @click="iniciarVerificacion(mica)">Registrar comprobación</button>
-                                    <button v-if="$root.puede('compatibilidad', 'eliminar')" v-else-if="mica.puede_retirar" class="btn btn-secondary btn-sm" @click="retirarVerificacion(mica)" :disabled="guardandoVerificacion">Retirar verificación</button>
+                                    <button v-else-if="mica.puede_retirar && $root.puede('compatibilidad', 'eliminar')" class="btn btn-secondary btn-sm" @click="retirarVerificacion(mica)" :disabled="guardandoVerificacion">Retirar verificación</button>
                                     <!-- Razón desactivada para simplificar los resultados.
                                     <p style="margin: 0.3rem 0; color: var(--gray-700);">
                                         <strong>Razón:</strong> {{ mica.razon }}
@@ -6954,7 +6934,7 @@ const ReparacionesView = {
                 <div class="card-header">
                     <h3>{{ mostrarNuevaReparacion ? (editandoReparacionId ? 'Editar Reparación' : 'Nueva Reparación') : 'Listado de Reparaciones' }}</h3>
                     <button v-if="mostrarNuevaReparacion" @click="cerrarFormularioReparacion" class="btn btn-primary btn-sm" :disabled="guardandoReparacion">Ver Listado</button>
-                    <button v-if="$root.puede('reparaciones', 'crear')" v-else @click="nuevaReparacion" class="btn btn-primary btn-sm">+ Nueva Reparación</button>
+                    <button v-else-if="$root.puede('reparaciones', 'crear')" @click="nuevaReparacion" class="btn btn-primary btn-sm">+ Nueva Reparación</button>
                 </div>
 
                 <!-- Formulario Nueva Reparación -->
@@ -8040,16 +8020,187 @@ const CentroReportesView = {
 };
 
 
+const ReclasificarProductosView = {
+    props: ['apiUrl', 'token', 'userRole'],
+    data() { return { revision: null, historial: [], catalogo: [], ocupado: false, procesando: false,
+        detener: false, viva: true, error: '', mensaje: '', filtro: 'cambios', busqueda: '', pagina: 1,
+        editor: null, form: { categoriaId: '', subcategoriaId: '', nueva: false, categoria: '', subcategoria: '' } }; },
+    computed: {
+        resumen() { return this.revision?.resumen || {}; },
+        filtradas() {
+            const q = this.busqueda.trim().toLocaleLowerCase();
+            return (this.revision?.filas || []).filter(f =>
+                (this.filtro === 'todos' || (this.filtro === 'cambios' ? !['correcto', 'sin_revisar', 'aplicado'].includes(f.estado) : f.estado === this.filtro)) &&
+                (!q || `${f.codigo} ${f.nombre} ${f.categoria_actual} ${f.categoria_destino}`.toLocaleLowerCase().includes(q)));
+        },
+        paginas() { return Math.max(1, Math.ceil(this.filtradas.length / 25)); },
+        visibles() { return this.filtradas.slice((this.pagina - 1) * 25, this.pagina * 25); },
+        subcategorias() { return this.catalogo.find(c => c.id === this.form.categoriaId)?.subcategorias || []; },
+        nuevas() {
+            const result = new Map();
+            for (const f of this.revision?.filas || []) if (f.estado === 'nueva') {
+                const key = `${f.categoria_destino}\u0000${f.subcategoria_destino}`;
+                if (!result.has(key)) result.set(key, { categoria: f.categoria_destino, subcategoria: f.subcategoria_destino, cantidad: 0 });
+                result.get(key).cantidad++;
+            }
+            return [...result.values()];
+        }
+    },
+    watch: { filtro() { this.pagina = 1; }, busqueda() { this.pagina = 1; }, paginas(v) { this.pagina = Math.min(this.pagina, v); } },
+    methods: {
+        headers() { return { Authorization: 'Bearer ' + this.token }; },
+        fecha(v) { return v ? new Date(v).toLocaleString('es-MX') : ''; },
+        etiqueta(v) { return { sin_revisar: 'Sin revisar', pendiente: 'Pendiente de editar', listo: 'Listo para aplicar', nueva: 'Requiere aprobación', correcto: 'Sin cambio', aplicado: 'Aplicado' }[v] || v; },
+        async pedir(ruta, body) {
+            const config = { headers: this.headers() };
+            const response = body === undefined ? await axios.get('/api/reclasificacion' + ruta, config) :
+                await axios.post('/api/reclasificacion' + ruta, body, config);
+            return response.data;
+        },
+        fallo(e) { this.error = e.response?.data?.error || 'No se pudo completar la operación. Tu avance guardado se conserva.'; },
+        async iniciar() {
+            this.ocupado = true;
+            try {
+                [this.historial, this.catalogo] = await Promise.all([this.pedir(''), this.pedir('/catalogo')]);
+                if (this.historial.length) this.revision = await this.pedir('/' + this.historial[0].id);
+            } catch (e) { this.fallo(e); } finally { this.ocupado = false; }
+        },
+        async cargar(id) {
+            if (!id) return;
+            this.ocupado = true; this.error = ''; this.mensaje = ''; this.editor = null;
+            try { this.revision = await this.pedir('/' + id); this.pagina = 1; }
+            catch (e) { this.fallo(e); } finally { this.ocupado = false; }
+        },
+        async nuevaRevision() {
+            this.ocupado = true; this.error = ''; this.mensaje = ''; this.editor = null;
+            try {
+                this.revision = await this.pedir('', {}); this.historial.unshift(this.revision); this.pagina = 1;
+            } catch (e) { this.fallo(e); } finally { this.ocupado = false; }
+            if (!this.error) await this.continuar();
+        },
+        async continuar() {
+            this.procesando = true; this.detener = false; this.error = ''; this.mensaje = ''; this.editor = null;
+            try {
+                while (this.viva && !this.detener && (this.revision?.resumen.sin_revisar || 0) > 0) {
+                    this.revision = await this.pedir('/' + this.revision.id + '/procesar', {});
+                }
+                if (this.viva) this.mensaje = this.detener ? 'Revisión pausada. El avance está guardado.' : 'Revisión terminada. Revisa las propuestas antes de aplicar.';
+            } catch (e) { if (this.viva) this.fallo(e); }
+            finally { this.procesando = false; }
+        },
+        editar(f) {
+            this.editor = f; this.error = ''; this.mensaje = '';
+            const cat = this.catalogo.find(c => c.nombre === f.categoria_destino);
+            const sub = cat?.subcategorias.find(s => s.nombre === f.subcategoria_destino);
+            this.form = { categoriaId: cat?.id || '', subcategoriaId: sub?.id || '', nueva: Boolean(f.categoria_destino && !sub),
+                categoria: f.categoria_destino || '', subcategoria: f.subcategoria_destino || '' };
+            this.$nextTick(() => this.$refs.editor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+        },
+        async modificar(accion, payload) {
+            this.ocupado = true; this.error = ''; this.mensaje = '';
+            try {
+                const antes = this.resumen.aplicado || 0;
+                this.revision = await this.pedir('/' + this.revision.id + '/' + accion, { version: this.revision.version, ...payload });
+                this.editor = null;
+                this.mensaje = accion === 'aplicar' ? `${(this.resumen.aplicado || 0) - antes} cambios aplicados. Los pendientes se conservaron.` : 'Revisión guardada. Aún no se modificaron productos.';
+                if (accion === 'aplicar') this.catalogo = await this.pedir('/catalogo');
+            } catch (e) { this.fallo(e); } finally { this.ocupado = false; }
+        },
+        guardarEdicion() {
+            if (!this.form.nueva && !this.form.subcategoriaId) { this.error = 'Selecciona categoría y subcategoría.'; return; }
+            return this.modificar('editar', { producto_id: this.editor.id, ...(this.form.nueva ?
+                { categoria: this.form.categoria, subcategoria: this.form.subcategoria } : { subcategoria_id: this.form.subcategoriaId }) });
+        }
+    },
+    mounted() { this.iniciar(); },
+    beforeUnmount() { this.viva = false; this.detener = true; },
+    template: `
+    <div class="reclasificacion">
+        <div class="card">
+            <div class="reclasificacion-encabezado">
+                <div><h2>Re Clasificar Productos</h2><p>Revisa todo el catálogo con Gemini, incluidos los productos inactivos.</p></div>
+                <button class="btn btn-primary" @click="nuevaRevision" :disabled="ocupado || procesando">{{ revision ? 'Nueva revisión' : 'Iniciar revisión' }}</button>
+            </div>
+            <p class="reclasificacion-nota">Solo se cambia categoría y subcategoría. El nombre, precio e inventario se conservan. Puedes salir y continuar después; las revisiones anteriores quedan guardadas.</p>
+            <div class="reclasificacion-filtros" v-if="historial.length">
+                <label>Revisión guardada<select :value="revision?.id || ''" @change="cargar($event.target.value)" :disabled="ocupado || procesando">
+                    <option v-for="r in historial" :key="r.id" :value="r.id">{{ fecha(r.fecha) }} · {{ r.total }} productos</option>
+                </select></label>
+                <button class="btn btn-secondary" @click="cargar(revision.id)" :disabled="!revision || ocupado || procesando">Actualizar revisión</button>
+            </div>
+            <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
+            <div v-if="mensaje" class="alert alert-success" role="status">{{ mensaje }}</div>
+            <template v-if="revision">
+                <div class="reclasificacion-progreso" aria-live="polite">
+                    <strong>{{ revision.procesados }} de {{ revision.total }} productos revisados</strong>
+                    <progress :value="revision.procesados" :max="revision.total || 1"></progress>
+                    <span v-if="procesando">Consultando Gemini… Cada lote se guarda automáticamente.</span>
+                    <span v-else-if="revision.ocupado">Hay un lote en proceso. Actualiza la revisión en unos momentos.</span>
+                </div>
+                <div class="reclasificacion-acciones">
+                    <button v-if="resumen.sin_revisar && !procesando" class="btn btn-primary" @click="continuar" :disabled="ocupado">Continuar revisión</button>
+                    <button v-if="procesando" class="btn btn-secondary" @click="detener = true" :disabled="detener">{{ detener ? 'Pausando al terminar el lote…' : 'Pausar revisión' }}</button>
+                    <button class="btn btn-success" @click="modificar('aplicar', {})" :disabled="ocupado || procesando || revision.ocupado || !resumen.listo">Aplicar cambios ({{ resumen.listo || 0 }})</button>
+                </div>
+                <p class="reclasificacion-nota">Se aplican las propuestas listas, incluidas las ambiguas que ya corregiste. Los pendientes sin editar y los destinos nuevos sin aprobar se omiten.</p>
+                <div class="reclasificacion-resumen">
+                    <span><b>{{ resumen.listo || 0 }}</b> listos</span><span><b>{{ resumen.pendiente || 0 }}</b> pendientes de editar</span>
+                    <span><b>{{ resumen.nueva || 0 }}</b> requieren aprobación</span><span><b>{{ resumen.correcto || 0 }}</b> sin cambio</span><span><b>{{ resumen.aplicado || 0 }}</b> aplicados</span>
+                </div>
+            </template>
+        </div>
+        <div class="card" v-if="nuevas.length">
+            <h3>Categorías y subcategorías propuestas</h3>
+            <p>Aprueba cada destino antes de crearlo. Se creará al aplicar los cambios.</p>
+            <div v-for="n in nuevas" :key="n.categoria + '/' + n.subcategoria" class="reclasificacion-destino">
+                <div><strong>{{ n.categoria }} → {{ n.subcategoria }}</strong><p>{{ n.cantidad }} productos</p></div>
+                <button class="btn btn-primary" :disabled="ocupado || procesando || revision.ocupado" @click="modificar('aprobar', n)">Aprobar destino</button>
+            </div>
+        </div>
+        <form class="card reclasificacion-editor" ref="editor" v-if="editor" @submit.prevent="guardarEdicion">
+            <h3>Editar clasificación: {{ editor.nombre }}</h3>
+            <p>{{ editor.codigo }} · Actual: {{ editor.categoria_actual }} / {{ editor.subcategoria_actual }}</p>
+            <label class="reclasificacion-checkbox"><input type="checkbox" v-model="form.nueva"> Proponer una categoría o subcategoría nueva</label>
+            <div class="reclasificacion-filtros" v-if="!form.nueva">
+                <label>Categoría<select v-model="form.categoriaId" @change="form.subcategoriaId = ''" required><option value="">Selecciona categoría</option><option v-for="c in catalogo" :value="c.id" :key="c.id">{{ c.nombre }}</option></select></label>
+                <label>Subcategoría<select v-model="form.subcategoriaId" required><option value="">Selecciona subcategoría</option><option v-for="s in subcategorias" :value="s.id" :key="s.id">{{ s.nombre }}</option></select></label>
+            </div>
+            <div class="reclasificacion-filtros" v-else>
+                <label>Categoría<input v-model="form.categoria" list="reclasificacion-categorias" maxlength="100" required><datalist id="reclasificacion-categorias"><option v-for="c in catalogo" :key="c.id" :value="c.nombre"></option></datalist></label>
+                <label>Subcategoría<input v-model="form.subcategoria" maxlength="100" required></label>
+            </div>
+            <div class="reclasificacion-acciones"><button class="btn btn-primary" :disabled="ocupado || procesando">Guardar propuesta</button><button type="button" class="btn btn-secondary" @click="editor = null" :disabled="ocupado">Cancelar</button></div>
+        </form>
+        <div class="card" v-if="revision">
+            <div class="reclasificacion-filtros">
+                <label>Buscar producto<input v-model="busqueda" placeholder="Nombre o código"></label>
+                <label>Mostrar<select v-model="filtro"><option value="cambios">Cambios y pendientes</option><option value="todos">Todos</option><option value="listo">Listos para aplicar</option><option value="pendiente">Pendientes de editar</option><option value="nueva">Requieren aprobación</option><option value="correcto">Sin cambio</option><option value="sin_revisar">Sin revisar</option><option value="aplicado">Aplicados</option></select></label>
+            </div>
+            <div class="reclasificacion-tabla"><table><thead><tr><th>Producto</th><th>Clasificación actual</th><th>Propuesta</th><th>Estado / motivo</th><th>Acción</th></tr></thead>
+                <tbody><tr v-for="f in visibles" :key="f.id">
+                    <td><strong>{{ f.nombre }}</strong><small>{{ f.codigo }}</small></td>
+                    <td>{{ f.categoria_actual }}<small>{{ f.subcategoria_actual }}</small></td>
+                    <td>{{ f.categoria_destino || 'Por definir' }}<small>{{ f.subcategoria_destino }}</small></td>
+                    <td><span class="reclasificacion-estado" :class="f.estado">{{ etiqueta(f.estado) }}</span><small>{{ f.motivo }}</small><small v-if="f.editada">Editada manualmente</small><small v-if="f.aprobada">Destino aprobado</small><small v-if="f.aplicado_en">{{ fecha(f.aplicado_en) }}</small></td>
+                    <td><button v-if="f.estado !== 'aplicado'" class="btn btn-secondary" @click="editar(f)" :disabled="ocupado || procesando || revision.ocupado">Editar</button><span v-else>Guardado</span></td>
+                </tr><tr v-if="!visibles.length"><td colspan="5">No hay productos en este filtro.</td></tr></tbody>
+            </table></div>
+            <div class="reclasificacion-paginacion"><button class="btn btn-secondary" @click="pagina--" :disabled="pagina <= 1">Anterior</button><span>{{ filtradas.length }} productos · Página {{ pagina }} de {{ paginas }}</span><button class="btn btn-secondary" @click="pagina++" :disabled="pagina >= paginas">Siguiente</button></div>
+        </div>
+    </div>`
+};
+
 const CentroCategoriasView = {
-    components: { CategoriasView, SubcategoriasView },
+    components: { CategoriasView, SubcategoriasView, ReclasificarProductosView },
     props: ['apiUrl', 'token', 'userRole'],
     data() { return { seleccion: '' }; },
     computed: {
         tabs() {
             return [
                 { id: 'categorias', titulo: 'Categorías', componente: 'CategoriasView', descripcion: 'Organiza los grupos principales de tu catálogo.' },
-                { id: 'subcategorias', titulo: 'Subcategorías', componente: 'SubcategoriasView', descripcion: 'Organiza las subcategorías dentro de cada categoría.' }
-            ].filter(tab => this.$root.puede(tab.id));
+                { id: 'subcategorias', titulo: 'Subcategorías', componente: 'SubcategoriasView', descripcion: 'Organiza las subcategorías dentro de cada categoría.' },
+                { id: 'reclasificacion', titulo: 'Re Clasificar Productos', componente: 'ReclasificarProductosView', descripcion: 'Revisa y corrige la clasificación de tus productos.' }
+            ].filter(tab => tab.id === 'reclasificacion' ? this.userRole === 'admin' : this.$root.puede(tab.id));
         },
         activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; }
     },

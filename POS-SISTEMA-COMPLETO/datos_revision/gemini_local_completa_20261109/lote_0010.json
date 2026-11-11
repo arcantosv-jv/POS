@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10225",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10226",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10227",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10228",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10229",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10230",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora para pantalla."
+  },
+  {
+    "codigo": "10231",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10232",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10233",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10234",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10235",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10236",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10237",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10238",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10239",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10240",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10241",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10242",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10243",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10244",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10245",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10246",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo del dispositivo, no especifica si es el equipo o un accesorio."
+  },
+  {
+    "codigo": "10247",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo del dispositivo, no especifica si es el equipo o un accesorio."
+  },
+  {
+    "codigo": "10248",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo del dispositivo, no especifica si es el equipo o un accesorio."
+  },
+  {
+    "codigo": "10249",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre solo indica el modelo del dispositivo, no especifica si es el equipo o un accesorio."
+  }
+]

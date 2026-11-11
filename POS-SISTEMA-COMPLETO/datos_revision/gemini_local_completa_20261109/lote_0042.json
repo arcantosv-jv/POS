@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10980",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo de audio inalámbrico."
+  },
+  {
+    "codigo": "10981",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable auxiliar de audio."
+  },
+  {
+    "codigo": "10982",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Artículo de papelería."
+  },
+  {
+    "codigo": "10983",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Cable auxiliar de audio."
+  },
+  {
+    "codigo": "10984",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Inalámbrico",
+    "ambiguo": false,
+    "motivo": "Dispositivo de carga inalámbrica."
+  },
+  {
+    "codigo": "10985",
+    "categoria": "Soportes",
+    "subcategoria": "Bastón Selfie",
+    "ambiguo": false,
+    "motivo": "Accesorio de soporte con conectividad Bluetooth."
+  },
+  {
+    "codigo": "10986",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Artículo de oficina/escolar."
+  },
+  {
+    "codigo": "10987",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Los aretes son accesorios personales, no papelería."
+  },
+  {
+    "codigo": "10988",
+    "categoria": "Plumas",
+    "subcategoria": "Pluma Tablet Celular",
+    "ambiguo": false,
+    "motivo": "Stylus para dispositivos táctiles."
+  },
+  {
+    "codigo": "10989",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Los colores son artículos de papelería, no cargadores."
+  },
+  {
+    "codigo": "10990",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "El término 'Chip Bait' es ambiguo y no corresponde a cables."
+  },
+  {
+    "codigo": "10991",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Artículo de cuidado personal, no papelería."
+  },
+  {
+    "codigo": "10992",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Accesorio decorativo común en papelería."
+  },
+  {
+    "codigo": "10993",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Accesorio de cuidado personal, no papelería."
+  },
+  {
+    "codigo": "10994",
+    "categoria": "Micas",
+    "subcategoria": "Mica Hidrogel",
+    "ambiguo": false,
+    "motivo": "Mica de protección para pantalla."
+  },
+  {
+    "codigo": "10995",
+    "categoria": "Micas",
+    "subcategoria": "Mica Hidrogel",
+    "ambiguo": false,
+    "motivo": "Mica de protección con función de privacidad."
+  },
+  {
+    "codigo": "10996",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Accesorio de protección para celular."
+  },
+  {
+    "codigo": "10997",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Accesorio tipo funda/cartera para celular."
+  },
+  {
+    "codigo": "10998",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Accesorio de protección para celular."
+  },
+  {
+    "codigo": "10999",
+    "categoria": "Ventilador",
+    "subcategoria": "Ventilador",
+    "ambiguo": false,
+    "motivo": "Dispositivo de ventilación."
+  },
+  {
+    "codigo": "11000",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": true,
+    "motivo": "No se especifica si es para bicicleta, balón o uso médico."
+  },
+  {
+    "codigo": "11001",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": true,
+    "motivo": "El nombre es ambiguo, no se puede clasificar como mica."
+  },
+  {
+    "codigo": "11002",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Mica de protección para pantalla."
+  },
+  {
+    "codigo": "11003",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Mica de protección para pantalla."
+  },
+  {
+    "codigo": "11004",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Mica de protección para pantalla."
+  }
+]

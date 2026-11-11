@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10100",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador completo para auto."
+  },
+  {
+    "codigo": "10101",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga V8."
+  },
+  {
+    "codigo": "10102",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga Tipo C."
+  },
+  {
+    "codigo": "10103",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga para iPhone."
+  },
+  {
+    "codigo": "10104",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga Tipo C reforzado."
+  },
+  {
+    "codigo": "10105",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una tarjeta de memoria Micro SD."
+  },
+  {
+    "codigo": "10106",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo SmartWatch."
+  },
+  {
+    "codigo": "10107",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga para iPhone reforzado."
+  },
+  {
+    "codigo": "10108",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga V8 reforzado."
+  },
+  {
+    "codigo": "10109",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una tarjeta de memoria Micro SD."
+  },
+  {
+    "codigo": "10110",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una tarjeta de memoria Micro SD."
+  },
+  {
+    "codigo": "10111",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una tarjeta de memoria Micro SD."
+  },
+  {
+    "codigo": "10112",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una tarjeta de memoria Micro SD."
+  },
+  {
+    "codigo": "10113",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una tarjeta de memoria Micro SD."
+  },
+  {
+    "codigo": "10114",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una memoria USB."
+  },
+  {
+    "codigo": "10115",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una memoria USB."
+  },
+  {
+    "codigo": "10116",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una memoria USB."
+  },
+  {
+    "codigo": "10117",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una memoria USB."
+  },
+  {
+    "codigo": "10118",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una memoria USB."
+  },
+  {
+    "codigo": "10119",
+    "categoria": "Memoria",
+    "subcategoria": "Memoria",
+    "ambiguo": false,
+    "motivo": "Es una memoria USB."
+  },
+  {
+    "codigo": "10120",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría Reloj."
+  },
+  {
+    "codigo": "10121",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría Ventilador."
+  },
+  {
+    "codigo": "10122",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría Ventilador."
+  },
+  {
+    "codigo": "10123",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría Tablet."
+  },
+  {
+    "codigo": "10124",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría Powerbank."
+  }
+]

@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10709",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10710",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10711",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10712",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda protectora para un modelo de celular específico."
+  },
+  {
+    "codigo": "10713",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10714",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda protectora para un modelo de celular específico."
+  },
+  {
+    "codigo": "10715",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10716",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10717",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10718",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10719",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10720",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámica para un modelo de celular específico."
+  },
+  {
+    "codigo": "10721",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de categoría incorrecta a Micas/Cerámica."
+  },
+  {
+    "codigo": "10722",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda protectora para un modelo de celular específico."
+  },
+  {
+    "codigo": "10722y",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10723",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10724",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10725",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10726",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10727",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10728",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "10729",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Corregido de subcategoría incorrecta a Cerámica."
+  },
+  {
+    "codigo": "1072i",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda protectora para un modelo de celular específico."
+  },
+  {
+    "codigo": "10730",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": true,
+    "motivo": "El nombre 'auto completo apple' es ambiguo, se asume cargador por contexto de accesorios."
+  },
+  {
+    "codigo": "10731",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda protectora para un modelo de celular específico."
+  }
+]

@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10250",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10251",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10252",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10253",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10254",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10255",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10256",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10257",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10258",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10259",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10260",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10261",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10262",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10263",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10264",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10265",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10266",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10267",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10268",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10269",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10270",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10271",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  },
+  {
+    "codigo": "10272",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10273",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "El nombre especifica explícitamente que es una funda."
+  },
+  {
+    "codigo": "10274",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre indica un modelo de celular, no especifica si es funda o el dispositivo."
+  }
+]

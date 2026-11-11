@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10856",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora para pantalla."
+  },
+  {
+    "codigo": "10857",
+    "categoria": "Consolas",
+    "subcategoria": "Consola de Videojuegos",
+    "ambiguo": false,
+    "motivo": "Es una consola de videojuegos portátil."
+  },
+  {
+    "codigo": "10858",
+    "categoria": "Consolas",
+    "subcategoria": "Consola de Videojuegos",
+    "ambiguo": false,
+    "motivo": "Es una consola de videojuegos."
+  },
+  {
+    "codigo": "10859",
+    "categoria": "Consolas",
+    "subcategoria": "Consola de Videojuegos",
+    "ambiguo": false,
+    "motivo": "Es una consola de videojuegos."
+  },
+  {
+    "codigo": "10860",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un dron recreativo."
+  },
+  {
+    "codigo": "10861",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es una bocina inalámbrica."
+  },
+  {
+    "codigo": "10862",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es una bocina portátil."
+  },
+  {
+    "codigo": "10863",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es una bocina con micrófono."
+  },
+  {
+    "codigo": "10864",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es una bocina sin micrófono."
+  },
+  {
+    "codigo": "10865",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es una bocina."
+  },
+  {
+    "codigo": "10866",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es una bocina."
+  },
+  {
+    "codigo": "10867",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de video."
+  },
+  {
+    "codigo": "10868",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de video."
+  },
+  {
+    "codigo": "10869",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de video."
+  },
+  {
+    "codigo": "10870",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de video."
+  },
+  {
+    "codigo": "10871",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo de audio inteligente."
+  },
+  {
+    "codigo": "10871g",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Es un accesorio para reloj inteligente."
+  },
+  {
+    "codigo": "10872",
+    "categoria": "Audio",
+    "subcategoria": "Bocinas",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo de audio inteligente."
+  },
+  {
+    "codigo": "10873",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Es un cable de carga."
+  },
+  {
+    "codigo": "10874",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un adaptador de corriente."
+  },
+  {
+    "codigo": "10875",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un adaptador de corriente."
+  },
+  {
+    "codigo": "10876",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un adaptador de corriente."
+  },
+  {
+    "codigo": "10877",
+    "categoria": "Bebidas",
+    "subcategoria": "Bebidas",
+    "ambiguo": false,
+    "motivo": "Es un recipiente para líquidos."
+  },
+  {
+    "codigo": "10878",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Es una batería externa."
+  },
+  {
+    "codigo": "10879",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Es una batería externa."
+  }
+]

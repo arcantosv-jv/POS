@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "1059t",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo de audio inalámbrico."
+  },
+  {
+    "codigo": "10600",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo de audio con cable."
+  },
+  {
+    "codigo": "10601",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Corresponde a la categoría de micas 9D."
+  },
+  {
+    "codigo": "10602",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora estándar."
+  },
+  {
+    "codigo": "10603",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10604",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría errónea."
+  },
+  {
+    "codigo": "10605",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora, corregido de categoría errónea."
+  },
+  {
+    "codigo": "10606",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10607",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría errónea."
+  },
+  {
+    "codigo": "10608",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría errónea."
+  },
+  {
+    "codigo": "10609",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10610",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10611",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10612",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10613",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10614",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10615",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre refiere al modelo del dispositivo, no especifica si es funda o mica."
+  },
+  {
+    "codigo": "10616",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre refiere al modelo del dispositivo, no especifica si es funda o mica."
+  },
+  {
+    "codigo": "10617",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10618",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10619",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "10620",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular, corregido de categoría errónea."
+  },
+  {
+    "codigo": "10621",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10622",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  },
+  {
+    "codigo": "10623",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Es una mica protectora."
+  }
+]

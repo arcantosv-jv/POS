@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10880",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga, no un cargador completo con cable."
+  },
+  {
+    "codigo": "10881",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga, no un cargador completo con cable."
+  },
+  {
+    "codigo": "10882",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10883",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10884",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga."
+  },
+  {
+    "codigo": "10885",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "El término recargas es ambiguo y no encaja en papelería."
+  },
+  {
+    "codigo": "10886",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "Reparación es un servicio, no un producto físico."
+  },
+  {
+    "codigo": "10887",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte para Celular",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10888",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte para Celular",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10889",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte para Celular",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10890",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte para Celular",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10891",
+    "categoria": "Computo",
+    "subcategoria": "Computo",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10892",
+    "categoria": "Computo",
+    "subcategoria": "Computo",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10893",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "SIM cards no tienen categoría definida."
+  },
+  {
+    "codigo": "10894",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "SIM cards no tienen categoría definida."
+  },
+  {
+    "codigo": "10895",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "SIM cards no tienen categoría definida."
+  },
+  {
+    "codigo": "10896",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "SIM cards no tienen categoría definida."
+  },
+  {
+    "codigo": "10897",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10898",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10899",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "109",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10900",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10901",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Accesorio de gaming, se mantiene en juguetes por falta de categoría mejor."
+  },
+  {
+    "codigo": "10902",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta."
+  },
+  {
+    "codigo": "10903",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Figuras coleccionables son juguetes."
+  }
+]

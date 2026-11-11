@@ -18,7 +18,7 @@ ADDITIONS = {
     'ventas': {'cierre_caja_id'},
     'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
 }
-NEW_TABLES = {'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados'}
+NEW_TABLES = {'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion'}
 
 
 class MigrationTest(unittest.TestCase):
@@ -49,7 +49,7 @@ class MigrationTest(unittest.TestCase):
                     result = subprocess.run([sys.executable, 'railway_migrate.py'], cwd=ROOT, env=env, text=True, capture_output=True, timeout=45)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 with engine.connect() as conn:
-                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '015')
+                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '016')
                     self.assertEqual(tuple(conn.execute(sa.text("SELECT permisos, sucursales_permitidas FROM users WHERE id='u'")).one()), (None, None))
                     row = conn.execute(sa.text('SELECT total_ventas, egreso, concepto_egreso, efectivo_reportado, diferencia, egresos, reembolsos_efectivo, efectivo_inicial FROM cierres_caja WHERE id=\'c\'')).one()
                     self.assertEqual(tuple(row), (1000, 200, 'Sueldo', 800, 0, None, 0, None))

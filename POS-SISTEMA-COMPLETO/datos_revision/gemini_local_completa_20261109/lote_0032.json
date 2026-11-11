@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10753",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10754",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10755",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10756",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10757",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10758",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10759",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "1075a",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": true,
+    "motivo": "No especifica si es cable o bluetooth, se mantiene la actual por defecto."
+  },
+  {
+    "codigo": "1075ss",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Especifica conexión USB-C."
+  },
+  {
+    "codigo": "1075t",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "1075tt",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": true,
+    "motivo": "No especifica si es cable o bluetooth, se mantiene la actual por defecto."
+  },
+  {
+    "codigo": "10760",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10761",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10762",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10763",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10764",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10764x",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": true,
+    "motivo": "No especifica si es cable o bluetooth, se mantiene la actual por defecto."
+  },
+  {
+    "codigo": "10765",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10766",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10767",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10768",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10768t",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10768X",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": true,
+    "motivo": "No especifica si es cable o bluetooth, se mantiene la actual por defecto."
+  },
+  {
+    "codigo": "10769",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta según catálogo."
+  },
+  {
+    "codigo": "10769a",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Especifica conexión Tipo C."
+  }
+]

@@ -75,3 +75,78 @@ python reclasificar_productos.py automatico --aplicar --salida correccion_01
 No requiere editar CSV. Cada ejecución necesita una carpeta nueva. Guarda propuestas, pendientes y resultado; si aplica cambios, también guarda el respaldo de las asignaciones anteriores. Si el producto ya está bien clasificado no lo actualiza. Los nombres sin regla y destinos inexistentes o ambiguos se omiten. Antes de escribir verifica que ni el nombre ni la clasificación hayan cambiado desde la lectura. Las categorías se derivan de la subcategoría: el único campo de negocio actualizado es `subcategoria_id`.
 
 Este comando se ejecuta bajo demanda; no se ha configurado una tarea periódica ni se ha ejecutado la corrección automática contra producción. Usa las variables de conexión del entorno objetivo.
+
+## Revisión con Gemini y aprobación de destinos nuevos
+
+Reutiliza `GEMINI_API_KEY` y la selección de modelos de la integración de compatibilidad
+(`GEMINI_PRIMARY_MODELS`, `GEMINI_FALLBACK_MODELS`, `GEMINI_MODEL`). No requiere otra clave
+ni proveedor. Las consultas consumen la cuota de esa misma cuenta de Gemini.
+
+Desde la raíz del proyecto, con el entorno conectado a la base local:
+
+```sh
+.venv/bin/python reclasificar_productos.py ia --salida datos_revision/mi_revision_gemini
+```
+
+La carpeta debe ser nueva. Consulta todos los productos, incluidos inactivos, en lotes de 25.
+Solo envía código, nombre y clasificación actual, junto con las categorías activas existentes.
+No modifica la base. Genera:
+
+- `revision.csv`: clasificación anterior, propuesta, motivo y estado (`correcto`, `corregir`,
+  `pendiente` por ambigüedad o `requiere_aprobacion` para destinos nuevos).
+- `nuevas.json`: pares categoría/subcategoría propuestos, todos con `aprobada: false`.
+
+Revisa la vista previa. Para autorizar un destino nuevo cambia únicamente su `aprobada`
+a `true` en `nuevas.json`. Puedes excluir cualquier corrección cambiando su estado a
+`pendiente` en `revision.csv`. Los productos ambiguos quedan intactos. Después de revisar:
+
+```sh
+.venv/bin/python reclasificar_productos.py aplicar-ia --salida datos_revision/mi_revision_gemini
+```
+
+Este comando sí escribe: crea únicamente destinos aprobados y aplica las correcciones
+hacia destinos existentes y nuevos aprobados. Guarda `aprobadas.csv` y `respaldo.json`
+con las asignaciones anteriores. Si un producto cambió de nombre o clasificación desde
+la revisión, cancela la operación completa, incluidas las categorías nuevas. Los archivos
+no se sobrescriben; después de un intento fallido genera otra revisión en una carpeta nueva.
+No modifica nombre, precio, inventario ni estado activo del producto.
+
+Para producción, primero valida el resultado en local y luego genera una revisión nueva
+contra producción con su configuración de conexión. No reutilices una revisión local:
+los identificadores y el catálogo pueden diferir. Revisa sus archivos antes de aplicar.
+
+## Desde el panel de administración
+
+En **Administración → Categorías → Re Clasificar Productos**:
+
+1. Pulsa **Iniciar revisión** (o **Nueva revisión**). Revisa todos los productos, incluidos
+   inactivos, sin filtrar por sucursal. Gemini usa la configuración existente.
+2. El avance se guarda en la base por lotes de diez. **Pausar revisión** termina el lote
+   actual y se detiene. Si sales, vuelve y pulsa **Continuar revisión**. Un fallo de Gemini
+   conserva el lote pendiente para reintentar; no modifica productos.
+3. Revisa las propuestas; usa los filtros y **Editar** para cambiar cualquier clasificación
+   aún no aplicada. Los ambiguos solo quedan listos después de guardar una selección manual.
+4. Si propones una categoría/subcategoría nueva, pulsa **Aprobar destino**. Todavía no se
+   crea: se creará al aplicar. Los destinos activos existentes se reutilizan.
+5. **Aplicar cambios** guarda solo las filas listas, incluidas las corregidas manualmente.
+   Omite los pendientes, los destinos sin aprobar, los correctos y los ya aplicados.
+
+Las revisiones anteriores se consultan en **Revisión guardada**. Cada fila aplicada conserva
+la clasificación anterior y la nueva, el administrador y la fecha de aplicación. Las
+revisiones del script CSV no se importan automáticamente al panel.
+
+Solo administradores acceden a estas APIs. Las acciones se validan en el servidor, incluso
+si se intenta acceder directamente. La revisión usa versiones para evitar sobrescribir
+ediciones de otra sesión. Antes de aplicar se comprueba que el nombre y clasificación del
+producto no hayan cambiado; si existe un conflicto se revierte toda la transacción.
+
+La migración `016_revision_clasificacion.py` crea `revisiones_clasificacion`. El despliegue
+Railway existente ejecuta `railway_migrate.py` antes del arranque y aplica esta migración.
+No se necesitan otras claves de IA ni nuevos servicios. Las consultas usan la cuota de Gemini.
+
+Pruebas del panel:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_reclasificacion_admin.py'
+node tests/test_frontend_reclasificacion.js
+```

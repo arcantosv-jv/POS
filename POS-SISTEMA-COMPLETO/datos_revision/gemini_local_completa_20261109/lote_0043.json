@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "11005",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11006",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11007",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11008",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11009",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11010",
+    "categoria": "Bebidas",
+    "subcategoria": "Bebidas",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11011",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Corregido de Fundas a Cables."
+  },
+  {
+    "codigo": "11012",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Ajustado a subcategoría Cubo."
+  },
+  {
+    "codigo": "11013",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11014",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11015",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11016",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11017",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11018",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11019",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11020",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11021",
+    "categoria": "Ventilador",
+    "subcategoria": "Ventilador",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11022",
+    "categoria": "Proyector",
+    "subcategoria": "Proyector",
+    "ambiguo": true,
+    "motivo": "No queda claro si es un proyector o un accesorio para celular."
+  },
+  {
+    "codigo": "11023",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Corregido de Cargadores a Hogar."
+  },
+  {
+    "codigo": "11024",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11025",
+    "categoria": "Doritos)",
+    "subcategoria": "Snack",
+    "ambiguo": false,
+    "motivo": "Corregido de Dulces a Snack."
+  },
+  {
+    "codigo": "11026",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11027",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11028",
+    "categoria": "Cables",
+    "subcategoria": "Cable",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  },
+  {
+    "codigo": "11029",
+    "categoria": "Powerbank",
+    "subcategoria": "Powerbank",
+    "ambiguo": false,
+    "motivo": "Clasificación correcta mantenida."
+  }
+]

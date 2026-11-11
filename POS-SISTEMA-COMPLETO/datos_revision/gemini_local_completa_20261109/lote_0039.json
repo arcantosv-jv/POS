@@ -1,0 +1,177 @@
+[
+  {
+    "codigo": "10904",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para tablet, categoría correcta."
+  },
+  {
+    "codigo": "10905",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete."
+  },
+  {
+    "codigo": "10906",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga, no un cargador completo con cable."
+  },
+  {
+    "codigo": "10907",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga."
+  },
+  {
+    "codigo": "10908",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga."
+  },
+  {
+    "codigo": "10909",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga."
+  },
+  {
+    "codigo": "10910",
+    "categoria": "Cargadores",
+    "subcategoria": "Cubo",
+    "ambiguo": false,
+    "motivo": "Es un cubo de carga."
+  },
+  {
+    "codigo": "10911",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete."
+  },
+  {
+    "codigo": "10912",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es una figura coleccionable, no un cargador."
+  },
+  {
+    "codigo": "10913",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete."
+  },
+  {
+    "codigo": "10914",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete."
+  },
+  {
+    "codigo": "10915",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete."
+  },
+  {
+    "codigo": "10916",
+    "categoria": "Juguetes",
+    "subcategoria": "Juguetes",
+    "ambiguo": false,
+    "motivo": "Es un juguete."
+  },
+  {
+    "codigo": "10917",
+    "categoria": "Soportes",
+    "subcategoria": "Soporte TV",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10918",
+    "categoria": "General",
+    "subcategoria": "Micas",
+    "ambiguo": true,
+    "motivo": "No existe categoría para accesorios de TV como controles; se marca ambiguo."
+  },
+  {
+    "codigo": "10919",
+    "categoria": "Cargadores",
+    "subcategoria": "Cargador Completo",
+    "ambiguo": false,
+    "motivo": "Es un cargador completo."
+  },
+  {
+    "codigo": "10920",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda de celular."
+  },
+  {
+    "codigo": "10921",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10922",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10923",
+    "categoria": "SmartWatch",
+    "subcategoria": "SmartWatch",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10924",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10925",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10926",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10927",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  },
+  {
+    "codigo": "10928",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Categoría correcta."
+  }
+]

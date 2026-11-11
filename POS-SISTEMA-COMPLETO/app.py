@@ -53,6 +53,7 @@ def create_app(config_name=None):
     from routes_compatibilidad import compatibilidad_bp
     from routes_reparaciones import reparaciones_bp
     from routes_ayuda import ayuda_bp
+    from routes_reclasificacion import reclasificacion_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(permisos_bp)
@@ -69,6 +70,7 @@ def create_app(config_name=None):
     app.register_blueprint(compatibilidad_bp)
     app.register_blueprint(reparaciones_bp)
     app.register_blueprint(ayuda_bp)
+    app.register_blueprint(reclasificacion_bp)
     
     @app.after_request
     def actualizar_frontend(response):

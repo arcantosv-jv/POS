@@ -1,0 +1,142 @@
+[
+  {
+    "codigo": "11129",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Es una funda para celular."
+  },
+  {
+    "codigo": "11130",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": false,
+    "motivo": "Es un dispositivo móvil, no una funda."
+  },
+  {
+    "codigo": "11131",
+    "categoria": "Micas",
+    "subcategoria": "Cerámica",
+    "ambiguo": false,
+    "motivo": "Es una mica de material cerámico."
+  },
+  {
+    "codigo": "11132",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Audífonos inalámbricos."
+  },
+  {
+    "codigo": "11133",
+    "categoria": "Micas",
+    "subcategoria": "Privacidad",
+    "ambiguo": false,
+    "motivo": "Mica de privacidad para iPhone."
+  },
+  {
+    "codigo": "11134",
+    "categoria": "Papeleria",
+    "subcategoria": "Papeleria",
+    "ambiguo": true,
+    "motivo": "El nombre es demasiado genérico para determinar el producto."
+  },
+  {
+    "codigo": "11135",
+    "categoria": "Celulares",
+    "subcategoria": "Celulares",
+    "ambiguo": true,
+    "motivo": "El nombre es genérico, se clasifica como celular por defecto."
+  },
+  {
+    "codigo": "11136",
+    "categoria": "Hogar",
+    "subcategoria": "Hogar",
+    "ambiguo": false,
+    "motivo": "Electrodoméstico de cocina."
+  },
+  {
+    "codigo": "11137",
+    "categoria": "Micas",
+    "subcategoria": "Mica 9D",
+    "ambiguo": false,
+    "motivo": "Mica tipo 9D."
+  },
+  {
+    "codigo": "11139",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda para celular."
+  },
+  {
+    "codigo": "11140",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda para celular."
+  },
+  {
+    "codigo": "11141",
+    "categoria": "Fundas",
+    "subcategoria": "Funda",
+    "ambiguo": false,
+    "motivo": "Funda para celular."
+  },
+  {
+    "codigo": "11142",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11143",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11144",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11145",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Bluetooth",
+    "ambiguo": false,
+    "motivo": "Audífonos inalámbricos."
+  },
+  {
+    "codigo": "11146",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11147",
+    "categoria": "Audifonos",
+    "subcategoria": "Audifonos Cable",
+    "ambiguo": false,
+    "motivo": "Audífonos con conexión cableada."
+  },
+  {
+    "codigo": "11148",
+    "categoria": "Micas",
+    "subcategoria": "Mica de Cristal Sencilla",
+    "ambiguo": false,
+    "motivo": "Mica protectora de pantalla."
+  },
+  {
+    "codigo": "11160",
+    "categoria": "Tablet",
+    "subcategoria": "Tablet",
+    "ambiguo": false,
+    "motivo": "Dispositivo tipo tablet."
+  }
+]

@@ -143,6 +143,10 @@ def ejecutar(archivo, aplicar=False, respaldo=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='comando', required=True)
+    ia = sub.add_parser('ia', help='Vista previa con Gemini, sin modificar la base')
+    ia.add_argument('--salida', required=True)
+    aprobar = sub.add_parser('aplicar-ia', help='Aplicar revisión; crear solo destinos aprobados')
+    aprobar.add_argument('--salida', required=True)
     automatico = sub.add_parser('automatico', help='Clasificar y corregir por nombre sin editar CSV')
     automatico.add_argument('--salida', required=True, help='Carpeta nueva para esta ejecución')
     automatico.add_argument('--aplicar', action='store_true', help='Guardar correcciones; sin esta opción solo simula')
@@ -160,7 +164,13 @@ def main():
     db.init_app(flask_app)
     with flask_app.app_context():
         try:
-            if args.comando == 'automatico':
+            if args.comando == 'ia':
+                from clasificacion_gemini import vista_previa
+                vista_previa(args.salida)
+            elif args.comando == 'aplicar-ia':
+                from clasificacion_gemini import aplicar_revision
+                aplicar_revision(args.salida)
+            elif args.comando == 'automatico':
                 automatizar(args.salida, args.aplicar)
             elif args.comando == 'proponer':
                 proponer_automaticamente(args.archivo, args.pendientes)

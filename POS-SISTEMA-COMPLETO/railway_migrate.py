@@ -13,7 +13,7 @@ def _legacy_schema_matches_current_models():
     missing = []
 
     for table in db.metadata.sorted_tables:
-        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados'}:
+        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion'}:
             continue
         if not inspector.has_table(table.name):
             missing.append(f'{table.name} (tabla)')
@@ -86,7 +86,7 @@ def main():
                 raise RuntimeError('Migración incompleta: ' + table)
         if not {'comisiones_habilitadas', 'apartados_habilitados'}.issubset({c['name'] for c in inspector.get_columns('configuracion_sistema')}):
             raise RuntimeError('Migración incompleta: comisiones_habilitadas')
-        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados'):
+        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion'):
             if not inspector.has_table(table):
                 raise RuntimeError('Migración incompleta: ' + table)
 
