@@ -2,7 +2,10 @@ from permissions import delegated_access, current_branch, can
 """Registro independiente de comisiones; sin movimientos de ventas o caja."""
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Comision
+from models import db, User, Comision, Venta, DetalleVenta
+from datetime import date
+from sqlalchemy.exc import IntegrityError
+from comisiones_ventas import INICIO, rango, fecha_cdmx, tipo_dispositivo, unidades_disponibles, datos_unidad
 from routes_caracteristicas import comisiones_habilitadas
 from business_validation import money, text_value
 from config import get_cdmx_now
@@ -19,15 +22,56 @@ def usuario_autorizado():
     return user, None
 
 
-def datos_registro(data):
-    if set(data) - {'dispositivo', 'costo', 'metodo_pago', 'nombre_empleado'}:
-        raise ValueError('Solo puedes modificar los datos del registro; la aprobación y comisión son exclusivas de admin')
-    if data.get('dispositivo') not in ('Celular', 'Tablet'):
-        raise ValueError('Selecciona Celular o Tablet')
-    if data.get('metodo_pago') not in ('efectivo', 'tarjeta', 'transferencia'):
-        raise ValueError('Selecciona un método de pago válido')
-    return dict(dispositivo=data['dispositivo'], costo=money(data.get('costo'), 'Costo'),
-                metodo_pago=data['metodo_pago'], nombre_empleado=text_value(data.get('nombre_empleado'), 'Usuario', 150, required=True))
+@comisiones_bp.route('/pendientes', methods=['GET'])
+@jwt_required()
+def pendientes():
+    user, error = usuario_autorizado()
+    if error:
+        return error
+    try:
+        dia = date.fromisoformat(request.args.get('fecha', get_cdmx_now().date().isoformat()))
+        if dia < INICIO:
+            raise ValueError('Solo se pueden registrar ventas desde el 18/11/2026')
+        inicio, fin = rango(dia)
+        query = DetalleVenta.query.join(Venta).filter(Venta.created_at >= inicio, Venta.created_at < fin)
+        if user.role != 'admin':
+            query = query.filter(Venta.sucursal_id == current_branch(user))
+        elif request.args.get('sucursal_id'):
+            query = query.filter(Venta.sucursal_id == request.args['sucursal_id'])
+        unidades = []
+        for detalle in query.order_by(Venta.created_at, DetalleVenta.id).all():
+            if tipo_dispositivo(detalle.producto):
+                unidades.extend(datos_unidad(detalle, u) for u in unidades_disponibles(detalle))
+        response = jsonify(unidades=unidades, fecha_inicio=INICIO.isoformat())
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+
+
+def datos_registro(data, user):
+    if set(data) != {'detalle_venta_id', 'unidad', 'nombre_empleado'}:
+        raise ValueError('Selecciona una unidad vendida e indica el nombre del empleado')
+    unidad = data.get('unidad')
+    if type(unidad) is not int or unidad < 1:
+        raise ValueError('Selecciona una unidad válida')
+    detalle = db.session.get(DetalleVenta, data.get('detalle_venta_id'))
+    if not detalle:
+        raise ValueError('Venta no disponible')
+    # Serializa contra otras comisiones y contra las devoluciones de esta venta.
+    venta = Venta.query.filter_by(id=detalle.venta_id, sucursal_id=current_branch(user)).with_for_update().first()
+    if not venta or fecha_cdmx(venta.created_at).date() < INICIO:
+        raise ValueError('Selecciona una venta de tu sucursal desde el 18/11/2026')
+    if not tipo_dispositivo(detalle.producto):
+        raise ValueError('El producto no pertenece a Celulares o Tablets')
+    if unidad not in unidades_disponibles(detalle):
+        raise ValueError('Esta unidad ya tiene comisión o fue devuelta. Actualiza las ventas pendientes.')
+    snapshot = datos_unidad(detalle, unidad)
+    return dict(detalle_venta_id=detalle.id, unidad=unidad, fecha_venta=venta.created_at,
+                numero_venta=venta.numero_venta, producto_nombre=detalle.producto.nombre,
+                dispositivo=snapshot['dispositivo'], costo=money(detalle.precio_unitario),
+                metodo_pago=snapshot['metodo_pago'],
+                nombre_empleado=text_value(data.get('nombre_empleado'), 'Usuario', 150, required=True))
 
 
 @comisiones_bp.route('', methods=['GET', 'POST'])
@@ -49,13 +93,16 @@ def registros():
         data = request.get_json(silent=True)
         if not isinstance(data, dict):
             raise ValueError('Registro inválido')
-        registro = Comision(**datos_registro(data), sucursal_id=current_branch(user), creado_por_id=user.id, created_at=get_cdmx_now())
+        registro = Comision(**datos_registro(data, user), sucursal_id=current_branch(user), creado_por_id=user.id, created_at=get_cdmx_now())
         db.session.add(registro)
         db.session.commit()
         return jsonify(registro.to_dict()), 201
     except ValueError as exc:
         db.session.rollback()
         return jsonify({'error': str(exc)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(error='La unidad ya fue asignada. Actualiza las ventas pendientes.'), 409
 
 
 @comisiones_bp.route('/<registro_id>', methods=['PUT', 'DELETE'])
@@ -96,8 +143,9 @@ def modificar(registro_id):
             data = request.get_json(silent=True)
             if not isinstance(data, dict):
                 raise ValueError('Registro inválido')
-            for key, value in datos_registro(data).items():
-                setattr(registro, key, value)
+            if set(data) != {'nombre_empleado'}:
+                raise ValueError('Solo puedes corregir el nombre del empleado; la venta vinculada se conserva')
+            registro.nombre_empleado = text_value(data.get('nombre_empleado'), 'Usuario', 150, required=True)
         except ValueError as exc:
             db.session.rollback()
             return jsonify({'error': str(exc)}), 400

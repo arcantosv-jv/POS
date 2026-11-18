@@ -143,6 +143,8 @@ def endpoint_allowed(user):
         return can(user, 'apartados', 'ver' if request.method == 'GET' else 'crear')
     if endpoint == 'apartados.operar':
         return can(user, 'apartados', (request.view_args or {}).get('accion')) and (request.view_args or {}).get('accion') in ('abonar', 'entregar')
+    if endpoint == 'comisiones.pendientes':
+        return can(user, 'comisiones', 'crear') or can(user, 'comisiones', 'editar')
     if endpoint in ('comisiones.registros', 'comisiones.modificar'):
         return can(user, 'comisiones', {'GET': 'ver', 'POST': 'crear', 'PUT': 'editar', 'DELETE': 'eliminar'}[request.method])
     requirement = ENDPOINTS.get(endpoint)

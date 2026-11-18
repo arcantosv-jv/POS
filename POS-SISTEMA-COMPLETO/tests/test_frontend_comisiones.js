@@ -19,6 +19,7 @@ vm.runInContext('this.comisiones = ComisionesView;', sandbox);
 function instance(component) {
     const obj = { ...component.data(), token: 'test', userRole: 'employee', userId: 'employee' };
     for (const [key, fn] of Object.entries(component.methods)) obj[key] = fn.bind(obj);
+    for (const [key, fn] of Object.entries(component.computed || {})) Object.defineProperty(obj, key, { get: () => fn.call(obj) });
     return obj;
 }
 (async () => {
@@ -32,9 +33,23 @@ function instance(component) {
     enabled = false; await app.cargarAcceso(); app.userRole = 'admin'; app.irAVista('comisiones');
     assert.equal(app.currentView, 'comisiones');
     const view = instance(sandbox.comisiones);
-    view.formulario = { dispositivo: 'Tablet', costo: '1000', metodo_pago: 'tarjeta', nombre_empleado: 'Jazmin' };
+    view.formulario = { nombre_empleado: 'Jazmin' };
+    view.fechaVenta = '2026-11-18';
+    view.pendientes = [{ detalle_venta_id: 'd', unidad: 2 }];
+    view.unidadSeleccionada = 'd:2';
     await view.guardar();
     assert.equal(calls[0].data.nombre_empleado, 'Jazmin');
+    assert.equal(calls[0].data.detalle_venta_id, 'd');
+    assert.equal(calls[0].data.unidad, 2);
+    assert.equal(calls[0].data.costo, undefined);
+    assert.equal(calls[0].data.metodo_pago, undefined);
+    const trasRegistro = calls.length;
+    await view.guardar();
+    assert.equal(calls.length, trasRegistro); // Sin unidad pendiente no se puede registrar.
+    view.editar({ id: 'editable', aprobada: false, nombre_empleado: 'Jazmin' });
+    view.formulario.nombre_empleado = 'Corregido';
+    await view.guardar();
+    assert.deepEqual(Object.keys(calls.at(-1).data), ['nombre_empleado']);
     assert.equal(calls[0].data.aprobada, undefined);
     assert.equal(calls[0].data.monto_comision, undefined);
     view.editar({ id: 'r', aprobada: true }); assert.equal(view.editandoId, null);

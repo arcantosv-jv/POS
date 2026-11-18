@@ -635,13 +635,25 @@ class Comision(db.Model):
     monto_comision = db.Column(db.Numeric(10, 2), nullable=True)
     aprobada = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=get_cdmx_now)
+    detalle_venta_id = db.Column(db.String(36), db.ForeignKey('detalles_venta.id'), nullable=True)
+    unidad = db.Column(db.Integer, nullable=True)
+    fecha_venta = db.Column(db.DateTime(timezone=True), nullable=True)
+    producto_nombre = db.Column(db.String(255), nullable=True)
+    numero_venta = db.Column(db.String(50), nullable=True)
+    __table_args__ = (db.UniqueConstraint('detalle_venta_id', 'unidad', name='uq_comision_unidad_vendida'),)
     sucursal = db.relationship('Sucursal')
 
     def to_dict(self):
         from config import CDMX_TZ
         fecha = self.created_at
         fecha = CDMX_TZ.localize(fecha) if fecha.tzinfo is None else fecha.astimezone(CDMX_TZ)
-        return dict(id=self.id, sucursal_id=self.sucursal_id, sucursal_nombre=self.sucursal.nombre,
+        venta_fecha = self.fecha_venta
+        if venta_fecha is not None:
+            venta_fecha = CDMX_TZ.localize(venta_fecha) if venta_fecha.tzinfo is None else venta_fecha.astimezone(CDMX_TZ)
+        return dict(detalle_venta_id=self.detalle_venta_id, unidad=self.unidad,
+                    fecha_venta=venta_fecha.isoformat() if venta_fecha else None,
+                    producto_nombre=self.producto_nombre, numero_venta=self.numero_venta,
+                    historica=self.detalle_venta_id is None, id=self.id, sucursal_id=self.sucursal_id, sucursal_nombre=self.sucursal.nombre,
                     creado_por_id=self.creado_por_id, dispositivo=self.dispositivo, costo=float(self.costo),
                     metodo_pago=self.metodo_pago, nombre_empleado=self.nombre_empleado,
                     monto_comision=float(self.monto_comision) if self.monto_comision is not None else None,

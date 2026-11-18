@@ -45,11 +45,20 @@ class MigrationTest(unittest.TestCase):
                         conn.execute(sa.text('CREATE TABLE alembic_version (version_num VARCHAR(32) PRIMARY KEY)'))
                         conn.execute(sa.text("INSERT INTO alembic_version VALUES ('008')"))
                 env = {**os.environ, 'DATABASE_URL': url, 'FLASK_ENV': 'development', 'PYTHONWARNINGS': 'ignore', 'PYTHONDONTWRITEBYTECODE': '1'}
+                if versioned:
+                    previo = subprocess.run([sys.executable, '-m', 'flask', '--app', 'app', 'db', 'upgrade', '016'], cwd=ROOT, env=env, text=True, capture_output=True, timeout=45)
+                    self.assertEqual(previo.returncode, 0, previo.stdout + previo.stderr)
+                    with engine.begin() as conn:
+                        conn.execute(sa.text("INSERT INTO comisiones (id, sucursal_id, creado_por_id, dispositivo, costo, metodo_pago, nombre_empleado, monto_comision, aprobada, created_at) VALUES ('historica', 's', 'u', 'Tablet', 500, 'efectivo', 'Jazmin', 50, 1, '2026-11-17 12:00:00')"))
                 for _ in range(2):
                     result = subprocess.run([sys.executable, 'railway_migrate.py'], cwd=ROOT, env=env, text=True, capture_output=True, timeout=45)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 with engine.connect() as conn:
-                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '016')
+                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '017')
+                    if versioned:
+                        historica = conn.execute(sa.text("SELECT costo, monto_comision, aprobada, detalle_venta_id, unidad FROM comisiones WHERE id='historica'")).one()
+                        self.assertEqual(tuple(historica), (500, 50, 1, None, None))
+                    self.assertIn('uq_comision_unidad_vendida', {u['name'] for u in sa.inspect(conn).get_unique_constraints('comisiones')})
                     self.assertEqual(tuple(conn.execute(sa.text("SELECT permisos, sucursales_permitidas FROM users WHERE id='u'")).one()), (None, None))
                     row = conn.execute(sa.text('SELECT total_ventas, egreso, concepto_egreso, efectivo_reportado, diferencia, egresos, reembolsos_efectivo, efectivo_inicial FROM cierres_caja WHERE id=\'c\'')).one()
                     self.assertEqual(tuple(row), (1000, 200, 'Sueldo', 800, 0, None, 0, None))

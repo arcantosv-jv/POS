@@ -76,6 +76,7 @@ def main():
         if not _legacy_schema_matches_current_models():
             raise RuntimeError('El esquema no coincide con los modelos')
         for table, required in {
+            'comisiones': {'detalle_venta_id', 'unidad', 'fecha_venta', 'producto_nombre', 'numero_venta'},
             'stocks': {'reservado'},
                 'users': {'permisos', 'sucursales_permitidas'},
             'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},

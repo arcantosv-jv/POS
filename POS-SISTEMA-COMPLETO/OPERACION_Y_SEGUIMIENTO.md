@@ -84,11 +84,15 @@ El cajero puede corregir sus propios cierres hasta una hora después de la confi
 
 Admin → Características → «Habilitar Comisiones para empleados» controla el acceso global. Inicialmente está desactivado. El menú del empleado se actualiza al iniciar sesión, al recuperar el foco y cada 30 segundos. El servidor bloquea inmediatamente consulta, captura, edición y eliminación si está desactivado; admin conserva su acceso y los registros.
 
-El empleado registra Celular o Tablet, costo de venta, método de pago (efectivo, tarjeta o transferencia) y nombre libre del empleado. El servidor asigna la sucursal, la cuenta que capturó y la fecha/hora CDMX. Cada empleado consulta los registros de su sucursal y puede editar o eliminar los que capturó mientras estén «No aprobada».
+Desde el **18/11/2026 (CDMX)**, el empleado busca por fecha de venta y selecciona una unidad de celular o tablet pendiente de comisión. La elegibilidad depende de la categoría/subcategoría del catálogo, no del nombre del producto. El precio unitario y el método (efectivo, tarjeta, transferencia o mixto) se toman de la venta. El nombre del empleado continúa siendo libre. Se guardan por separado la fecha de venta y la fecha de captura.
+
+Una venta de dos tablets ofrece dos unidades: cada registro consume una disponibilidad de comisión, incluso sin aprobar. No reserva ni mueve inventario. La validación bajo bloqueo de la venta y una restricción única en la base impiden duplicados. Las devoluciones reducen las unidades disponibles; eliminar una comisión no aprobada libera su asignación, siempre que aún haya unidades vendidas no devueltas.
+
+Los apartados se incluyen por la fecha de la **venta generada al entregar**: uno creado antes del 18 y entregado el 18 sí es elegible. Las comisiones existentes permanecen como históricas, sin vinculación automática. Ya no se permite crear registros libres. El empleado puede corregir su nombre o eliminar sus registros no aprobados; la venta y sus datos no se editan desde Comisiones.
 
 Admin consulta todas las sucursales, asigna la comisión en pesos, pulsa «Aprobada», corrige el importe o quita la aprobación. Un registro aprobado queda bloqueado para edición o eliminación por empleados. El nombre libre se muestra junto a la sucursal; la cuenta real de captura se conserva por separado. El botón «Actualizar» obtiene los cambios de aprobación. Ninguna comisión afecta ventas, stock o cierres de caja.
 
-La migración `013_comisiones.py` crea la tabla y el interruptor. Se aplica con `.venv/bin/python railway_migrate.py`; Railway usa este mismo proceso antes de desplegar.
+La migración `013_comisiones.py` crea la tabla y el interruptor. La `017_comisiones_por_venta.py` agrega el vínculo por unidad, la fecha de venta y la restricción contra duplicados; conserva los registros históricos sin alterarlos. Se aplica con `.venv/bin/python railway_migrate.py`; Railway usa este mismo proceso antes de desplegar.
 
 Pruebas: `.venv/bin/python -m unittest discover -s tests -q` y `node tests/test_frontend_comisiones.js`. Validan permisos, sucursales, aprobación reversible, bloqueo global, importes y fecha CDMX, además de la lógica del formulario y del menú.
 
