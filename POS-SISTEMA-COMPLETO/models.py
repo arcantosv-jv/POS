@@ -701,3 +701,40 @@ class RevisionClasificacion(db.Model):
     version = db.Column(db.Integer, nullable=False, default=1)
     token_lote = db.Column(db.String(36), nullable=True)
     bloqueado_hasta = db.Column(db.Float, nullable=False, default=0)
+
+
+class EstadoResumenPronostico(db.Model):
+    __tablename__ = 'pronostico_estados'
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), primary_key=True)
+    pendiente = db.Column(db.Boolean, nullable=False, default=True)
+    actualizado = db.Column(db.DateTime(timezone=True))
+
+
+class ResumenPronostico(db.Model):
+    __tablename__ = 'pronostico_resumenes'
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), primary_key=True)
+    fecha = db.Column(db.Date, primary_key=True)
+    categoria_id = db.Column(db.String(36), primary_key=True)  # '' = sin categoría
+    importe = db.Column(db.Numeric(18, 2), nullable=False)
+    unidades = db.Column(db.Integer, nullable=False)
+
+
+class HistoricoPronostico(db.Model):
+    __tablename__ = 'pronostico_historicos'
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), primary_key=True)
+    mes = db.Column(db.String(7), primary_key=True)
+    categorias = db.Column(db.JSON, nullable=False)
+    cambios = db.Column(db.JSON, nullable=False, default=list)
+    actualizado = db.Column(db.DateTime(timezone=True), nullable=False, default=get_cdmx_now)
+
+
+class Pronostico(db.Model):
+    __tablename__ = 'pronosticos'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    creado_por_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=get_cdmx_now)
+    sucursales = db.Column(db.JSON, nullable=False)
+    inicio = db.Column(db.Date, nullable=False)
+    fin = db.Column(db.Date, nullable=False)
+    resultado = db.Column(db.JSON, nullable=False)
+    explicacion = db.Column(db.Text)

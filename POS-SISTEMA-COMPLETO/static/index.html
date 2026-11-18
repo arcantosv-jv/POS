@@ -1449,6 +1449,7 @@
         @media (max-width: 640px) { .devoluciones-filtros { grid-template-columns: minmax(0, 1fr); } }
     </style>
     <link rel="stylesheet" href="/static/comisiones.css?v=20261118-diseno-comisiones">
+    <link rel="stylesheet" href="/static/pronosticos.css?v=20261118">
 </head>
 <body>
     <div id="app">
@@ -1529,6 +1530,7 @@
                                 @click.prevent="irAVista('dashboard')"
                                 href="#"
                             >Dashboard</a>
+                            <a v-if="puedeVista('pronosticos')" :class="[currentView === 'pronosticos' ? 'active' : '']" @click.prevent="irAVista('pronosticos')" href="#">Pronósticos de ventas</a>
                             <a v-if="puedeVista('comisiones')" :class="['commissions', currentView === 'comisiones' ? 'active' : '']" @click.prevent="irAVista('comisiones')" href="#">Comisiones</a>
                             <a v-if="puedeVista('administracion')" :class="['features', currentView === 'administracion' ? 'active' : '']" @click.prevent="irAVista('administracion')" href="#">Administración</a>
                             <a v-if="puedeVista('productos')"
@@ -1643,6 +1645,7 @@
                     <inventario-view :api-url="apiUrl" :token="token" :user-role="userRole"></inventario-view>
                 </div>
 
+                <div v-if="currentView === 'pronosticos' && puedeVista('pronosticos')"><pronosticos-view :token="token"></pronosticos-view></div>
                 <div v-if="currentView === 'comisiones' && puedeVista('comisiones')">
                     <comisiones-view :token="token" :user-role="userRole" :user-id="userId"></comisiones-view>
                 </div>
@@ -1724,10 +1727,11 @@
     </div>
 
     <!-- Scripts de componentes -->
-    <script src="/static/permisos.js?v=20261106-apartados"></script>
+    <script src="/static/permisos.js?v=pronosticos-20261106-apartados"></script>
     <script src="/static/components.js?v=20261118-inventario-resultados"></script>
+    <script src="/static/pronosticos.js?v=20261118"></script>
     <script src="/static/comisiones.js?v=20261118-diseno-comisiones"></script>
     <script src="/static/apartados.js?v=20261118-listado-productos"></script>
-    <script src="/static/app.js?v=20261106-apartados"></script>
+    <script src="/static/app.js?v=pronosticos-20261106-apartados"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@ const sandbox = { console, Intl, Date, Event: class {}, confirm: () => true,
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/permisos.js'), 'utf8'), sandbox);
-for (const file of ['components.js', 'comisiones.js', 'apartados.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
+for (const file of ['components.js', 'comisiones.js', 'pronosticos.js', 'apartados.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
 vm.runInContext('this.comisiones = ComisionesView;', sandbox);
 function instance(component) {
     const obj = { ...component.data(), token: 'test', userRole: 'employee', userId: 'employee' };

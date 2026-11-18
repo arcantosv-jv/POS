@@ -8,7 +8,7 @@ const sandbox = { console, Intl, Date, Vue: { createApp(config) { root = config;
     window: { location: { origin: '' }, scrollTo() {} },
     axios: { async get(url) { return { data: url.includes('mi-acceso') ? access : { comisiones_habilitadas: false } }; } } };
 vm.createContext(sandbox);
-for (const file of ['permisos.js', 'components.js', 'comisiones.js', 'apartados.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
+for (const file of ['permisos.js', 'components.js', 'comisiones.js', 'pronosticos.js', 'apartados.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static', file), 'utf8'), sandbox);
 vm.runInContext('this.editor = PermisosUsuario; this.centroReportes = CentroReportesView; this.reporteVentas = ReportesVentasView;', sandbox);
 function instance(component) {
     const obj = { ...component.data(), token: 'test', userRole: 'employee' };

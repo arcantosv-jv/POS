@@ -15,7 +15,7 @@ context.document = { createElement() { return { set innerHTML(v) {
     this.children = [{ getAttribute: () => decode(v.slice(10, -2)) }]; this.textContent = decode(v);
 } }; } };
 const names = [];
-for (const file of ['permisos.js', 'components.js', 'comisiones.js', 'apartados.js']) {
+for (const file of ['permisos.js', 'components.js', 'comisiones.js', 'pronosticos.js', 'apartados.js']) {
     const source = fs.readFileSync(path.join(root, 'static', file), 'utf8');
     names.push(...[...source.matchAll(/^const (\w+) = \{/gm)].map(m => m[1]));
     vm.runInContext(source, context);

@@ -20,7 +20,7 @@ const PermisosUsuario = {
             </fieldset>
         </section>
     `,
-    data() { return { catalogo: [], permisos: {}, sucursalesElegidas: [], cargando: true, guardando: false, error: '', etiquetas: { abonar: 'Registrar abonos', ver_stock: 'Consultar stock actual', ver: 'Ver', crear: 'Crear', editar: 'Editar', eliminar: 'Eliminar', entradas: 'Registrar entradas', ajustar: 'Ajustar stock y mínimo', exportar: 'Exportar', importar: 'Importar', cerrar: 'Realizar cierre', corregir: 'Corregir cierre (1 hora)', editar_pagos: 'Modificar pagos', analizar: 'Análisis con IA', buscar: 'Consultar compatibilidad', verificar: 'Verificar compatibilidad', entregar: 'Marcar entregada', catalogo: 'Administrar catálogo', consultar: 'Consultar' } }; },
+    data() { return { catalogo: [], permisos: {}, sucursalesElegidas: [], cargando: true, guardando: false, error: '', etiquetas: { generar: 'Generar pronósticos', historico: 'Administrar históricos manuales', abonar: 'Registrar abonos', ver_stock: 'Consultar stock actual', ver: 'Ver', crear: 'Crear', editar: 'Editar', eliminar: 'Eliminar', entradas: 'Registrar entradas', ajustar: 'Ajustar stock y mínimo', exportar: 'Exportar', importar: 'Importar', cerrar: 'Realizar cierre', corregir: 'Corregir cierre (1 hora)', editar_pagos: 'Modificar pagos', analizar: 'Análisis con IA', buscar: 'Consultar compatibilidad', verificar: 'Verificar compatibilidad', entregar: 'Marcar entregada', catalogo: 'Administrar catálogo', consultar: 'Consultar' } }; },
     methods: {
         async cargar() {
             this.cargando = true; this.error = '';

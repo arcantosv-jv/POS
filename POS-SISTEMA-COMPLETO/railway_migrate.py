@@ -13,7 +13,7 @@ def _legacy_schema_matches_current_models():
     missing = []
 
     for table in db.metadata.sorted_tables:
-        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion'}:
+        if table.name in {'alembic_version', 'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion', 'pronostico_estados', 'pronostico_resumenes', 'pronostico_historicos', 'pronosticos'}:
             continue
         if not inspector.has_table(table.name):
             missing.append(f'{table.name} (tabla)')
@@ -76,6 +76,10 @@ def main():
         if not _legacy_schema_matches_current_models():
             raise RuntimeError('El esquema no coincide con los modelos')
         for table, required in {
+            'pronostico_estados': {'sucursal_id', 'pendiente', 'actualizado'},
+            'pronostico_resumenes': {'sucursal_id', 'fecha', 'categoria_id', 'importe', 'unidades'},
+            'pronostico_historicos': {'sucursal_id', 'mes', 'categorias', 'cambios', 'actualizado'},
+            'pronosticos': {'id', 'creado_por_id', 'created_at', 'sucursales', 'inicio', 'fin', 'resultado', 'explicacion'},
             'comisiones': {'detalle_venta_id', 'unidad', 'fecha_venta', 'producto_nombre', 'numero_venta'},
             'stocks': {'reservado'},
                 'users': {'permisos', 'sucursales_permitidas'},
@@ -87,7 +91,7 @@ def main():
                 raise RuntimeError('Migración incompleta: ' + table)
         if not {'comisiones_habilitadas', 'apartados_habilitados'}.issubset({c['name'] for c in inspector.get_columns('configuracion_sistema')}):
             raise RuntimeError('Migración incompleta: comisiones_habilitadas')
-        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion'):
+        for table in ('consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion', 'pronostico_estados', 'pronostico_resumenes', 'pronostico_historicos', 'pronosticos'):
             if not inspector.has_table(table):
                 raise RuntimeError('Migración incompleta: ' + table)
 

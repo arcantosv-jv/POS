@@ -43,6 +43,7 @@ def create_app(config_name=None):
     from routes_admin import admin_bp
     from routes_caracteristicas import caracteristicas_bp
     from routes_apartados import apartados_bp
+    from routes_pronosticos import pronosticos_bp
     from routes_comisiones import comisiones_bp
     from routes_productos import productos_bp
     from routes_inventario import inventario_bp
@@ -60,6 +61,7 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp)
     app.register_blueprint(caracteristicas_bp)
     app.register_blueprint(comisiones_bp)
+    app.register_blueprint(pronosticos_bp)
     app.register_blueprint(apartados_bp)
     app.register_blueprint(productos_bp)
     app.register_blueprint(inventario_bp)

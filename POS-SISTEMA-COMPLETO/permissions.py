@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, with_loader_criteria
 from models import db, User, Sucursal, Venta, Stock, EntradaInventario, CierreCaja, Reparacion, Comision, DevolucionVenta
 
 CATALOG = {
+    'pronosticos': ('Pronósticos de ventas', ['ver', 'generar', 'historico']),
     'dashboard': ('Dashboard', ['ver', 'analizar']),
     'productos': ('Productos (catálogo global)', ['ver', 'crear', 'editar', 'eliminar', 'importar']),
     'inventario': ('Inventario', ['ver', 'ver_stock', 'entradas', 'ajustar', 'eliminar', 'exportar']),
@@ -127,6 +128,9 @@ for resource, singular in [('marcas', 'marca'), ('modelos', 'modelo'), ('tipos',
     for verb in ('create_', 'update_', 'delete_'):
         route('reparaciones', 'catalogo', 'reparaciones.' + verb + singular)
 route('ayuda', 'consultar', 'ayuda.obtener_solucion')
+route('pronosticos', 'ver', 'pronosticos.opciones', 'pronosticos.listar', 'pronosticos.detalle', 'pronosticos.historicos')
+route('pronosticos', 'generar', 'pronosticos.crear', 'pronosticos.explicar')
+route('pronosticos', 'historico', 'pronosticos.guardar_historico')
 
 
 def endpoint_allowed(user):

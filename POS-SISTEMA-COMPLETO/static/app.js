@@ -2,6 +2,7 @@ const { createApp } = Vue;
 
 createApp({
     components: {
+        'pronosticos-view': PronosticosView,
         'comisiones-view': ComisionesView,
         'apartados-view': ApartadosView,
         'ventas-view': VentasView,
