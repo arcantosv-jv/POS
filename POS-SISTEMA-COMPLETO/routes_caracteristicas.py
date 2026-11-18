@@ -59,11 +59,17 @@ def panel_ventas():
         now = get_cdmx_now()
         start = CDMX_TZ.localize(datetime(now.year, now.month, 1))
         end = CDMX_TZ.localize(datetime(now.year + (now.month == 12), now.month % 12 + 1, 1))
-        totals = db.session.query(Venta.sucursal_id, func.sum(Venta.total)).filter(
-            Venta.created_at >= start, Venta.created_at < end
-        ).group_by(Venta.sucursal_id).all()
+        # Esta comparación es global por diseño, incluso para usuarios con permisos
+        # por sucursal. Core evita el filtro ORM solo en estas dos consultas; la
+        # respuesta pública contiene proporciones, nunca importes ni tickets.
+        ventas = Venta.__table__.c
+        sucursales = Sucursal.__table__.c
+        totals = db.session.execute(db.select(ventas.sucursal_id, func.sum(ventas.total)).where(
+            ventas.created_at >= start, ventas.created_at < end
+        ).group_by(ventas.sucursal_id)).all()
         amounts = {branch: max(Decimal('0'), total or Decimal('0')) for branch, total in totals}
-        branches = Sucursal.query.filter_by(is_active=True).all()
+        branches = db.session.execute(db.select(sucursales.id, sucursales.nombre).where(
+            sucursales.is_active.is_(True))).all()
         branches.sort(key=lambda b: (-amounts.get(b.id, Decimal('0')), b.nombre.casefold(), b.id))
         maximum = max((amounts.get(b.id, Decimal('0')) for b in branches), default=Decimal('0'))
         payload.update({

@@ -85,3 +85,23 @@ class CaracteristicasTest(unittest.TestCase):
         self.assertEqual(tied[0]['barra'], tied[1]['barra'])
         self.mode('oculto')
         self.assertEqual(self.panel().json, {'modo': 'oculto'})
+
+    def test_competencia_global_con_permisos_limitados_a_una_sucursal(self):
+        self.employee.permisos = {'ventas': ['ver']}
+        self.employee.sucursales_permitidas = ['0']
+        db.session.commit()
+        self.mode('competencia')
+        self.sale(0, 200, self.now)
+        self.sale(1, 800, self.now)
+        self.sale(3, 9000, self.now)
+        empleado = self.panel()
+        self.assertEqual(empleado.status_code, 200)
+        with patch('routes_caracteristicas.get_cdmx_now', return_value=self.now):
+            admin = self.client.get('/api/caracteristicas/panel-ventas', headers=self.auth['admin'])
+        self.assertEqual(empleado.json, admin.json)
+        self.assertEqual([b['nombre'] for b in empleado.json['sucursales']], ['Norte', 'Centro', 'Sur'])
+        self.assertEqual([b['barra'] for b in empleado.json['sucursales']], [100, 25, 0])
+        for row in empleado.json['sucursales']:
+            self.assertEqual(set(row), {'id', 'nombre', 'barra', 'lider'})
+        # Ver la competencia no otorga acceso a cambiar las características.
+        self.assertEqual(self.mode('oculto', 'employee').status_code, 403)

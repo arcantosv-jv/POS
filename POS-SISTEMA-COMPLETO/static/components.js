@@ -1620,7 +1620,8 @@ const InventarioView = {
                                     style="width: 100%; padding: 0.5rem;"
                                 >
                                 <!-- Dropdown de búsqueda -->
-                                <div v-if="productosEncontrados.length > 0 && busquedaProductoEntrada" style="position: absolute; background: white; border: 1px solid var(--gray-300); border-radius: 0.375rem; width: 100%; max-height: 200px; overflow-y: auto; z-index: 10; top: 100%;">
+                                <div v-if="productosEncontrados.length > 0 && busquedaProductoEntrada" style="background: white; border: 1px solid var(--gray-300); border-radius: 0.375rem; width: 100%; margin-top: 0.5rem;">
+                                    <p role="status" style="padding: 0.75rem; margin: 0; background: var(--gray-50); font-weight: 600;">{{ productosEncontrados.length }} productos encontrados</p>
                                     <div 
                                         v-for="prod in productosEncontrados" 
                                         :key="prod.id"
