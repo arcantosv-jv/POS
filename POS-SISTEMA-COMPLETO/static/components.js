@@ -2914,16 +2914,16 @@ const DashboardView = {
     methods: {
         async cargarDatos() {
             try {
-                const hoy = new Date().toISOString().split('T')[0];
+                // El endpoint determina hoy en CDMX, independientemente del navegador.
                 
                 // Ventas del día
                 const resVentas = await axios.get(
                     `${window.location.origin}/api/reportes/ventas-diarias`,
                     {
-                        params: { fecha: hoy },
                         headers: { Authorization: `Bearer ${this.token}` }
                     }
                 );
+                const hoy = resVentas.data.fecha;
                 this.ventasHoy = (resVentas.data.total_ventas || 0).toFixed(2);
                 this.transaccionesHoy = resVentas.data.cantidad_transacciones || 0;
                 
@@ -2931,7 +2931,7 @@ const DashboardView = {
                 const resConsolidado = await axios.get(
                     `${window.location.origin}/api/reportes/consolidado-sucursales`,
                     {
-                        params: { fecha_inicio: hoy },
+                        params: { fecha_inicio: hoy, fecha_fin: hoy },
                         headers: { Authorization: `Bearer ${this.token}` }
                     }
                 );

@@ -310,10 +310,19 @@ def reporte_consolidado():
         
         query = Venta.query
         
-        if fecha_inicio:
-            query = query.filter(Venta.created_at >= datetime.fromisoformat(fecha_inicio))
-        if fecha_fin:
-            query = query.filter(Venta.created_at <= datetime.fromisoformat(fecha_fin))
+        try:
+            desde = datetime.strptime(fecha_inicio, '%Y-%m-%d').date() if fecha_inicio else None
+            hasta = datetime.strptime(fecha_fin, '%Y-%m-%d').date() if fecha_fin else None
+            if desde and hasta and desde > hasta:
+                raise ValueError()
+            if desde:
+                inicio = CDMX_TZ.localize(datetime.combine(desde, datetime.min.time()))
+                query = query.filter(Venta.created_at >= inicio)
+            if hasta:
+                fin = CDMX_TZ.localize(datetime.combine(hasta + timedelta(days=1), datetime.min.time()))
+                query = query.filter(Venta.created_at < fin)
+        except (ValueError, OverflowError):
+            return jsonify(error='Selecciona un rango de fechas válido.'), 400
         
         ventas = query.all()
         
