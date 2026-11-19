@@ -3,12 +3,13 @@ import csv
 import json
 import os
 from pathlib import Path
+from reclasificacion_logs import registrar_error
 from clasificacion_productos import normalizar
 from nombres_clasificacion import propuesta_nombre, validar_nombre
 from models import Producto, Categoria, Subcategoria, db
 
 
-def consultar(productos, catalogo, web=False):
+def consultar(productos, catalogo, web=False, revision=None, lote=None):
     from google import genai
     from google.genai import types
     from routes_compatibilidad import _get_gemini_model_candidates
@@ -41,6 +42,7 @@ Datos: ''' + json.dumps({'catalogo': catalogo, 'productos': productos}, ensure_a
         # El SDK instalado no admite timeout; REST limita cada lote web a dos intentos.
         import requests
         for model in _get_gemini_model_candidates()[:2]:
+            response = None
             try:
                 response = requests.post(
                     f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
@@ -50,7 +52,8 @@ Datos: ''' + json.dumps({'catalogo': catalogo, 'productos': productos}, ensure_a
                 response.raise_for_status()
                 content = ''.join(p.get('text', '') for p in response.json()['candidates'][0]['content']['parts'])
                 return json.loads(content)['productos']
-            except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
+            except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as error:
+                registrar_error(error, etapa='consulta_web', modelo=model, revision=revision, lote=lote, productos=productos, respuesta=response)
                 continue
         raise ValueError('Gemini no pudo revisar este lote. Puedes reintentar sin perder el avance.')
     client = genai.Client(api_key=key)
@@ -59,7 +62,8 @@ Datos: ''' + json.dumps({'catalogo': catalogo, 'productos': productos}, ensure_a
             response = client.models.generate_content(model=model, contents=prompt,
                 config=types.GenerateContentConfig(response_mime_type='application/json', temperature=0))
             return json.loads(response.text)['productos']
-        except Exception:
+        except Exception as error:
+            registrar_error(error, etapa='consulta_script', modelo=model, productos=productos)
             continue
     raise ValueError('Gemini no pudo completar el lote. No se modificó la base de datos.')
 

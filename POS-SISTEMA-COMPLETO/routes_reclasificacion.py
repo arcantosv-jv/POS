@@ -1,5 +1,6 @@
 """Reclasificación global exclusiva de administradores, con revisión persistente."""
 from copy import deepcopy
+from reclasificacion_logs import registrar_error
 import time
 import uuid
 from collections import Counter
@@ -149,8 +150,9 @@ def procesar(id):
                    for c in Categoria.query.filter_by(is_active=True).all()]
     db.session.commit()  # No mantener bloqueos durante la petición a Gemini.
     try:
-        respuestas = validar(consultar(entrada, catalogo_ia, web=True), entrada)
-    except Exception:
+        respuestas = validar(consultar(entrada, catalogo_ia, web=True, revision=id, lote=token), entrada)
+    except Exception as error:
+        registrar_error(error, etapa='procesar_lote', revision=id, lote=token, productos=entrada)
         r = obtener(id)
         if r.token_lote == token:
             r.token_lote, r.bloqueado_hasta = None, 0
