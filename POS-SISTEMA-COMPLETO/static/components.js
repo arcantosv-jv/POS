@@ -8119,7 +8119,7 @@ const ReclasificarProductosView = {
     <div class="reclasificacion">
         <div class="card">
             <div class="reclasificacion-encabezado">
-                <div><h2>Re Clasificar Productos</h2><p>Revisa todo el catálogo con Gemini, incluidos los productos inactivos.</p></div>
+                <div><h2>Re Clasificar Productos</h2><p>Revisa todo el catálogo, incluidos los productos inactivos.</p></div>
                 <button class="btn btn-primary" @click="nuevaRevision" :disabled="ocupado || procesando">{{ revision ? 'Nueva revisión' : 'Iniciar revisión' }}</button>
             </div>
             <p class="reclasificacion-nota">Se corrigen categoría y subcategoría. Si el nombre es solo un modelo de celular y actualmente está en Micas o Fundas, se propone agregar ese prefijo. Los demás nombres, precios e inventario se conservan. Puedes salir y continuar después; las revisiones anteriores quedan guardadas.</p>
@@ -8135,7 +8135,7 @@ const ReclasificarProductosView = {
                 <div class="reclasificacion-progreso" aria-live="polite">
                     <strong>{{ revision.procesados }} de {{ revision.total }} productos revisados</strong>
                     <progress :value="revision.procesados" :max="revision.total || 1"></progress>
-                    <span v-if="procesando">Consultando Gemini… Cada lote se guarda automáticamente.</span>
+                    <span v-if="procesando">Revisando... Cada lote se guarda automáticamente.</span>
                     <span v-else-if="revision.ocupado">Hay un lote en proceso. Actualiza la revisión en unos momentos.</span>
                 </div>
                 <div class="reclasificacion-acciones">

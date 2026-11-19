@@ -155,7 +155,7 @@ def procesar(id):
         if r.token_lote == token:
             r.token_lote, r.bloqueado_hasta = None, 0
             db.session.commit()
-        raise ValueError('Gemini no pudo completar el lote. El avance anterior está guardado; pulsa Continuar revisión para reintentar.')
+        raise ValueError('No se pudo completar la revisión del lote. El avance anterior está guardado; pulsa Continuar revisión para reintentar.')
     r = obtener(id)
     if r.token_lote != token:
         raise Conflicto('Este lote fue retomado por otra sesión. Recarga la revisión.')
