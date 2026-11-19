@@ -8032,7 +8032,7 @@ const ReclasificarProductosView = {
             const q = this.busqueda.trim().toLocaleLowerCase();
             return (this.revision?.filas || []).filter(f =>
                 (this.filtro === 'todos' || (this.filtro === 'cambios' ? !['correcto', 'sin_revisar', 'aplicado'].includes(f.estado) : f.estado === this.filtro)) &&
-                (!q || `${f.codigo} ${f.nombre} ${f.categoria_actual} ${f.categoria_destino}`.toLocaleLowerCase().includes(q)));
+                (!q || `${f.codigo} ${f.nombre} ${f.nombre_destino || ''} ${f.categoria_actual} ${f.categoria_destino}`.toLocaleLowerCase().includes(q)));
         },
         paginas() { return Math.max(1, Math.ceil(this.filtradas.length / 25)); },
         visibles() { return this.filtradas.slice((this.pagina - 1) * 25, this.pagina * 25); },
@@ -8093,7 +8093,7 @@ const ReclasificarProductosView = {
             this.editor = f; this.error = ''; this.mensaje = '';
             const cat = this.catalogo.find(c => c.nombre === f.categoria_destino);
             const sub = cat?.subcategorias.find(s => s.nombre === f.subcategoria_destino);
-            this.form = { categoriaId: cat?.id || '', subcategoriaId: sub?.id || '', nueva: Boolean(f.categoria_destino && !sub),
+            this.form = { nombreDestino: f.nombre_destino || f.nombre, categoriaId: cat?.id || '', subcategoriaId: sub?.id || '', nueva: Boolean(f.categoria_destino && !sub),
                 categoria: f.categoria_destino || '', subcategoria: f.subcategoria_destino || '' };
             this.$nextTick(() => this.$refs.editor?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
         },
@@ -8109,7 +8109,7 @@ const ReclasificarProductosView = {
         },
         guardarEdicion() {
             if (!this.form.nueva && !this.form.subcategoriaId) { this.error = 'Selecciona categoría y subcategoría.'; return; }
-            return this.modificar('editar', { producto_id: this.editor.id, ...(this.form.nueva ?
+            return this.modificar('editar', { producto_id: this.editor.id, nombre_destino: this.form.nombreDestino, ...(this.form.nueva ?
                 { categoria: this.form.categoria, subcategoria: this.form.subcategoria } : { subcategoria_id: this.form.subcategoriaId }) });
         }
     },
@@ -8122,7 +8122,7 @@ const ReclasificarProductosView = {
                 <div><h2>Re Clasificar Productos</h2><p>Revisa todo el catálogo con Gemini, incluidos los productos inactivos.</p></div>
                 <button class="btn btn-primary" @click="nuevaRevision" :disabled="ocupado || procesando">{{ revision ? 'Nueva revisión' : 'Iniciar revisión' }}</button>
             </div>
-            <p class="reclasificacion-nota">Solo se cambia categoría y subcategoría. El nombre, precio e inventario se conservan. Puedes salir y continuar después; las revisiones anteriores quedan guardadas.</p>
+            <p class="reclasificacion-nota">Se corrigen categoría y subcategoría. Si el nombre es solo un modelo de celular y actualmente está en Micas o Fundas, se propone agregar ese prefijo. Los demás nombres, precios e inventario se conservan. Puedes salir y continuar después; las revisiones anteriores quedan guardadas.</p>
             <div class="reclasificacion-filtros" v-if="historial.length">
                 <label>Revisión guardada<select :value="revision?.id || ''" @change="cargar($event.target.value)" :disabled="ocupado || procesando">
                     <option v-for="r in historial" :key="r.id" :value="r.id">{{ fecha(r.fecha) }} · {{ r.total }} productos</option>
@@ -8161,6 +8161,8 @@ const ReclasificarProductosView = {
         <form class="card reclasificacion-editor" ref="editor" v-if="editor" @submit.prevent="guardarEdicion">
             <h3>Editar clasificación: {{ editor.nombre }}</h3>
             <p>{{ editor.codigo }} · Actual: {{ editor.categoria_actual }} / {{ editor.subcategoria_actual }}</p>
+            <p><strong>Nombre actual:</strong> {{ editor.nombre }}</p>
+            <label v-if="editor.nombre_destino && editor.nombre_destino !== editor.nombre">Nombre al aplicar<select v-model="form.nombreDestino"><option :value="editor.nombre_destino">{{ editor.nombre_destino }}</option><option :value="editor.nombre">Conservar: {{ editor.nombre }}</option></select></label>
             <label class="reclasificacion-checkbox"><input type="checkbox" v-model="form.nueva"> Proponer una categoría o subcategoría nueva</label>
             <div class="reclasificacion-filtros" v-if="!form.nueva">
                 <label>Categoría<select v-model="form.categoriaId" @change="form.subcategoriaId = ''" required><option value="">Selecciona categoría</option><option v-for="c in catalogo" :value="c.id" :key="c.id">{{ c.nombre }}</option></select></label>
@@ -8177,11 +8179,11 @@ const ReclasificarProductosView = {
                 <label>Buscar producto<input v-model="busqueda" placeholder="Nombre o código"></label>
                 <label>Mostrar<select v-model="filtro"><option value="cambios">Cambios y pendientes</option><option value="todos">Todos</option><option value="listo">Listos para aplicar</option><option value="pendiente">Pendientes de editar</option><option value="nueva">Requieren aprobación</option><option value="correcto">Sin cambio</option><option value="sin_revisar">Sin revisar</option><option value="aplicado">Aplicados</option></select></label>
             </div>
-            <div class="reclasificacion-tabla"><table><thead><tr><th>Producto</th><th>Clasificación actual</th><th>Propuesta</th><th>Estado / motivo</th><th>Acción</th></tr></thead>
+            <div class="reclasificacion-tabla"><table><thead><tr><th>Nombre actual / código</th><th>Clasificación actual</th><th>Nombre y clasificación propuestos</th><th>Estado / motivo</th><th>Acción</th></tr></thead>
                 <tbody><tr v-for="f in visibles" :key="f.id">
                     <td><strong>{{ f.nombre }}</strong><small>{{ f.codigo }}</small></td>
                     <td>{{ f.categoria_actual }}<small>{{ f.subcategoria_actual }}</small></td>
-                    <td>{{ f.categoria_destino || 'Por definir' }}<small>{{ f.subcategoria_destino }}</small></td>
+                    <td><strong>{{ f.nombre_destino || f.nombre }}</strong><small v-if="f.nombre_destino && f.nombre_destino !== f.nombre">Se agregará el prefijo al aplicar</small><small>{{ f.categoria_destino || 'Por definir' }} / {{ f.subcategoria_destino }}</small></td>
                     <td><span class="reclasificacion-estado" :class="f.estado">{{ etiqueta(f.estado) }}</span><small>{{ f.motivo }}</small><small v-if="f.editada">Editada manualmente</small><small v-if="f.aprobada">Destino aprobado</small><small v-if="f.aplicado_en">{{ fecha(f.aplicado_en) }}</small></td>
                     <td><button v-if="f.estado !== 'aplicado'" class="btn btn-secondary" @click="editar(f)" :disabled="ocupado || procesando || revision.ocupado">Editar</button><span v-else>Guardado</span></td>
                 </tr><tr v-if="!visibles.length"><td colspan="5">No hay productos en este filtro.</td></tr></tbody>

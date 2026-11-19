@@ -81,3 +81,35 @@ class GeminiTest(unittest.TestCase):
             self.assertEqual(self.product.subcategoria.nombre, 'Micas')
             self.assertIn('pendiente', (salida / 'revision.csv').read_text(encoding='utf-8-sig'))
             self.assertTrue((salida / 'lote_0001.json').exists())
+
+    def test_modelo_solo_nombre_csv_y_reaplicacion(self):
+        from reclasificar_productos import ejecutar
+        self.product.nombre='Samsung A10/A10s';db.session.commit()
+        respuesta=[dict(codigo='P1',categoria='Accesorios',subcategoria='Micas',ambiguo=False,solo_modelo_celular=True,motivo='Modelo confirmado, mica actual')]
+        with tempfile.TemporaryDirectory() as tmp:
+            salida=Path(tmp)/'revision'
+            with patch('clasificacion_gemini.consultar',return_value=respuesta): vista_previa(salida)
+            self.assertEqual(self.product.nombre,'Samsung A10/A10s')
+            import csv
+            with (salida/'revision.csv').open(encoding='utf-8-sig') as f: row=list(csv.DictReader(f))[0]
+            self.assertEqual(row['nombre_destino'],'Mica Samsung A10/A10s')
+            self.assertEqual(row['estado'],'corregir')
+            aplicar_revision(salida)
+            self.assertEqual(self.product.nombre,'Mica Samsung A10/A10s')
+            self.assertEqual(self.product.precio,100);self.assertEqual(self.stock.cantidad,5)
+            self.assertEqual(ejecutar(salida/'aprobadas.csv'),[])
+            backup=json.loads((salida/'respaldo.json').read_text())['cambios'][0]
+            self.assertEqual(backup['nombre'],'Samsung A10/A10s')
+            self.assertEqual(backup['nombre_nuevo'],'Mica Samsung A10/A10s')
+
+    def test_prefijos_limitados(self):
+        from nombres_clasificacion import propuesta_nombre, validar_nombre
+        for categoria,sub,prefijo in [('Micas','Cristal sencilla','Mica'),('Micas','Cerámica','Mica'),('Accesorios','Micas privacidad','Mica'),('Micas','Hidrogel 9D','Mica'),('Fundas','Silicón','Funda')]:
+            row=dict(nombre='Samsung A10/A10s',categoria_actual=categoria,subcategoria_actual=sub)
+            self.assertEqual(propuesta_nombre(row,dict(ambiguo=False,solo_modelo_celular=True)),prefijo+' Samsung A10/A10s')
+            self.assertEqual(propuesta_nombre(row,dict(ambiguo=True,solo_modelo_celular=True)),row['nombre'])
+            self.assertEqual(propuesta_nombre(row,dict(ambiguo=False,solo_modelo_celular=False)),row['nombre'])
+            with self.assertRaises(ValueError): validar_nombre(row,'Mica Otro modelo',categoria,sub)
+        for name in ['Cargador Samsung A10','Mica Samsung A10','Funda Samsung A10','Airpods 4','Tablet Samsung A9','Apple watch s9','Cable A10']:
+            row=dict(nombre=name,categoria_actual='Micas',subcategoria_actual='Cristal')
+            self.assertEqual(propuesta_nombre(row,dict(ambiguo=False,solo_modelo_celular=True)),name)

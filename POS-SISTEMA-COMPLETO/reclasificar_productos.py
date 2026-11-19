@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from flask import Flask
 from models import db, Producto, Categoria, Subcategoria
+from nombres_clasificacion import validar_nombre
 
 CAMPOS = ['codigo', 'nombre', 'subcategoria_id_actual', 'categoria_actual',
           'subcategoria_actual', 'categoria_destino', 'subcategoria_destino']
@@ -85,7 +86,7 @@ def planificar(archivo):
         for numero, row in enumerate(lector, 2):
             if None in row or any(value is None for value in row.values()):
                 raise ValueError(f'Fila {numero}: columnas incorrectas')
-            row = {k: v.strip() for k, v in row.items()}
+            row = {k: v if k in ('nombre', 'nombre_destino') else v.strip() for k, v in row.items()}
             categoria, subcategoria = row['categoria_destino'], row['subcategoria_destino']
             if not categoria and not subcategoria:
                 continue
@@ -98,19 +99,22 @@ def planificar(archivo):
             p = Producto.query.filter_by(codigo=codigo).with_for_update().first()
             if not p:
                 raise ValueError(f'Producto inexistente: {codigo}')
-            if p.nombre != row['nombre']:
-                raise ValueError(f'{codigo}: el nombre cambió desde la revisión; vuelve a generar propuestas')
+            nuevo_nombre = validar_nombre(row, row.get('nombre_destino') or row['nombre'], categoria, subcategoria)
             destinos = Subcategoria.query.join(Categoria).filter(
                 Categoria.nombre == categoria, Categoria.is_active.is_(True),
                 Subcategoria.nombre == subcategoria, Subcategoria.is_active.is_(True)).all()
             if len(destinos) != 1:
                 raise ValueError(f'{codigo}: destino inexistente, inactivo o ambiguo: {categoria} / {subcategoria}')
             destino = destinos[0]
-            if p.subcategoria_id == destino.id:
+            if p.subcategoria_id == destino.id and p.nombre == nuevo_nombre:
                 continue  # Permite repetir un archivo ya aplicado.
+            if p.nombre != row['nombre']:
+                raise ValueError(f'{codigo}: el nombre cambió desde la revisión; vuelve a generar propuestas')
+            if nuevo_nombre != row['nombre'] and (p.subcategoria.categoria.nombre, p.subcategoria.nombre) != (row['categoria_actual'], row['subcategoria_actual']):
+                raise ValueError(f'{codigo}: la clasificación actual cambió; vuelve a generar propuestas')
             if p.subcategoria_id != row['subcategoria_id_actual']:
                 raise ValueError(f'{codigo}: cambió desde la exportación; vuelve a exportar y revisar')
-            cambios.append({'codigo': codigo, 'nombre': p.nombre,
+            cambios.append({'codigo': codigo, 'nombre': p.nombre, 'nombre_nuevo': nuevo_nombre,
                 'subcategoria_id_anterior': p.subcategoria_id, 'subcategoria_id_nueva': destino.id,
                 'antes': f'{p.subcategoria.categoria.nombre} / {p.subcategoria.nombre}',
                 'despues': f'{categoria} / {subcategoria}'})
@@ -121,7 +125,7 @@ def ejecutar(archivo, aplicar=False, respaldo=None):
     try:
         cambios = planificar(archivo)
         for c in cambios:
-            print(f"{c['codigo']} | {c['nombre']} | {c['antes']} -> {c['despues']}")
+            print(f"{c['codigo']} | {c['nombre']} | {c['antes']} -> {c['despues']} | Nombre propuesto: {c['nombre_nuevo']}")
         if aplicar and cambios:
             if not respaldo:
                 raise ValueError('Especifica --respaldo con un archivo nuevo')
@@ -130,6 +134,7 @@ def ejecutar(archivo, aplicar=False, respaldo=None):
             for c in cambios:
                 p = Producto.query.filter_by(codigo=c['codigo']).one()
                 p.subcategoria_id = c['subcategoria_id_nueva']
+                p.nombre = c['nombre_nuevo']
             db.session.commit()
         else:
             db.session.rollback()

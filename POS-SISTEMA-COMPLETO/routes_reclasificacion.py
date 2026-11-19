@@ -10,6 +10,7 @@ from models import db, Producto, Categoria, Subcategoria, RevisionClasificacion
 from routes_admin import admin_required
 from clasificacion_productos import normalizar
 from clasificacion_gemini import consultar, validar
+from nombres_clasificacion import propuesta_nombre, validar_nombre
 from config import get_cdmx_now
 
 reclasificacion_bp = Blueprint('reclasificacion', __name__, url_prefix='/api/reclasificacion')
@@ -119,7 +120,7 @@ def crear():
         filas.append({'id': p.id, 'codigo': p.codigo, 'nombre': p.nombre,
             'subcategoria_id_actual': p.subcategoria_id,
             'categoria_actual': s.categoria.nombre if s else '', 'subcategoria_actual': s.nombre if s else '',
-            'categoria_destino': '', 'subcategoria_destino': '', 'destino_id': None,
+            'categoria_destino': '', 'subcategoria_destino': '', 'destino_id': None, 'nombre_destino': p.nombre,
             'estado': 'sin_revisar', 'motivo': '', 'editada': False, 'aprobada': False})
     r = RevisionClasificacion(creado_por_id=get_jwt_identity(), filas=filas)
     db.session.add(r); db.session.commit()
@@ -171,8 +172,10 @@ def procesar(id):
             continue
         try:
             s, cat, sub = resolver(propuesta['categoria'], propuesta['subcategoria'])
-            f.update(categoria_destino=cat, subcategoria_destino=sub, destino_id=s.id if s else None)
-            f['estado'] = 'correcto' if s and s.id == f['subcategoria_id_actual'] else 'listo' if s else 'nueva'
+            nuevo_nombre = propuesta_nombre(f, propuesta)
+            validar_nombre(f, nuevo_nombre, cat, sub)
+            f.update(categoria_destino=cat, subcategoria_destino=sub, destino_id=s.id if s else None, nombre_destino=nuevo_nombre)
+            f['estado'] = 'correcto' if s and s.id == f['subcategoria_id_actual'] and f.get('nombre_destino', f['nombre']) == f['nombre'] else 'listo' if s else 'nueva'
         except ValueError as error:
             f['motivo'] = str(error)
     r.token_lote, r.bloqueado_hasta = None, 0
@@ -194,9 +197,13 @@ def editar(id):
         cat, sub = s.categoria.nombre, s.nombre
     else:
         s, cat, sub = resolver(data.get('categoria'), data.get('subcategoria'))
-    f.update(categoria_destino=cat, subcategoria_destino=sub, destino_id=s.id if s else None,
+    destino_nombre = data.get('nombre_destino', f.get('nombre_destino', f['nombre']))
+    if destino_nombre not in (f['nombre'], f.get('nombre_destino', f['nombre'])):
+        raise ValueError('Elige el nombre original o la propuesta revisada; no se admiten nombres libres.')
+    validar_nombre(f, destino_nombre, cat, sub)
+    f.update(categoria_destino=cat, subcategoria_destino=sub, destino_id=s.id if s else None, nombre_destino=destino_nombre,
              editada=True, aprobada=False, motivo='Clasificación seleccionada manualmente por administrador.')
-    f['estado'] = 'correcto' if s and s.id == f['subcategoria_id_actual'] else 'listo' if s else 'nueva'
+    f['estado'] = 'correcto' if s and s.id == f['subcategoria_id_actual'] and f.get('nombre_destino', f['nombre']) == f['nombre'] else 'listo' if s else 'nueva'
     return guardar(r, filas)
 
 
@@ -229,6 +236,12 @@ def aplicar(id):
             s, cat, sub = resolver(cat, sub, crear=True)
         elif f['destino_id'] and f['destino_id'] != s.id:
             raise Conflicto('El destino cambió desde la revisión. Vuelve a seleccionarlo.')
+        destino_nombre = validar_nombre(f, f.get('nombre_destino', f['nombre']), cat, sub)
+        if destino_nombre != f['nombre']:
+            actual = p.subcategoria
+            if not actual or (actual.nombre, actual.categoria.nombre) != (f['subcategoria_actual'], f['categoria_actual']):
+                raise Conflicto('La clasificación original cambió; genera una nueva revisión.')
+        p.nombre = destino_nombre
         p.subcategoria_id = s.id
         f.update(estado='aplicado', aplicado_por=get_jwt_identity(),
                  aplicado_en=get_cdmx_now().isoformat(), subcategoria_id_nueva=s.id)

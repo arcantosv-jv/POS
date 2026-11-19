@@ -130,3 +130,45 @@ class ReclasificacionAdminTest(unittest.TestCase):
         self.assertEqual(self.accion(r, 'editar', producto_id=self.product.id, subcategoria_id=self.destino.id).status_code, 409)
         model.bloqueado_hasta = 0; db.session.commit()
         self.assertEqual(self.procesar(r)['resumen'], {'listo': 1})
+
+    def test_prefijo_nombre_se_aplica_solo_despues_de_revision(self):
+        self.product.nombre='Samsung A10/A10s';db.session.commit()
+        r=self.crear()
+        answer=[dict(codigo='P1',categoria='Accesorios',subcategoria='Micas',ambiguo=False,solo_modelo_celular=True,motivo='Modelo confirmado')]
+        with patch('routes_reclasificacion.consultar',return_value=answer): r=self.accion(r,'procesar').json
+        self.assertEqual(r['resumen'],{'listo':1})
+        self.assertEqual(r['filas'][0]['nombre_destino'],'Mica Samsung A10/A10s')
+        self.assertEqual(self.product.nombre,'Samsung A10/A10s')
+        r=self.accion(r,'aplicar').json
+        self.assertEqual(self.product.nombre,'Mica Samsung A10/A10s')
+        self.assertEqual((self.product.precio,self.stock.cantidad),(100,5))
+        self.assertEqual(r['filas'][0]['nombre'],'Samsung A10/A10s')
+        # Una revisión posterior no duplica el prefijo aunque Gemini se equivoque.
+        nuevo=self.crear()
+        with patch('routes_reclasificacion.consultar',return_value=answer): nuevo=self.accion(nuevo,'procesar').json
+        self.assertEqual(nuevo['resumen'],{'correcto':1})
+
+    def test_renombrado_se_puede_descartar_y_ambiguo_no_renombra(self):
+        self.product.nombre='Samsung A10/A10s';db.session.commit()
+        answer=[dict(codigo='P1',categoria='Accesorios',subcategoria='Micas',ambiguo=False,solo_modelo_celular=True,motivo='Modelo')]
+        r=self.crear()
+        with patch('routes_reclasificacion.consultar',return_value=answer): r=self.accion(r,'procesar').json
+        r=self.accion(r,'editar',producto_id=self.product.id,subcategoria_id=self.product.subcategoria_id,nombre_destino=self.product.nombre).json
+        self.assertEqual(r['resumen'],{'correcto':1})
+        answer[0]['ambiguo']=True
+        r=self.crear()
+        with patch('routes_reclasificacion.consultar',return_value=answer): r=self.accion(r,'procesar').json
+        self.assertEqual(r['resumen'],{'pendiente':1})
+        self.accion(r,'aplicar')
+        self.assertEqual(self.product.nombre,'Samsung A10/A10s')
+
+    def test_cargador_corrige_categoria_sin_renombrar(self):
+        self.product.nombre='Cargador Samsung A10';db.session.commit()
+        r=self.crear()
+        answer=[dict(codigo='P1',categoria='Cargadores',subcategoria='USB',ambiguo=False,solo_modelo_celular=False,motivo='Es cargador, no mica')]
+        with patch('routes_reclasificacion.consultar',return_value=answer): r=self.accion(r,'procesar').json
+        self.assertEqual(r['filas'][0]['nombre_destino'],'Cargador Samsung A10')
+        r=self.accion(r,'aprobar',categoria='Cargadores',subcategoria='USB').json
+        self.accion(r,'aplicar')
+        self.assertEqual(self.product.nombre,'Cargador Samsung A10')
+        self.assertEqual(self.product.subcategoria.categoria.nombre,'Cargadores')

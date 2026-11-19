@@ -109,7 +109,7 @@ hacia destinos existentes y nuevos aprobados. Guarda `aprobadas.csv` y `respaldo
 con las asignaciones anteriores. Si un producto cambió de nombre o clasificación desde
 la revisión, cancela la operación completa, incluidas las categorías nuevas. Los archivos
 no se sobrescriben; después de un intento fallido genera otra revisión en una carpeta nueva.
-No modifica nombre, precio, inventario ni estado activo del producto.
+Conserva precio, inventario y estado activo. La única excepción de nombre es el prefijo Mica/Funda para modelos de celular confirmado en la revisión, según las reglas descritas abajo.
 
 Para producción, primero valida el resultado en local y luego genera una revisión nueva
 contra producción con su configuración de conexión. No reutilices una revisión local:
@@ -150,3 +150,30 @@ Pruebas del panel:
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_reclasificacion_admin.py'
 node tests/test_frontend_reclasificacion.js
 ```
+
+
+## Prefijos para modelos de celular (revisión con Gemini)
+
+Gemini identifica si el nombre es únicamente un modelo o varios modelos de celular.
+Si lo confirma y la categoría o subcategoría actual identifica Micas (cualquier variante)
+o Fundas, se propone anteponer `Mica ` o `Funda ` conservando exactamente el nombre original.
+Ejemplo: `Samsung A10/A10s` → `Mica Samsung A10/A10s`, incluso si su clasificación ya es correcta.
+
+Un nombre explícito de producto prevalece sobre una clasificación incorrecta:
+`Cargador Samsung A10` en Micas se reclasifica a Cargadores sin renombrarlo.
+Los modelos inciertos quedan pendientes, sin cambio automático de nombre.
+No se duplican prefijos existentes ni se permite que Gemini redacte nombres libres.
+
+En admin se muestran nombre actual y propuesto; Editar permite conservar el original.
+**Aplicar cambios** guarda clasificación y nombre propuesto en una sola transacción,
+con validación de cambios concurrentes. El historial conserva ambos nombres.
+Los precios y existencias permanecen intactos.
+
+El script `ia` incluye la columna opcional `nombre_destino` en `revision.csv`;
+`aplicar-ia` valida el prefijo y guarda los nombres anterior/nuevo en `respaldo.json`.
+Los CSV anteriores sin esa columna siguen conservando el nombre.
+Las reglas automáticas sin Gemini continúan corrigiendo únicamente clasificación.
+
+Inicia una **Nueva revisión** para evaluar todo el catálogo con el prompt actualizado.
+Las filas ya procesadas de revisiones anteriores no se reescriben ni reinterpretan.
+Este ajuste no necesita migración: las propuestas se guardan en el JSON de revisión existente.
