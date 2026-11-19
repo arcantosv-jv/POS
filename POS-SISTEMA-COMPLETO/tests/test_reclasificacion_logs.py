@@ -26,3 +26,22 @@ class ReclasificacionLogsTest(unittest.TestCase):
         self.assertIn('tipo=Timeout', logs.output[0])
         self.assertIn('Read timed out', logs.output[0])
         self.assertIn('revision=rev lote=lote', logs.output[1])
+
+    def test_http_200_con_lista_directa_y_objeto_productos(self):
+        import json
+        from clasificacion_gemini import validar
+        filas = [{'codigo':'P1','categoria':'Micas','subcategoria':'Cristal','ambiguo':False,'motivo':'Modelo'}]
+        for contenido in (filas, {'productos':filas}):
+            with self.subTest(contenido=type(contenido).__name__), patch.dict('os.environ', {'GEMINI_API_KEY':'test'}), patch('requests.post') as post, patch('routes_compatibilidad._get_gemini_model_candidates', return_value=['modelo']):
+                post.return_value.json.return_value = {'candidates':[{'content':{'parts':[{'text':json.dumps(contenido)}]}}]}
+                respuesta = consultar([{'codigo':'P1'}], [], web=True)
+                self.assertEqual(validar(respuesta,[{'codigo':'P1'}]),filas)
+                self.assertEqual(post.call_count,1)
+
+    def test_parser_no_acepta_formato_invalido_ni_omite_validaciones(self):
+        import json
+        from clasificacion_gemini import leer_respuesta, validar
+        for contenido in (None, 'texto', {}, {'productos':{}}, {'productos':None}):
+            with self.assertRaises(ValueError): leer_respuesta(json.dumps(contenido))
+        for contenido in ([], [{'codigo':'desconocido'}], [{'codigo':'P1'}]):
+            with self.assertRaises(ValueError): validar(leer_respuesta(json.dumps(contenido)),[{'codigo':'P1'}])

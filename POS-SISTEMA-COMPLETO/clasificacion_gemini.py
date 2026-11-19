@@ -51,7 +51,7 @@ Datos: ''' + json.dumps({'catalogo': catalogo, 'productos': productos}, ensure_a
                           'generationConfig': {'responseMimeType': 'application/json', 'temperature': 0}})
                 response.raise_for_status()
                 content = ''.join(p.get('text', '') for p in response.json()['candidates'][0]['content']['parts'])
-                return json.loads(content)['productos']
+                return leer_respuesta(content)
             except (requests.RequestException, ValueError, KeyError, IndexError, TypeError) as error:
                 registrar_error(error, etapa='consulta_web', modelo=model, revision=revision, lote=lote, productos=productos, respuesta=response)
                 continue
@@ -61,11 +61,21 @@ Datos: ''' + json.dumps({'catalogo': catalogo, 'productos': productos}, ensure_a
         try:
             response = client.models.generate_content(model=model, contents=prompt,
                 config=types.GenerateContentConfig(response_mime_type='application/json', temperature=0))
-            return json.loads(response.text)['productos']
+            return leer_respuesta(response.text)
         except Exception as error:
             registrar_error(error, etapa='consulta_script', modelo=model, productos=productos)
             continue
     raise ValueError('Gemini no pudo completar el lote. No se modificó la base de datos.')
+
+
+def leer_respuesta(texto):
+    """Aceptar el objeto solicitado o una lista directa; validar las filas después."""
+    contenido = json.loads(texto)
+    if isinstance(contenido, dict):
+        contenido = contenido.get('productos')
+    if not isinstance(contenido, list):
+        raise ValueError('Formato de respuesta inválido: se esperaba una lista de productos')
+    return contenido
 
 
 def validar(respuestas, productos):
