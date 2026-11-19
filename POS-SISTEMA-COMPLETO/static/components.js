@@ -7913,19 +7913,20 @@ const AyudaView = {
 
 
 const ReporteCategoriasView = {
-    props: ['token'],
+    props: ['token', 'modo'],
     data() {
         const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         return { desde: hoy.slice(0, 7) + '-01', hasta: hoy, sucursal: '', orden: 'importe', ordenGenerado: 'importe', categorias: [], sucursales: [], cargando: false, generado: false, error: '', periodo: '' };
     },
+    computed: { esSubcategoria() { return this.modo === 'subcategorias'; } },
     methods: {
         moneda(valor) { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(valor); },
         async generar() {
             if (!this.desde || !this.hasta || this.desde > this.hasta) { this.error = 'Selecciona un rango de fechas válido.'; return; }
             this.cargando = true; this.error = ''; this.generado = false; this.categorias = [];
             try {
-                const res = await axios.get('/api/reportes/ventas-categorias', { headers: { Authorization: 'Bearer ' + this.token }, params: { fecha_inicio: this.desde, fecha_fin: this.hasta, sucursal_id: this.sucursal || undefined, orden: this.orden } });
-                this.categorias = res.data.categorias;
+                const res = await axios.get(this.esSubcategoria ? '/api/reportes/ventas-subcategorias' : '/api/reportes/ventas-categorias', { headers: { Authorization: 'Bearer ' + this.token }, params: { fecha_inicio: this.desde, fecha_fin: this.hasta, sucursal_id: this.sucursal || undefined, orden: this.orden } });
+                this.categorias = this.esSubcategoria ? res.data.subcategorias : res.data.categorias;
                 this.ordenGenerado = res.data.orden;
                 this.periodo = res.data.fecha_inicio + ' al ' + res.data.fecha_fin;
                 this.generado = true;
@@ -7939,23 +7940,23 @@ const ReporteCategoriasView = {
     },
     template: `
         <div class="card">
-            <div class="card-header"><h3>Top 10 categorías</h3></div>
+            <div class="card-header"><h3>Top 10 {{ esSubcategoria ? 'subcategorías' : 'categorías' }}</h3></div>
             <form class="filtros-container reportes-filtros" @submit.prevent="generar">
                 <div class="reportes-filtros-grid">
-                    <div class="reportes-filtro"><label class="form-label" for="cat-desde">Desde</label><input class="form-control-fecha" id="cat-desde" type="date" v-model="desde" required :disabled="cargando"></div>
-                    <div class="reportes-filtro"><label class="form-label" for="cat-hasta">Hasta</label><input class="form-control-fecha" id="cat-hasta" type="date" v-model="hasta" required :disabled="cargando"></div>
-                    <div class="reportes-filtro"><label class="form-label" for="cat-sucursal">Sucursal</label><select class="form-select form-control-fecha" id="cat-sucursal" v-model="sucursal" :disabled="cargando"><option value="">Todas las sucursales autorizadas</option><option v-for="s in sucursales" :key="s.id" :value="s.id">{{ s.nombre }}</option></select></div>
-                    <div class="reportes-filtro"><label class="form-label" for="cat-orden">Ordenar por</label><select class="form-select form-control-fecha" id="cat-orden" v-model="orden" :disabled="cargando"><option value="importe">Mayor importe vendido</option><option value="cantidad">Mayor cantidad vendida</option></select></div>
+                    <div class="reportes-filtro"><label class="form-label" :for="(modo || 'categorias') + '-desde'">Desde</label><input class="form-control-fecha" :id="(modo || 'categorias') + '-desde'" type="date" v-model="desde" required :disabled="cargando"></div>
+                    <div class="reportes-filtro"><label class="form-label" :for="(modo || 'categorias') + '-hasta'">Hasta</label><input class="form-control-fecha" :id="(modo || 'categorias') + '-hasta'" type="date" v-model="hasta" required :disabled="cargando"></div>
+                    <div class="reportes-filtro"><label class="form-label" :for="(modo || 'categorias') + '-sucursal'">Sucursal</label><select class="form-select form-control-fecha" :id="(modo || 'categorias') + '-sucursal'" v-model="sucursal" :disabled="cargando"><option value="">Todas las sucursales autorizadas</option><option v-for="s in sucursales" :key="s.id" :value="s.id">{{ s.nombre }}</option></select></div>
+                    <div class="reportes-filtro"><label class="form-label" :for="(modo || 'categorias') + '-orden'">Ordenar por</label><select class="form-select form-control-fecha" :id="(modo || 'categorias') + '-orden'" v-model="orden" :disabled="cargando"><option value="importe">Mayor importe vendido</option><option value="cantidad">Mayor cantidad vendida</option></select></div>
                     <div class="reportes-filtros-accion"><button class="btn btn-primary" :disabled="cargando">{{ cargando ? 'Generando…' : 'Generar reporte' }}</button></div>
                 </div>
             </form>
-            <p class="reportes-descripcion">Unidades vendidas e importe con impuestos, antes de devoluciones. Se usa la categoría actual de cada producto y fechas de CDMX.</p>
+            <p class="reportes-descripcion">Unidades vendidas e importe con impuestos, antes de devoluciones. Se usa la {{ esSubcategoria ? 'subcategoría' : 'categoría' }} actual de cada producto y fechas de CDMX.</p>
             <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
             <p v-if="generado">Período: {{ periodo }} · Orden: {{ ordenGenerado === 'cantidad' ? 'Mayor cantidad vendida' : 'Mayor importe vendido' }}</p>
             <div v-if="generado && !categorias.length" class="alert alert-info">No hay ventas en el período seleccionado.</div>
             <div v-if="categorias.length" style="overflow-x: auto;">
-                <table><thead><tr><th>Posición</th><th>Categoría</th><th>Unidades vendidas</th><th>Total vendido</th></tr></thead>
-                    <tbody><tr v-for="(categoria, indice) in categorias" :key="categoria.id"><td>{{ indice + 1 }}</td><td><strong>{{ categoria.nombre }}</strong></td><td>{{ categoria.cantidad }}</td><td>{{ moneda(categoria.total) }}</td></tr></tbody>
+                <table><thead><tr><th>Posición</th><th>{{ esSubcategoria ? 'Subcategoría' : 'Categoría' }}</th><th v-if="esSubcategoria">Categoría</th><th>Unidades vendidas</th><th>Total vendido</th></tr></thead>
+                    <tbody><tr v-for="(categoria, indice) in categorias" :key="categoria.id"><td>{{ indice + 1 }}</td><td><strong>{{ categoria.nombre }}</strong></td><td v-if="esSubcategoria">{{ categoria.categoria_nombre }}</td><td>{{ categoria.cantidad }}</td><td>{{ moneda(categoria.total) }}</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -7979,6 +7980,7 @@ const CentroReportesView = {
                 { id: 'cierres', titulo: 'Cierres de caja', descripcion: 'Consulta los cierres por período y sucursal.', componente: 'ReportesVentasView' }
             );
             if (this.$root.puede('reportes') || this.$root.puede('reportes-ventas')) opciones.push({ id: 'categorias', titulo: 'Top 10 categorías', descripcion: 'Consulta las categorías líderes por importe o unidades vendidas.', componente: 'ReporteCategoriasView' });
+            if (this.$root.puede('reportes') || this.$root.puede('reportes-ventas')) opciones.push({ id: 'subcategorias', titulo: 'Top 10 subcategorías', descripcion: 'Consulta las subcategorías líderes por importe o unidades vendidas.', componente: 'ReporteCategoriasView' });
             return opciones;
         },
         activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; }

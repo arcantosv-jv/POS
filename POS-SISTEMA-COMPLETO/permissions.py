@@ -104,7 +104,7 @@ route('cierre-caja', 'ver', 'ventas.get_cierre_caja_hoy')
 route('cierre-caja', 'cerrar', 'ventas.crear_cierre_caja', 'ventas.iniciar_nuevo_cierre')
 route('cierre-caja', 'corregir', 'ventas.corregir_cierre_caja')
 route('cierres-caja', 'ver', 'ventas.reportes_cierres_caja', 'ventas.reportes_cierres_caja_detalle')
-route('reportes-ventas', 'ver', 'ventas.reportes_por_fecha', 'reportes.ventas_categorias')
+route('reportes-ventas', 'ver', 'ventas.reportes_por_fecha', 'reportes.ventas_categorias', 'reportes.ventas_subcategorias')
 route('ventas-sin-stock', 'ver', 'ventas.get_ventas_sin_stock')
 for name in ('ventas_diarias', 'ventas_mensuales', 'ventas_anuales', 'productos_vendidos', 'productos_bajo_stock', 'total_productos'):
     route('reportes', 'ver', 'reportes.reportes_' + name)
@@ -139,7 +139,7 @@ def endpoint_allowed(user):
     endpoint = request.endpoint
     if endpoint in ('auth.get_profile', 'auth.change_password', 'caracteristicas.acceso', 'admin.get_sucursales_publico', 'permisos.mi_acceso'):
         return True
-    if endpoint == 'reportes.ventas_categorias':
+    if endpoint in ('reportes.ventas_categorias', 'reportes.ventas_subcategorias'):
         return can(user, 'reportes', 'ver') or can(user, 'reportes-ventas', 'ver')
     if endpoint == 'caracteristicas.panel_ventas':
         return can(user, 'ventas', 'ver')

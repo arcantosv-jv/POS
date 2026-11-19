@@ -663,7 +663,17 @@ reportes_bp.before_request(authorize_request)
 @reportes_bp.route('/ventas-categorias', methods=['GET'])
 @jwt_required()
 def ventas_categorias():
-    """Top 10 por importe bruto con impuestos, según la clasificación actual."""
+    return top_clasificacion(False)
+
+
+@reportes_bp.route('/ventas-subcategorias', methods=['GET'])
+@jwt_required()
+def ventas_subcategorias():
+    return top_clasificacion(True)
+
+
+def top_clasificacion(por_subcategoria):
+    """Top 10 bruto con impuestos; clasificación actual y alcance autorizado."""
     from models import Categoria, Subcategoria
     from permissions import allowed_branches
     try:
@@ -681,7 +691,11 @@ def ventas_categorias():
     user = db.session.get(User, get_jwt_identity())
     cantidad = func.sum(DetalleVenta.cantidad)
     importe = func.sum(DetalleVenta.subtotal + func.coalesce(DetalleVenta.impuesto_unitario, 0) * DetalleVenta.cantidad)
-    query = db.session.query(Categoria.id, Categoria.nombre, cantidad.label('cantidad'), importe.label('total')).select_from(DetalleVenta).join(
+    agrupador = Subcategoria if por_subcategoria else Categoria
+    columnas = [agrupador.id, agrupador.nombre, cantidad.label('cantidad'), importe.label('total')]
+    if por_subcategoria:
+        columnas.append(Categoria.nombre.label('categoria_nombre'))
+    query = db.session.query(*columnas).select_from(DetalleVenta).join(
         Venta, Venta.id == DetalleVenta.venta_id).join(Producto, Producto.id == DetalleVenta.producto_id).join(
         Subcategoria, Subcategoria.id == Producto.subcategoria_id).join(Categoria, Categoria.id == Subcategoria.categoria_id).filter(
         Venta.created_at >= inicio, Venta.created_at < fin)
@@ -691,6 +705,9 @@ def ventas_categorias():
     if sucursal:
         query = query.filter(Venta.sucursal_id == sucursal)
     criterios = (cantidad.desc(), importe.desc()) if orden == 'cantidad' else (importe.desc(), cantidad.desc())
-    filas = query.group_by(Categoria.id, Categoria.nombre).order_by(*criterios, Categoria.nombre.asc(), Categoria.id.asc()).limit(10).all()
-    return jsonify({'categorias': [{'id': r.id, 'nombre': r.nombre, 'cantidad': int(r.cantidad), 'total': float(r.total)} for r in filas],
+    grupos = [agrupador.id, agrupador.nombre]
+    if por_subcategoria:
+        grupos.append(Categoria.nombre)
+    filas = query.group_by(*grupos).order_by(*criterios, agrupador.nombre.asc(), agrupador.id.asc()).limit(10).all()
+    return jsonify({('subcategorias' if por_subcategoria else 'categorias'): [{'id': r.id, 'nombre': r.nombre, 'cantidad': int(r.cantidad), 'total': float(r.total), **({'categoria_nombre': r.categoria_nombre} if por_subcategoria else {})} for r in filas],
                     'orden': orden, 'fecha_inicio': desde.isoformat(), 'fecha_fin': hasta.isoformat()})

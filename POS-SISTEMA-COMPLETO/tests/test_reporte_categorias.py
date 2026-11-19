@@ -68,3 +68,29 @@ class CategoriasTest(unittest.TestCase):
         self.assertEqual(filas[0]['cantidad'], 50)
         self.assertEqual(filas[1]['nombre'], 'Cat 10')
         self.assertEqual(self.request(self.url + '&orden=invalido', method='get').status_code, 400)
+
+    def test_subcategorias_identidad_ranking_y_sucursales(self):
+        url=self.url.replace('ventas-categorias','ventas-subcategorias')
+        response=self.request(url,role='employee',method='get')
+        self.assertEqual(response.status_code,200,response.json)
+        rows=response.json['subcategorias']
+        self.assertEqual(len(rows),10)
+        # Subcategorías homónimas de categorías diferentes no se mezclan.
+        self.assertEqual(len({r['id'] for r in rows}),10)
+        self.assertEqual(rows[0]['nombre'],'Sub')
+        self.assertEqual(rows[0]['categoria_nombre'],'Cat 10')
+        self.assertEqual((rows[0]['cantidad'],rows[0]['total']),(2,242))
+        self.assertEqual(self.request(url,method='get').json['subcategorias'][0]['total'],9999)
+        self.assertEqual(self.request(url+'&sucursal_id='+self.branch.id,method='get').json['subcategorias'][0]['total'],242)
+        self.assertEqual(self.request(url+'&sucursal_id='+self.extra.id,role='employee',method='get').status_code,403)
+        detalle=DetalleVenta.query.join(Venta).filter(Venta.numero_venta=='CAT0').one()
+        detalle.cantidad=50;detalle.subtotal=5;detalle.impuesto_unitario=0;db.session.commit()
+        rows=self.request(url+'&orden=cantidad',role='employee',method='get').json['subcategorias']
+        self.assertEqual(rows[0]['categoria_nombre'],'Cat 00')
+        self.assertEqual(rows[0]['cantidad'],50)
+        self.assertEqual(self.request(url+'&orden=invalido',method='get').status_code,400)
+        self.assertEqual(self.request(url.replace('2026-11-05','2026-11-06'),method='get').json['subcategorias'],[])
+        self.employee.permisos={'reportes-ventas':['ver']};db.session.commit()
+        self.assertEqual(self.request(url,role='employee',method='get').status_code,200)
+        self.employee.permisos={};db.session.commit()
+        self.assertEqual(self.request(url,role='employee',method='get').status_code,403)
