@@ -1,6 +1,6 @@
 """Conversión de un apartado liquidado en una venta, sin mover inventario."""
 from decimal import Decimal
-from models import db, Venta, DetalleVenta, PagoVenta
+from models import db, Venta, DetalleVenta, PagoVenta, Producto
 from business_validation import money
 from config import get_cdmx_now
 
@@ -23,7 +23,11 @@ def registrar_venta_entrega(apartado, usuario_id):
                   observaciones='Entrega de apartado AP-' + apartado.id[:8].upper(), created_at=get_cdmx_now())
     for producto in apartado.productos:
         precio = money(producto['precio'], 'Precio del apartado')
+        catalogo = db.session.get(Producto, producto['producto_id'])
+        if catalogo is None:
+            raise ValueError('El producto del apartado ya no existe')
         venta.detalles.append(DetalleVenta(producto_id=producto['producto_id'], cantidad=producto['cantidad'],
+                                          costo_compra_unitario=catalogo.costo_compra,
                                           precio_unitario=precio, subtotal=precio*producto['cantidad'],
                                           impuesto_unitario=0, sin_stock=producto.get('faltantes', 0) > 0))
     if sum(d.subtotal for d in venta.detalles) != apartado.total:

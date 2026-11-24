@@ -58,12 +58,12 @@ function instance(component) {
     assert.equal(app.puedeVista('reportes'), true);
     assert.equal(app.vistaInicial(), 'reportes');
     app.irAVista('reportes-ventas'); assert.equal(app.currentView, 'reportes');
-    const tabs = () => sandbox.centroReportes.computed.tabs.call({ $root: app });
+    const tabs = () => sandbox.centroReportes.computed.tabs.call({ $root: app, userRole: app.userRole });
     assert.deepEqual(Array.from(tabs(), tab => tab.id), ['ventas', 'cierres', 'categorias', 'subcategorias']);
     app.permisos = { reportes: ['ver'] };
     assert.deepEqual(Array.from(tabs(), tab => tab.id), ['diario', 'mensual', 'categorias', 'subcategorias']);
     app.userRole = 'admin';
-    assert.deepEqual(Array.from(tabs(), tab => tab.id), ['diario', 'mensual', 'ventas', 'cierres', 'categorias', 'subcategorias']);
+    assert.deepEqual(Array.from(tabs(), tab => tab.id), ['diario', 'mensual', 'ventas', 'cierres', 'categorias', 'subcategorias', 'utilidad']);
     assert.equal(sandbox.reporteVentas.data.call({ modo: 'cierres' }).tipoReporte, 'cierres');
     assert.equal(sandbox.reporteVentas.data.call({ modo: 'ventas' }).tipoReporte, 'ventas');
     const editor = instance(sandbox.editor);

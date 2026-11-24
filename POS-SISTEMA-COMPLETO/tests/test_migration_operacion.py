@@ -12,13 +12,15 @@ from models import db
 ROOT = Path(__file__).resolve().parents[1]
 ADDITIONS = {
     'stocks': {'reservado'},
+                'productos': {'costo_compra'},
+                'detalles_venta': {'costo_compra_unitario'},
     'users': {'permisos', 'sucursales_permitidas'},
     'cierres_caja': {'egresos', 'reembolsos_efectivo', 'efectivo_inicial'},
     'devoluciones_venta': {'reembolsos', 'caja_empleado_id', 'fecha_movimiento', 'cierre_caja_id'},
-    'ventas': {'cierre_caja_id'},
+    'ventas': {'cierre_caja_id', 'ediciones'},
     'reparaciones': {'diagnostico', 'tecnico', 'fecha_prometida', 'anticipo', 'historial'},
 }
-NEW_TABLES = {'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion', 'pronostico_estados', 'pronostico_resumenes', 'pronostico_historicos', 'pronosticos'}
+NEW_TABLES = {'consultas_compatibilidad', 'compatibilidades_verificadas', 'configuracion_sistema', 'comisiones', 'apartados', 'revisiones_clasificacion', 'reglas_costos', 'revisiones_costos', 'pronostico_estados', 'pronostico_resumenes', 'pronostico_historicos', 'pronosticos'}
 
 
 class MigrationTest(unittest.TestCase):
@@ -54,7 +56,7 @@ class MigrationTest(unittest.TestCase):
                     result = subprocess.run([sys.executable, 'railway_migrate.py'], cwd=ROOT, env=env, text=True, capture_output=True, timeout=45)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 with engine.connect() as conn:
-                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '018')
+                    self.assertEqual(conn.execute(sa.text('SELECT version_num FROM alembic_version')).scalar(), '020')
                     if versioned:
                         historica = conn.execute(sa.text("SELECT costo, monto_comision, aprobada, detalle_venta_id, unidad FROM comisiones WHERE id='historica'")).one()
                         self.assertEqual(tuple(historica), (500, 50, 1, None, None))

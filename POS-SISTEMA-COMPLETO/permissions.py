@@ -11,7 +11,7 @@ CATALOG = {
     'productos': ('Productos (catálogo global)', ['ver', 'crear', 'editar', 'eliminar', 'importar']),
     'inventario': ('Inventario', ['ver', 'ver_stock', 'entradas', 'ajustar', 'eliminar', 'exportar']),
     'ventas': ('Ventas', ['ver', 'crear', 'editar_pagos']),
-    'ventas-del-dia': ('Ventas del día', ['ver']),
+    'ventas-del-dia': ('Ventas del día', ['ver', 'editar']),
     'cierre-caja': ('Realizar cierre de caja', ['ver', 'cerrar', 'corregir']),
     'cierres-caja': ('Consultar cierres de caja', ['ver']),
     'reportes': ('Reportes', ['ver']),
@@ -99,6 +99,7 @@ route('productos', 'importar', 'importar.importar_productos')
 route('ventas', 'ver', 'ventas.get_ventas', 'ventas.get_venta', 'ventas.get_ticket', 'ventas.validar_stock')
 route('ventas', 'crear', 'ventas.crear_venta')
 route('ventas', 'editar_pagos', 'ventas.guardar_pagos_venta')
+route('ventas-del-dia', 'editar', 'edicion_ventas.editar', 'edicion_ventas.productos')
 route('ventas-del-dia', 'ver', 'ventas.get_ventas_del_dia')
 route('cierre-caja', 'ver', 'ventas.get_cierre_caja_hoy')
 route('cierre-caja', 'cerrar', 'ventas.crear_cierre_caja', 'ventas.iniciar_nuevo_cierre')

@@ -62,6 +62,9 @@ def datos_registro(data, user):
     venta = Venta.query.filter_by(id=detalle.venta_id, sucursal_id=current_branch(user)).with_for_update().first()
     if not venta or fecha_cdmx(venta.created_at).date() < INICIO:
         raise ValueError('Selecciona una venta de tu sucursal desde el 18/11/2026')
+    # La venta pudo corregirse mientras esperábamos su bloqueo.
+    db.session.refresh(detalle)
+    db.session.expire(detalle, ['producto'])
     if not tipo_dispositivo(detalle.producto):
         raise ValueError('El producto no pertenece a Celulares o Tablets')
     if unidad not in unidades_disponibles(detalle):

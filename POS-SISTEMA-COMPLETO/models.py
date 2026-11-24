@@ -139,6 +139,7 @@ class Producto(db.Model):
     codigo = db.Column(db.String(50), unique=True, nullable=False, index=True)
     nombre = db.Column(db.String(255), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
+    costo_compra = db.Column(db.Numeric(10, 2), nullable=True)  # Exclusivo de APIs admin; no serializar en catálogo público.
     precio = db.Column(db.Numeric(10, 2), nullable=True)
     impuesto = db.Column(db.Numeric(5, 2), default=0)  # Porcentaje de impuesto
     subcategoria_id = db.Column(db.String(36), db.ForeignKey('subcategorias.id'), nullable=False)
@@ -222,6 +223,7 @@ class Venta(db.Model):
     """Modelo de venta"""
     __tablename__ = 'ventas'
     
+    ediciones = db.Column(db.JSON, default=list, nullable=True)
     cierre_caja_id = db.Column(db.String(36), db.ForeignKey('cierres_caja.id'), nullable=True, index=True)
     id = db.Column(db.String(10), primary_key=True, default=generate_venta_id)
     numero_venta = db.Column(db.String(50), unique=True, nullable=False)
@@ -263,6 +265,7 @@ class DetalleVenta(db.Model):
     venta_id = db.Column(db.String(36), db.ForeignKey('ventas.id'), nullable=False)
     producto_id = db.Column(db.String(36), db.ForeignKey('productos.id'), nullable=False)
     cantidad = db.Column(db.Integer, nullable=False)
+    costo_compra_unitario = db.Column(db.Numeric(10, 2), nullable=True)  # Instantánea al vender; NULL = sin costo histórico.
     precio_unitario = db.Column(db.Numeric(10, 2), nullable=False)
     impuesto_unitario = db.Column(db.Numeric(5, 2), default=0)
     subtotal = db.Column(db.Numeric(10, 2), nullable=False)
@@ -738,3 +741,24 @@ class Pronostico(db.Model):
     fin = db.Column(db.Date, nullable=False)
     resultado = db.Column(db.JSON, nullable=False)
     explicacion = db.Column(db.Text)
+
+
+class ReglaCosto(db.Model):
+    __tablename__ = 'reglas_costos'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    nombre = db.Column(db.String(120), nullable=False)
+    criterio = db.Column(db.Text, nullable=False)
+    costo = db.Column(db.Numeric(10, 2), nullable=False)
+    activa = db.Column(db.Boolean, nullable=False, default=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
+
+
+class RevisionCosto(db.Model):
+    __tablename__ = 'revisiones_costos'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    creado_por_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=get_cdmx_now, nullable=False)
+    filas = db.Column(db.JSON, nullable=False, default=list)
+    version = db.Column(db.Integer, nullable=False, default=1)
+    token_lote = db.Column(db.String(36))
+    bloqueado_hasta = db.Column(db.Float, nullable=False, default=0)

@@ -93,6 +93,7 @@ def crear_venta():
                 producto_id=producto_id,
                 cantidad=cantidad,
                 precio_unitario=precio_unitario,
+                costo_compra_unitario=producto.costo_compra,
                 impuesto_unitario=impuesto_unitario,
                 subtotal=subtotal,
                 sin_stock=not hay_stock  # Marcar silenciosamente si fue sin stock
@@ -312,11 +313,15 @@ def get_ventas_del_dia():
         manana = hoy + timedelta(days=1)
         
         # Obtener ventas del día del empleado
-        ventas = Venta.query.filter(
-            Venta.cajero_id == user_id,
+        consulta = Venta.query.filter(
             Venta.created_at >= hoy,
             Venta.created_at < manana
-        ).order_by(Venta.created_at.desc()).all()
+        )
+        if user.role != 'admin':
+            consulta = consulta.filter(Venta.cajero_id == user_id)
+        if current_branch(user):
+            consulta = consulta.filter(Venta.sucursal_id == current_branch(user))
+        ventas = consulta.order_by(Venta.created_at.desc()).all()
         
         # Construir respuesta con desglose
         ventas_list = []
@@ -329,6 +334,8 @@ def get_ventas_del_dia():
         
         for venta in ventas:
             venta_data = venta.to_dict(include_detalles=True)
+            from edicion_ventas import bloqueo
+            venta_data['bloqueo_edicion'] = bloqueo(venta)
             
             # Obtener detalles de pago
             if venta.pagos:
@@ -378,6 +385,12 @@ def guardar_pagos_venta(venta_id):
         if user.role == 'employee' and user.permisos is None and venta.sucursal_id != current_branch(user):
             return jsonify({'error': 'Acceso denegado'}), 403
         
+        User.query.filter_by(id=venta.cajero_id).with_for_update().first()
+        lock_branch(venta.sucursal_id)
+        venta = Venta.query.filter_by(id=venta_id).populate_existing().with_for_update().one()
+        if venta.cierre_caja_id:
+            return jsonify(error='Esta venta ya está incluida en un cierre de caja.'), 409
+
         if any(d.reembolsos is not None for d in venta.devoluciones):
             return jsonify({'error': 'Esta venta tiene reembolsos registrados; no se puede reemplazar su desglose de pagos'}), 409
 

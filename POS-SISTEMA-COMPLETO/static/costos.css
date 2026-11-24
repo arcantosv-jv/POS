@@ -1,0 +1,20 @@
+.costos-admin .card-header {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;}
+.costos-form {display:flex;flex-wrap:wrap;align-items:end;gap:1rem;border:0;padding:0;margin:1rem 0;min-width:0;}
+.costos-form > label {flex:1 1 180px;display:block;font-weight:700;min-width:0;}
+.costos-form input:not([type=checkbox]), .costos-form select, .costos-form textarea {display:block;width:100%;padding:.75rem;margin-top:.5rem;border:1px solid #cbd5e1;border-radius:8px;background:white;color:#0f172a;font:inherit;}
+.costos-form textarea {min-height:100px;resize:vertical;}
+.costos-form .costos-ancho {flex-basis:100%;}
+.costos-form .costos-check {display:flex;gap:.5rem;align-items:center;}
+.costos-scroll {overflow:auto;margin:1rem 0;}
+.costos-admin table {width:100%;text-align:left;border-collapse:collapse;}
+.costos-admin th, .costos-admin td {padding:.85rem;border-bottom:1px solid #e2e8f0;vertical-align:top;}
+.costos-admin th {background:#f1f5f9;color:#334155;}
+.costos-admin small {display:block;color:#64748b;margin-top:.35rem;}
+.costos-acciones {display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin:.75rem 0;}
+.costos-resumen {display:flex;gap:.75rem;flex-wrap:wrap;margin:1rem 0;}
+.costos-resumen span, .costos-privado {padding:.45rem .75rem;background:#eff6ff;border-radius:8px;color:#1d4ed8;}
+.costos-indicadores {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1rem 0;}
+.costos-indicadores article {padding:1.3rem;border:1px solid #dbeafe;background:#f8fafc;border-radius:12px;}
+.costos-indicadores strong {display:block;font-size:1.7rem;overflow-wrap:anywhere;margin-top:.5rem;}
+.costos-admin input:focus-visible,.costos-admin select:focus-visible,.costos-admin button:focus-visible,.costos-admin textarea:focus-visible {outline:3px solid #93c5fd;outline-offset:2px;}
+@media(max-width:700px){.costos-indicadores{grid-template-columns:1fr;}.costos-form>.btn{width:100%;}}

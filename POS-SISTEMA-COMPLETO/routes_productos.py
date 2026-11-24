@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Producto, Categoria, Subcategoria, Stock, Sucursal
 from sqlalchemy import or_, and_
+from business_validation import money
 
 productos_bp = Blueprint('productos', __name__, url_prefix='/api/productos')
 
@@ -18,6 +19,22 @@ def admin_required(fn):
             return jsonify({'error': 'Acceso denegado'}), 403
         return fn(*args, **kwargs)
     return wrapper
+
+def producto_para_usuario(producto, **kwargs):
+    data = producto.to_dict(**kwargs)
+    user = db.session.get(User, get_jwt_identity())
+    if user and user.role == 'admin':
+        data['costo_compra'] = float(producto.costo_compra) if producto.costo_compra is not None else None
+    return data
+
+
+def costo_opcional(data):
+    user = db.session.get(User, get_jwt_identity())
+    if not user or user.role != 'admin':
+        raise PermissionError('Solo admin puede modificar el precio de compra')
+    value = data['costo_compra']
+    return None if value is None or value == '' else money(value, 'Precio de compra')
+
 
 # ==================== CATEGORÍAS ====================
 
@@ -332,7 +349,7 @@ def get_productos():
             'total': paginated.total,
             'pages': paginated.pages,
             'current_page': page,
-            'productos': [p.to_dict() for p in paginated.items]
+            'productos': [producto_para_usuario(p) for p in paginated.items]
         }), 200
     
     except Exception as e:
@@ -376,6 +393,9 @@ def create_producto():
             codigo_barras=data.get('codigo_barras')
         )
         
+        if 'costo_compra' in data:
+            producto.costo_compra = costo_opcional(data)
+
         db.session.add(producto)
         db.session.flush()
         
@@ -393,9 +413,12 @@ def create_producto():
         
         return jsonify({
             'message': 'Producto creado exitosamente',
-            'producto': producto.to_dict()
+            'producto': producto_para_usuario(producto)
         }), 201
     
+    except (ValueError, PermissionError) as e:
+        db.session.rollback()
+        return jsonify(error=str(e)), 403 if isinstance(e, PermissionError) else 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -409,7 +432,7 @@ def get_producto(producto_id):
         if not producto:
             return jsonify({'error': 'Producto no encontrado'}), 404
         
-        return jsonify(producto.to_dict(include_stock=True)), 200
+        return jsonify(producto_para_usuario(producto, include_stock=True)), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -455,13 +478,19 @@ def update_producto(producto_id):
         if 'subcategoria_id' in data:
             producto.subcategoria_id = subcategoria_id
         
+        if 'costo_compra' in data:
+            producto.costo_compra = costo_opcional(data)
+
         db.session.commit()
         
         return jsonify({
             'message': 'Producto actualizado',
-            'producto': producto.to_dict()
+            'producto': producto_para_usuario(producto)
         }), 200
     
+    except (ValueError, PermissionError) as e:
+        db.session.rollback()
+        return jsonify(error=str(e)), 403 if isinstance(e, PermissionError) else 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

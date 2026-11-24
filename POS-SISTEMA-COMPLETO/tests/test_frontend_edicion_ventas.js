@@ -1,0 +1,8 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync('static/components.js','utf8');
+const code=source.slice(source.indexOf('const VentasDelDiaView'),source.indexOf('// ============= COMPONENTE: CIERRE'));
+const calls=[];const context={axios:{get:async url=>({data:url.endsWith('/edicion')?{venta:{detalles:[{id:'d',producto_id:'p',producto_nombre:'Original',cantidad:1,precio_unitario:'100'}],pagos:[{metodo_pago:'efectivo',monto:'100'}]},version:'v1',historial:[],bloqueo:null}:[{id:'p',nombre:'Original',codigo:'1'},{id:'q',nombre:'Tipo C',codigo:'2'}]}),put:async(url,data)=>{calls.push([url,structuredClone(data)]);}},console};
+vm.createContext(context);vm.runInContext(code+';this.component=VentasDelDiaView;',context);
+const c=context.component,x={...c.data(),token:'token'};for(const[k,v]of Object.entries(c.methods))x[k]=v.bind(x);
+x.cargarVentasDelDia=()=>{x.recargado=true;};
+(async()=>{await x.abrirEdicion({id:'v',numero_venta:'V1'});assert.equal(x.edicion.version,'v1');assert.equal(c.computed.totalEdicion.call(x),100);x.edicion.detalles[0].precio_unitario=150;assert.equal(c.computed.totalEdicion.call(x),150);x.busquedaEdicion='Tipo C';assert.equal(x.opcionesEdicion(x.edicion.detalles[0]).length,2);x.edicion.motivo='Precio incorrecto';x.edicion.pagos[0].monto=150;await x.guardarEdicion();assert.equal(calls[0][1].motivo,'Precio incorrecto');assert.equal(x.edicion,null);assert.equal(x.recargado,true);assert.equal(x.ventaPagosEditables({pagos:[{}],bloqueo_edicion:'Cerrada'}),false);console.log('OK: modal, precio, búsqueda, guardado y bloqueo de pagos.');})().catch(e=>{console.error(e);process.exitCode=1;});

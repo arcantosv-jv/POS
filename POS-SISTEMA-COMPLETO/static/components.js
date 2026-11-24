@@ -798,6 +798,10 @@ const ProductosView = {
                         </div>
                     </div>
                     <div class="grid grid-3">
+                        <div v-if="$root.userRole === 'admin'" class="form-group">
+                            <label for="producto-costo-compra">Precio de compra (opcional)</label>
+                            <input v-model.number="nuevoProducto.costo_compra" id="producto-costo-compra" name="producto_costo_compra" type="number" min="0" max="99999999.99" step="0.01" placeholder="Sin costo registrado">
+                        </div>
                         <div class="form-group">
                             <label for="producto-impuesto">Impuesto (%)</label>
                             <input v-model.number="nuevoProducto.impuesto" id="producto-impuesto" name="producto_impuesto" type="number" step="0.01" min="0">
@@ -1059,6 +1063,7 @@ const ProductosView = {
                 codigo: '',
                 nombre: '',
                 precio: 0,
+                costo_compra: '',
                 impuesto: 0,
                 codigo_barras: '',
                 subcategoria_id: '',
@@ -1194,18 +1199,20 @@ const ProductosView = {
         async guardarProducto() {
             try {
                 this.error = '';
+                const datos = { ...this.nuevoProducto };
+                if (this.$root.userRole !== 'admin') delete datos.costo_compra;
                 if (this.editandoProductoId) {
                     // Actualizar producto existente
                     await axios.put(
                         `${window.location.origin}/api/productos/${this.editandoProductoId}`,
-                        this.nuevoProducto,
+                        datos,
                         { headers: { Authorization: `Bearer ${this.token}` } }
                     );
                 } else {
                     // Crear nuevo producto
                     await axios.post(
                         `${window.location.origin}/api/productos`,
-                        this.nuevoProducto,
+                        datos,
                         { headers: { Authorization: `Bearer ${this.token}` } }
                     );
                 }
@@ -1221,6 +1228,7 @@ const ProductosView = {
                 codigo: producto.codigo,
                 nombre: producto.nombre,
                 precio: producto.precio,
+                costo_compra: producto.costo_compra ?? '',
                 impuesto: producto.impuesto || 0,
                 codigo_barras: producto.codigo_barras || '',
                 subcategoria_id: producto.subcategoria_id || '',
@@ -1232,7 +1240,7 @@ const ProductosView = {
         cancelarEdicion() {
             this.mostrarFormulario = false;
             this.editandoProductoId = null;
-            this.nuevoProducto = { codigo: '', nombre: '', precio: 0, impuesto: 0, codigo_barras: '', subcategoria_id: '', descripcion: '' };
+            this.nuevoProducto = { codigo: '', nombre: '', precio: 0, costo_compra: '', impuesto: 0, codigo_barras: '', subcategoria_id: '', descripcion: '' };
             this.error = '';
         },
         manejarCargaArchivo(evento) {
@@ -4016,7 +4024,7 @@ const VentasDelDiaView = {
                                 <th>Hora</th>
                                 <th>Productos</th>
                                 <th>Métodos de Pago</th>
-                                <th>Total</th>
+                                <th>Total</th><th v-if="$root.puede('ventas-del-dia', 'editar')">Correcciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -4047,6 +4055,7 @@ const VentasDelDiaView = {
                                     </button>
                                 </td>
                                 <td><strong>{{ formatoMoneda(venta.total) }}</strong></td>
+                                <td v-if="$root.puede('ventas-del-dia', 'editar')"><button class="btn btn-primary btn-sm" @click="abrirEdicion(venta)">{{ venta.bloqueo_edicion ? 'Ver historial' : 'Editar venta' }}</button><small style="display:block">{{ venta.bloqueo_edicion }}</small></td>
                             </tr>
                         </tbody>
                     </table>
@@ -4058,6 +4067,32 @@ const VentasDelDiaView = {
                 </div>
             </div>
 
+            <div v-if="edicion" class="modal-overlay" style="z-index:1002" @click.self="cerrarEdicion">
+                <section class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-edicion-venta" style="max-width:1000px;width:95%;max-height:90vh;overflow-y:auto">
+                    <div class="card-header"><h3 id="titulo-edicion-venta">Corregir venta {{ edicion.numero }}</h3><button class="modal-close" @click="cerrarEdicion" :disabled="guardandoEdicion" aria-label="Cerrar">✕</button></div>
+                    <p v-if="errorEdicion" class="alert alert-danger" role="alert">{{ errorEdicion }}</p>
+                    <p v-if="edicion.bloqueo" class="alert alert-warning">{{ edicion.bloqueo }}</p>
+                    <form v-else @submit.prevent="guardarEdicion">
+                        <fieldset :disabled="guardandoEdicion" style="border:0;padding:0">
+                            <div class="form-group"><label for="buscar-producto-correccion">Cambiar producto por nombre o código</label><input id="buscar-producto-correccion" v-model="busquedaEdicion" placeholder="Ej.: cargador tipo C"></div>
+                            <div v-for="d in edicion.detalles" :key="d.id" class="grid grid-3" style="margin-bottom:1rem">
+                                <div class="form-group"><label>Producto<select v-model="d.producto_id" required><option v-for="p in opcionesEdicion(d)" :key="p.id" :value="p.id">{{ p.codigo }} · {{ p.nombre }}</option></select></label></div>
+                                <div class="form-group"><label>Cantidad<input v-model.number="d.cantidad" type="number" min="1" max="1000000" step="1" required></label></div>
+                                <div class="form-group"><label>Precio de venta unitario<input v-model.number="d.precio_unitario" type="number" min="0" step="0.01" required></label></div>
+                            </div>
+                            <p><strong>Nuevo total: {{ formatoMoneda(totalEdicion) }}</strong></p>
+                            <div v-for="(p,i) in edicion.pagos" :key="i" class="grid grid-3" style="margin-bottom:1rem"><div class="form-group"><label>Método de pago<select v-model="p.metodo_pago" required><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option></select></label></div><div class="form-group"><label>Importe<input v-model.number="p.monto" type="number" min="0" step="0.01" required></label></div><button v-if="edicion.pagos.length>1" type="button" class="btn btn-secondary" @click="edicion.pagos.splice(i,1)">Quitar pago</button></div>
+                            <button type="button" class="btn btn-secondary" @click="edicion.pagos.push({metodo_pago:'efectivo',monto:0})">Agregar pago</button>
+                            <p>Diferencia por distribuir: {{ formatoMoneda(totalEdicion-edicion.pagos.reduce((s,p)=>s+Number(p.monto||0),0)) }}</p>
+                            <div class="form-group"><label for="motivo-correccion">Motivo de la corrección</label><textarea id="motivo-correccion" v-model="edicion.motivo" maxlength="500" required></textarea></div>
+                            <p>Al guardar se ajustarán inventario y pagos. Si no hay existencias suficientes, se registrará como venta sin stock.</p>
+                            <div class="btn-group"><button type="button" class="btn btn-secondary" @click="cerrarEdicion">Cancelar</button><button class="btn btn-success" type="submit">{{ guardandoEdicion?'Guardando…':'Guardar corrección' }}</button></div>
+                        </fieldset>
+                    </form>
+                    <h4 style="margin-top:1rem">Historial de correcciones</h4><p v-if="!edicion.historial.length">Sin correcciones registradas.</p>
+                    <details v-for="(h,i) in edicion.historial" :key="i"><summary>{{ new Date(h.fecha).toLocaleString('es-MX',{timeZone:'America/Mexico_City'}) }} · {{ h.usuario }} · {{ h.motivo }}</summary><div v-for="lado in ['antes','despues']" :key="lado"><strong>{{ lado==='antes'?'Antes':'Después' }} · {{ formatoMoneda(h[lado].total) }}</strong><p v-for="d in h[lado].detalles" :key="d.id">{{ d.cantidad }} × {{ d.producto_nombre }} · {{ formatoMoneda(d.precio_unitario) }} c/u</p><p v-for="p in h[lado].pagos" :key="p.metodo_pago">{{ p.metodo_pago }}: {{ formatoMoneda(p.monto) }}</p></div></details>
+                </section>
+            </div>
             <!-- Modal para editar pagos mixtos -->
             <!-- Modal Desglose de Pagos -->
             <div v-if="ventaSeleccionada" class="modal-overlay" style="z-index: 1001;">
@@ -4137,6 +4172,7 @@ const VentasDelDiaView = {
     props: ['apiUrl', 'token', 'userRole'],
     data() {
         return {
+            edicion:null, productosEdicion:[], busquedaEdicion:'', errorEdicion:'', guardandoEdicion:false,
             ventas: [],
             totales: { efectivo: 0, tarjeta: 0, transferencia: 0, total: 0 },
             loading: true,
@@ -4145,7 +4181,12 @@ const VentasDelDiaView = {
             pagosTemporal: []
         };
     },
+    computed:{totalEdicion(){return (this.edicion?.detalles||[]).reduce((s,d)=>s+Math.round(Number(d.precio_unitario||0)*100)*Number(d.cantidad||0),0)/100;}},
     methods: {
+        opcionesEdicion(d){const q=this.busquedaEdicion.toLocaleLowerCase().trim();const rows=this.productosEdicion.filter(p=>p.id===d.producto_id||!q||(p.codigo+' '+p.nombre).toLocaleLowerCase().includes(q));if(!rows.some(p=>p.id===d.producto_id))rows.unshift({id:d.producto_id,nombre:d.producto_nombre,codigo:'Actual'});return rows;},
+        cerrarEdicion(){if(!this.guardandoEdicion)this.edicion=null;},
+        async abrirEdicion(venta){this.error='';this.errorEdicion='';this.busquedaEdicion='';try{const config={headers:{Authorization:'Bearer '+this.token}};const r=await axios.get('/api/ventas/'+venta.id+'/edicion',config);this.productosEdicion=r.data.bloqueo?[]:(await axios.get('/api/ventas/edicion/productos',config)).data;this.edicion={...r.data.venta,id:venta.id,numero:venta.numero_venta,version:r.data.version,bloqueo:r.data.bloqueo,historial:r.data.historial,motivo:''};}catch(e){this.error=e.response?.data?.error||'No se pudo abrir la venta.';}},
+        async guardarEdicion(){if(this.guardandoEdicion)return;this.guardandoEdicion=true;this.errorEdicion='';try{await axios.put('/api/ventas/'+this.edicion.id+'/edicion',this.edicion,{headers:{Authorization:'Bearer '+this.token}});this.edicion=null;this.cargarVentasDelDia();}catch(e){this.errorEdicion=e.response?.data?.error||'No se pudo corregir la venta.';}finally{this.guardandoEdicion=false;}},
         cargarVentasDelDia() {
             this.loading = true;
             this.error = '';
@@ -4183,7 +4224,7 @@ const VentasDelDiaView = {
         },
         ventaPagosEditables(venta) {
             // Mostrar opción si hay un solo pago o si es pago mixto sin detalles
-            return venta.pagos && venta.pagos.length === 1;
+            return !venta.bloqueo_edicion && venta.pagos && venta.pagos.length === 1;
         },
         mostrarFormularioPago(venta) {
             this.ventaSeleccionada = venta;
@@ -7912,6 +7953,73 @@ const AyudaView = {
 };
 
 
+const CostosView = {
+    props: ['token', 'userRole'],
+    data() { return { tab:'revision', reglas:[], historial:[], revision:null, editor:null, formCosto:{costo:'',motivo:''}, reglaForm:null, filtro:'cambios', busqueda:'', pagina:1, ocupado:false, procesando:false, detener:false, viva:true, error:'', mensaje:'' }; },
+    computed: {
+        resumen(){return this.revision?.resumen||{};},
+        procesados(){return Math.max(0,(this.revision?.total||0)-(this.resumen.sin_revisar||0));},
+        porcentaje(){return this.revision?.total?Math.round(this.procesados/this.revision.total*100):0;},
+        filtradas(){const q=this.busqueda.trim().toLocaleLowerCase();return (this.revision?.filas||[]).filter(f=>(this.filtro==='todos'||(this.filtro==='cambios'?!['conservado','aplicado'].includes(f.estado):f.estado===this.filtro))&&(!q||[f.codigo,f.nombre,f.categoria,f.subcategoria].join(' ').toLocaleLowerCase().includes(q)));},
+        paginas(){return Math.max(1,Math.ceil(this.filtradas.length/50));},
+        visibles(){return this.filtradas.slice((Math.min(this.pagina,this.paginas)-1)*50,Math.min(this.pagina,this.paginas)*50);}
+    },
+    watch:{filtro(){this.pagina=1;},busqueda(){this.pagina=1;}},
+    methods:{
+        async pedir(path,body,method='post'){const config={headers:{Authorization:'Bearer '+this.token}};const r=body===undefined?await axios.get('/api/costos'+path,config):await axios[method]('/api/costos'+path,body,config);return r.data;},
+        fallo(e){this.error=e.response?.data?.error||'No se pudo completar la operación.';},
+        async iniciar(){if(this.userRole!=='admin')return;this.ocupado=true;try{[this.reglas,this.historial]=await Promise.all([this.pedir('/reglas'),this.pedir('/revisiones')]);if(this.historial.length)this.revision=await this.pedir('/revisiones/'+this.historial[0].id);}catch(e){this.fallo(e);}finally{this.ocupado=false;}},
+        async nueva(){this.ocupado=true;this.error='';this.mensaje='';try{this.revision=await this.pedir('/revisiones',{});this.historial=await this.pedir('/revisiones');this.editor=null;this.pagina=1;}catch(e){this.fallo(e);}finally{this.ocupado=false;}},
+        async cargar(id){if(!id)return;this.ocupado=true;this.error='';try{this.revision=await this.pedir('/revisiones/'+id);this.editor=null;this.pagina=1;}catch(e){this.fallo(e);}finally{this.ocupado=false;}},
+        async continuar(){if(this.procesando||this.ocupado||!this.revision)return;this.procesando=true;this.detener=false;this.error='';this.mensaje='';try{while(this.viva&&!this.detener&&this.resumen.sin_revisar){const result=await this.pedir('/revisiones/'+this.revision.id+'/procesar',{});if(!this.viva)return;this.revision=result;}if(this.viva)this.mensaje=this.detener?'Revisión pausada. El avance está guardado.':'Revisión lista. Revisa los costos antes de aplicar.';}catch(e){if(this.viva)this.fallo(e);}finally{this.procesando=false;}},
+        editar(f){this.editor=f;this.formCosto={costo:f.costo_propuesto??f.costo_actual??'',motivo:''};this.$nextTick(()=>this.$refs.editor?.scrollIntoView({behavior:'smooth',block:'center'}));},
+        async modificar(accion,data){this.ocupado=true;this.error='';this.mensaje='';try{const antes=this.resumen.aplicado||0;this.revision=await this.pedir('/revisiones/'+this.revision.id+'/'+accion,{version:this.revision.version,...data});this.editor=null;this.mensaje=accion==='aplicar'?((this.resumen.aplicado||0)-antes)+' costos aplicados.':'Propuesta guardada. El costo se actualizará al aplicar cambios.';}catch(e){this.fallo(e);}finally{this.ocupado=false;}},
+        nuevaRegla(){this.reglaForm={nombre:'',criterio:'',costo:'',activa:true};},
+        async guardarRegla(){this.ocupado=true;this.error='';try{const f=this.reglaForm;await this.pedir('/reglas'+(f.id?'/'+f.id:''),f,f.id?'put':'post');this.reglas=await this.pedir('/reglas');this.reglaForm=null;this.mensaje='Regla guardada. Los costos ya asignados no cambian; inicia una nueva revisión para usarla.';}catch(e){this.fallo(e);}finally{this.ocupado=false;}},
+        moneda(v){return v===null||v===undefined?'Sin costo':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v);},
+        fecha(v){return new Intl.DateTimeFormat('es-MX',{dateStyle:'medium',timeStyle:'short',timeZone:'America/Mexico_City'}).format(new Date(v));},
+        estado(v){return {sin_revisar:'Sin revisar',pendiente:'Pendiente',listo:'Listo para aplicar',conservado:'Costo conservado',aplicado:'Aplicado'}[v]||v;}
+    },
+    mounted(){this.iniciar();},beforeUnmount(){this.viva=false;this.detener=true;},
+    template:`<section class="costos-admin" v-if="userRole === 'admin'">
+        <div class="card-header"><div><h2>Costos de compra</h2><p class="cash-register-help">Costos unitarios globales y estimados. Exclusivo de administradores.</p></div></div>
+        <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p><p v-if="mensaje" class="alert alert-success" role="status">{{ mensaje }}</p>
+        <div class="reportes-tabs"><button :class="{activo:tab==='revision'}" @click="tab='revision'">Revisar costos de productos</button><button :class="{activo:tab==='reglas'}" @click="tab='reglas'">Reglas de costo</button></div>
+        <section v-if="tab==='reglas'">
+            <div class="card"><div class="card-header"><h3>Importes autorizados</h3><button class="btn btn-primary" @click="nuevaRegla" :disabled="ocupado">Nueva regla</button></div><p>Los importes se capturan manualmente. La revisión solo identifica qué regla corresponde a cada artículo.</p>
+                <div class="costos-scroll"><table><thead><tr><th>Regla</th><th>Criterio</th><th>Costo unitario</th><th>Estado</th><th></th></tr></thead><tbody><tr v-for="r in reglas" :key="r.id"><td>{{ r.nombre }}</td><td>{{ r.criterio }}</td><td>{{ moneda(r.costo) }}</td><td>{{ r.activa?'Activa':'Inactiva' }}</td><td><button class="btn btn-secondary" @click="reglaForm={...r}" :disabled="ocupado">Editar</button></td></tr></tbody></table></div>
+            </div>
+            <form v-if="reglaForm" class="card" @submit.prevent="guardarRegla"><h3>{{ reglaForm.id?'Editar regla':'Nueva regla' }}</h3><fieldset :disabled="ocupado" class="costos-form"><label>Nombre<input v-model="reglaForm.nombre" maxlength="120" required></label><label>Costo unitario<input type="number" min="0" max="99999999.99" step="0.01" v-model="reglaForm.costo" required></label><label class="costos-ancho">Criterio de identificación<textarea v-model="reglaForm.criterio" maxlength="1500" required placeholder="Indica artículo, variante, marca o potencia y qué casos se excluyen"></textarea></label><label class="costos-check"><input type="checkbox" v-model="reglaForm.activa"> Regla activa</label><div class="costos-acciones"><button class="btn btn-primary" type="submit">Guardar regla</button><button class="btn btn-secondary" type="button" @click="reglaForm=null">Cancelar</button></div></fieldset></form>
+        </section>
+        <section v-else>
+            <div class="card"><div class="card-header"><h3>Revisión del catálogo</h3><button class="btn btn-primary" @click="nueva" :disabled="ocupado||procesando">Nueva revisión</button></div><p>Se revisan los productos sin costo, incluidos los inactivos. Los costos existentes se conservan, salvo que los edites expresamente. No se modifica precio de venta, nombre, categoría ni inventario.</p>
+                <div v-if="historial.length" class="costos-form"><label>Revisión guardada<select :value="revision?.id||''" @change="cargar($event.target.value)" :disabled="ocupado||procesando"><option v-for="r in historial" :key="r.id" :value="r.id">{{ fecha(r.fecha) }} · {{ r.total }} productos</option></select></label><button class="btn btn-secondary" @click="cargar(revision.id)" :disabled="!revision||ocupado||procesando">Actualizar</button></div>
+                <template v-if="revision"><div class="reclasificacion-progreso" aria-live="polite">
+                    <strong>{{ procesados }} de {{ revision.total }} productos revisados o conservados · {{ porcentaje }}%</strong>
+                    <progress :value="procesados" :max="revision.total || 1" aria-label="Progreso de la revisión de costos"></progress>
+                    <span v-if="procesando">Revisando... Cada lote se guarda automáticamente.</span>
+                    <span v-else-if="revision.ocupado">Hay un lote en proceso. Actualiza en un momento.</span>
+                </div><div class="costos-resumen"><span>{{ resumen.sin_revisar||0 }} sin revisar</span><span>{{ resumen.listo||0 }} listos</span><span>{{ resumen.pendiente||0 }} pendientes</span><span>{{ resumen.conservado||0 }} conservados</span><span>{{ resumen.aplicado||0 }} aplicados</span></div><div class="costos-acciones"><button v-if="resumen.sin_revisar&&!procesando" class="btn btn-primary" @click="continuar" :disabled="ocupado||revision.ocupado">Revisar pendientes</button><button v-if="procesando" class="btn btn-secondary" @click="detener=true" :disabled="detener">{{ detener?'Pausando…':'Pausar' }}</button><button class="btn btn-success" @click="modificar('aplicar',{})" :disabled="ocupado||procesando||revision.ocupado||!resumen.listo">Aplicar cambios ({{ resumen.listo||0 }})</button></div><p class="cash-register-help">Los casos ambiguos se aplican únicamente después de capturar y guardar su costo manual. Si una regla cambia, las propuestas anteriores deben revisarse nuevamente.</p></template>
+            </div>
+            <form v-if="editor" ref="editor" class="card" @submit.prevent="modificar('editar',{producto_id:editor.id,...formCosto})"><h3>Editar costo: {{ editor.nombre }}</h3><p>{{ editor.codigo }} · Actual: {{ moneda(editor.costo_actual) }}</p><fieldset class="costos-form" :disabled="ocupado||procesando"><label>Costo unitario propuesto<input type="number" min="0" max="99999999.99" step="0.01" v-model="formCosto.costo" required></label><label>Motivo o fuente<input v-model="formCosto.motivo" maxlength="500" placeholder="Ej.: factura del proveedor o costo promedio" required></label><div class="costos-acciones"><button class="btn btn-primary" type="submit">Guardar propuesta</button><button class="btn btn-secondary" type="button" @click="editor=null">Cancelar</button></div></fieldset></form>
+            <div v-if="revision" class="card"><div class="costos-form"><label>Buscar<input v-model="busqueda" placeholder="Producto, código o categoría"></label><label>Mostrar<select v-model="filtro"><option value="cambios">Cambios y pendientes</option><option value="todos">Todos</option><option v-for="v in ['sin_revisar','pendiente','listo','conservado','aplicado']" :value="v" :key="v">{{ estado(v) }}</option></select></label></div><div class="costos-scroll"><table><thead><tr><th>Producto</th><th>Clasificación</th><th>Costo actual</th><th>Costo propuesto</th><th>Estado / motivo</th><th></th></tr></thead><tbody><tr v-for="f in visibles" :key="f.id"><td><strong>{{ f.nombre }}</strong><small>{{ f.codigo }}</small></td><td>{{ f.categoria }}<small>{{ f.subcategoria }}</small></td><td>{{ moneda(f.costo_actual) }}</td><td><strong>{{ moneda(f.costo_propuesto) }}</strong><small>{{ f.regla?.nombre|| (f.editada?'Captura manual':'') }}</small></td><td>{{ estado(f.estado) }}<small>{{ f.motivo }}</small><small v-if="f.aplicado_en">{{ fecha(f.aplicado_en) }}</small></td><td><button v-if="f.estado!=='aplicado'" class="btn btn-secondary" @click="editar(f)" :disabled="ocupado||procesando||revision.ocupado">Editar costo</button></td></tr></tbody></table></div><p v-if="!filtradas.length">No hay productos con este filtro.</p><div class="costos-acciones"><button class="btn btn-secondary" @click="pagina=Math.max(1,Math.min(pagina,paginas)-1)" :disabled="pagina<=1">Anterior</button><span>{{ filtradas.length }} productos · Página {{ Math.min(pagina,paginas) }} de {{ paginas }}</span><button class="btn btn-secondary" @click="pagina++" :disabled="pagina>=paginas">Siguiente</button></div></div>
+        </section>
+    </section>`
+};
+
+const ReporteUtilidadView = {
+    props:['token','userRole'],
+    data(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));const hoy=[p.year,p.month,p.day].join('-');return {desde:hoy.slice(0,7)+'-01',hasta:hoy,sucursal:'',agrupar:'producto',sucursales:[],reporte:null,cargando:false,error:''};},
+    methods:{
+        moneda(v){return v===null?'Sin determinar':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v);},
+        async generar(){if(this.userRole!=='admin'||this.cargando)return;this.cargando=true;this.error='';this.reporte=null;try{const r=await axios.get('/api/costos/utilidad',{headers:{Authorization:'Bearer '+this.token},params:{fecha_inicio:this.desde,fecha_fin:this.hasta,sucursal_id:this.sucursal||undefined,agrupar:this.agrupar}});this.reporte=r.data;}catch(e){this.error=e.response?.data?.error||'No se pudo generar el reporte.';}finally{this.cargando=false;}}
+    },
+    async mounted(){if(this.userRole!=='admin')return;try{const r=await axios.get('/api/admin/sucursales-publico',{headers:{Authorization:'Bearer '+this.token}});this.sucursales=r.data;}catch(e){this.error='No se pudieron cargar las sucursales.';}},
+    template:`<section v-if="userRole==='admin'" class="card costos-admin"><div class="card-header"><h3>Utilidad bruta estimada</h3><span class="costos-privado">Solo admin</span></div><p class="cash-register-help">Importe vendido menos costo de productos, descontando devoluciones de esas ventas. No incluye renta, sueldos, comisiones ni otros gastos. Se usa el importe de venta registrado sin sumar nuevamente impuestos.</p><form class="costos-form" @submit.prevent="generar"><label>Desde<input type="date" v-model="desde" required :disabled="cargando"></label><label>Hasta<input type="date" v-model="hasta" required :disabled="cargando"></label><label>Sucursal<select v-model="sucursal" :disabled="cargando"><option value="">Todas las sucursales</option><option v-for="s in sucursales" :value="s.id" :key="s.id">{{ s.nombre }}</option></select></label><label>Agrupar por<select v-model="agrupar" :disabled="cargando"><option value="producto">Producto</option><option value="categoria">Categoría</option><option value="sucursal">Sucursal</option></select></label><button type="submit" class="btn btn-primary" :disabled="cargando">{{ cargando?'Generando…':'Generar reporte' }}</button></form><p v-if="error" class="alert alert-danger">{{ error }}</p>
+        <template v-if="reporte"><p>Periodo: {{ reporte.fecha_inicio }} al {{ reporte.fecha_fin }} · Fecha CDMX</p><div class="costos-indicadores"><article><span>Ventas netas</span><strong>{{ moneda(reporte.resumen.ventas) }}</strong><small>{{ reporte.resumen.unidades }} unidades</small></article><article><span>Costo conocido</span><strong>{{ moneda(reporte.resumen.costo) }}</strong></article><article><span>{{ reporte.resumen.unidades_sin_costo?'Utilidad parcial (ventas con costo)':'Utilidad bruta estimada' }}</span><strong>{{ moneda(reporte.resumen.utilidad_con_costo) }}</strong><small>Margen sobre ventas con costo: {{ reporte.resumen.margen===null?'No aplica':reporte.resumen.margen+'%' }}</small></article></div>
+        <p v-if="reporte.resumen.unidades_sin_costo" class="alert alert-warning">{{ reporte.resumen.unidades_sin_costo }} unidades no tienen costo. Sus ventas suman {{ moneda(reporte.resumen.ventas-reporte.resumen.ventas_con_costo) }} y están excluidas de la utilidad. No se consideran ganancia completa.</p><p class="cash-register-help">{{ reporte.resumen.unidades_costo_guardado }} unidades usan el costo guardado al vender. {{ reporte.resumen.unidades_estimadas }} unidades usan el costo actual como estimación histórica. Los cambios de costo no alteran las instantáneas de ventas nuevas. Las devoluciones se descuentan de la venta original, incluso si se registraron después.</p><div class="costos-scroll"><table><thead><tr><th>{{ reporte.agrupar }}</th><th>Unidades netas</th><th>Venta neta</th><th>Costo conocido</th><th>Utilidad con costo</th><th>Sin costo</th><th>Costo histórico estimado</th></tr></thead><tbody><tr v-for="f in reporte.filas" :key="f.id"><td><strong>{{ f.nombre }}</strong><small v-if="f.codigo">{{ f.codigo }}</small></td><td>{{ f.unidades }}</td><td>{{ moneda(f.ventas) }}</td><td>{{ moneda(f.costo) }}</td><td>{{ moneda(f.utilidad_con_costo) }}<small v-if="f.unidades_sin_costo">Parcial</small></td><td>{{ f.unidades_sin_costo }} unidades</td><td>{{ f.unidades_estimadas }} unidades</td></tr></tbody></table></div><p v-if="!reporte.filas.length">No hay ventas netas en el periodo seleccionado.</p></template></section>`
+};
+
 const ReporteCategoriasView = {
     props: ['token', 'modo'],
     data() {
@@ -7965,7 +8073,7 @@ const ReporteCategoriasView = {
 
 // Un solo punto de acceso; los permisos existentes conservan su alcance.
 const CentroReportesView = {
-    components: { ReportesView, ReportesVentasView, ReporteCategoriasView },
+    components: { ReportesView, ReportesVentasView, ReporteCategoriasView, ReporteUtilidadView },
     props: ['apiUrl', 'token', 'userRole'],
     data() { return { seleccion: '' }; },
     computed: {
@@ -7981,6 +8089,7 @@ const CentroReportesView = {
             );
             if (this.$root.puede('reportes') || this.$root.puede('reportes-ventas')) opciones.push({ id: 'categorias', titulo: 'Top 10 categorías', descripcion: 'Consulta las categorías líderes por importe o unidades vendidas.', componente: 'ReporteCategoriasView' });
             if (this.$root.puede('reportes') || this.$root.puede('reportes-ventas')) opciones.push({ id: 'subcategorias', titulo: 'Top 10 subcategorías', descripcion: 'Consulta las subcategorías líderes por importe o unidades vendidas.', componente: 'ReporteCategoriasView' });
+            if (this.userRole === 'admin') opciones.push({ id: 'utilidad', titulo: 'Utilidad', descripcion: 'Consulta costos y utilidad bruta por producto, categoría y sucursal.', componente: 'ReporteUtilidadView' });
             return opciones;
         },
         activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; }
@@ -8243,14 +8352,15 @@ const CentroCategoriasView = {
 
 
 const AdministracionView = {
-    components: { CaracteristicasView, UsuariosView, SucursalesView, CentroCategoriasView },
+    components: { CaracteristicasView, UsuariosView, SucursalesView, CentroCategoriasView, CostosView },
     props: ['apiUrl', 'token', 'userRole'],
     data() {
         return { seleccion: 'caracteristicas', tabs: [
             { id: 'caracteristicas', titulo: 'Características', componente: 'CaracteristicasView' },
             { id: 'usuarios', titulo: 'Usuarios', componente: 'UsuariosView' },
             { id: 'sucursales', titulo: 'Sucursales', componente: 'SucursalesView' },
-            { id: 'categorias', titulo: 'Categorías', componente: 'CentroCategoriasView' }
+            { id: 'categorias', titulo: 'Categorías', componente: 'CentroCategoriasView' },
+            { id: 'costos', titulo: 'Costos de compra', componente: 'CostosView' }
         ] };
     },
     computed: { activa() { return this.tabs.find(tab => tab.id === this.seleccion) || this.tabs[0]; } },
