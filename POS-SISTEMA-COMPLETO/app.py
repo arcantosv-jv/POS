@@ -45,6 +45,7 @@ def create_app(config_name=None):
     from routes_apartados import apartados_bp
     from routes_pronosticos import pronosticos_bp
     from routes_comisiones import comisiones_bp
+    from comisiones_semanales import semanales_bp
     from routes_productos import productos_bp
     from routes_inventario import inventario_bp
     from routes_ventas import ventas_bp
@@ -63,6 +64,7 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp)
     app.register_blueprint(caracteristicas_bp)
     app.register_blueprint(comisiones_bp)
+    app.register_blueprint(semanales_bp)
     app.register_blueprint(pronosticos_bp)
     app.register_blueprint(apartados_bp)
     app.register_blueprint(productos_bp)

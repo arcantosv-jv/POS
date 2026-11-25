@@ -33,12 +33,24 @@ function instance(component) {
     enabled = false; await app.cargarAcceso(); app.userRole = 'admin'; app.irAVista('comisiones');
     assert.equal(app.currentView, 'comisiones');
     const view = instance(sandbox.comisiones);
-    view.formulario = { nombre_empleado: 'Jazmin' };
+    view.$root={puede:(m,a)=>a==='ver'||a==='crear'||a==='editar'};
+    assert.deepEqual(Array.from(view.tabs,t=>t.id),['registrar','comisiones','pagos']);
+    assert.equal(view.tabActiva,'registrar');
+    view.userRole='admin';
+    assert.deepEqual(Array.from(view.tabs,t=>t.id),['pagos','comisiones','historial','empleados']);
+    assert.equal(view.tabActiva,'pagos');
+    view.userRole='employee';view.$root={puede:(m,a)=>a==='ver'};
+    assert.equal(view.tabActiva,'comisiones');
+    assert.deepEqual(Array.from(view.tabs,t=>t.id),['comisiones','pagos']);
+    view.$root={puede:()=>true};
+
+    view.formulario = { empleado_comision_id: 'jazmin-id' };
+    view.$refs={semanales:{cargar(){}}};
     view.fechaVenta = '2026-11-18';
     view.pendientes = [{ detalle_venta_id: 'd', unidad: 2 }];
     view.unidadSeleccionada = 'd:2';
     await view.guardar();
-    assert.equal(calls[0].data.nombre_empleado, 'Jazmin');
+    assert.equal(calls[0].data.empleado_comision_id, 'jazmin-id');
     assert.equal(calls[0].data.detalle_venta_id, 'd');
     assert.equal(calls[0].data.unidad, 2);
     assert.equal(calls[0].data.costo, undefined);
@@ -47,9 +59,9 @@ function instance(component) {
     await view.guardar();
     assert.equal(calls.length, trasRegistro); // Sin unidad pendiente no se puede registrar.
     view.editar({ id: 'editable', aprobada: false, nombre_empleado: 'Jazmin' });
-    view.formulario.nombre_empleado = 'Corregido';
+    view.formulario.empleado_comision_id = 'otro-id';
     await view.guardar();
-    assert.deepEqual(Object.keys(calls.at(-1).data), ['nombre_empleado']);
+    assert.deepEqual(Object.keys(calls.at(-1).data), ['empleado_comision_id']);
     assert.equal(calls[0].data.aprobada, undefined);
     assert.equal(calls[0].data.monto_comision, undefined);
     view.editar({ id: 'r', aprobada: true }); assert.equal(view.editandoId, null);

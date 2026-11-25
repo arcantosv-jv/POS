@@ -626,8 +626,35 @@ class ConfiguracionSistema(db.Model):
     panel_ventas = db.Column(db.String(20), nullable=False, default='productos', server_default='productos')
 
 
+class EmpleadoComision(db.Model):
+    __tablename__ = 'empleados_comisiones'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    nombre = db.Column(db.String(150), nullable=False)
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False)
+    dia_pago = db.Column(db.Integer, nullable=False)
+    activo = db.Column(db.Boolean, nullable=False, default=True)
+    sucursal = db.relationship('Sucursal')
+
+
+class PagoComision(db.Model):
+    __tablename__ = 'pagos_comisiones'
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    empleado_id = db.Column(db.String(36), db.ForeignKey('empleados_comisiones.id'), nullable=False)
+    sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False)
+    empleado_nombre = db.Column(db.String(150), nullable=False)
+    usuario_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    usuario_nombre = db.Column(db.String(150), nullable=False)
+    desde = db.Column(db.Date, nullable=False)
+    hasta = db.Column(db.Date, nullable=False)
+    fecha_pago = db.Column(db.DateTime(timezone=True), default=get_cdmx_now, nullable=False)
+    monto = db.Column(db.Numeric(10,2), nullable=False)
+    detalles = db.Column(db.JSON, nullable=False)
+
+
 class Comision(db.Model):
     __tablename__ = 'comisiones'
+    empleado_comision_id = db.Column(db.String(36), db.ForeignKey('empleados_comisiones.id'), nullable=True, index=True)
+    pago_comision_id = db.Column(db.String(36), db.ForeignKey('pagos_comisiones.id'), nullable=True, index=True)
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     sucursal_id = db.Column(db.String(36), db.ForeignKey('sucursales.id'), nullable=False, index=True)
     creado_por_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
@@ -653,7 +680,7 @@ class Comision(db.Model):
         venta_fecha = self.fecha_venta
         if venta_fecha is not None:
             venta_fecha = CDMX_TZ.localize(venta_fecha) if venta_fecha.tzinfo is None else venta_fecha.astimezone(CDMX_TZ)
-        return dict(detalle_venta_id=self.detalle_venta_id, unidad=self.unidad,
+        return dict(empleado_comision_id=self.empleado_comision_id, pago_comision_id=self.pago_comision_id, pagada=self.pago_comision_id is not None, detalle_venta_id=self.detalle_venta_id, unidad=self.unidad,
                     fecha_venta=venta_fecha.isoformat() if venta_fecha else None,
                     producto_nombre=self.producto_nombre, numero_venta=self.numero_venta,
                     historica=self.detalle_venta_id is None, id=self.id, sucursal_id=self.sucursal_id, sucursal_nombre=self.sucursal.nombre,

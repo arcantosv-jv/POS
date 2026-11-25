@@ -177,3 +177,25 @@ class ComisionesTest(unittest.TestCase):
         self.venta.created_at = CDMX_TZ.localize(datetime(2026, 11, 19)); db.session.commit()
         self.assertEqual(self.pendientes().json['unidades'], [])
         self.assertEqual(len(self.pendientes('2026-11-19').json['unidades']), 2)
+
+    def test_filters_pagination_and_full_summary(self):
+        for i in range(31):
+            db.session.add(Comision(sucursal_id=self.branch.id,creado_por_id=self.employee.id,
+                dispositivo='Tablet',costo=100,metodo_pago='efectivo',nombre_empleado='Jazmin',
+                monto_comision=10,aprobada=True,created_at=CDMX_TZ.localize(datetime(2026,11,20,23,59))))
+        db.session.add(Comision(sucursal_id=self.branch.id,creado_por_id=self.employee.id,
+                dispositivo='Celular',costo=100,metodo_pago='efectivo',nombre_empleado='Otro',
+                monto_comision=999,aprobada=True,created_at=CDMX_TZ.localize(datetime(2026,11,21,0,0))))
+        db.session.commit()
+        url='/api/comisiones?desde=2026-11-20&hasta=2026-11-20&empleado=JAZ&dispositivo=Tablet&por_pagina=10'
+        r=self.request(url,method='get');self.assertEqual(r.status_code,200,r.json)
+        self.assertEqual(r.json['total'],31);self.assertEqual(len(r.json['comisiones']),10)
+        self.assertEqual(r.json['resumen']['monto_aprobado'],310)
+        r=self.request(url+'&pagina=4',method='get');self.assertEqual(len(r.json['comisiones']),1)
+        self.assertEqual(r.json['resumen']['monto_aprobado'],310)
+        self.assertEqual(self.request(url+'&estado=pendientes',method='get').json['total'],0)
+        self.assertEqual(self.request('/api/comisiones?empleado=%25',method='get').json['total'],0)
+        self.assertEqual(self.request(url,role='externo',method='get').json['total'],0)
+        self.assertEqual(self.request('/api/comisiones?sucursal_id='+self.branch.id,role='externo',method='get').status_code,403)
+        self.assertEqual(self.request('/api/comisiones?desde=2026-11-21&hasta=2026-11-20',method='get').status_code,400)
+        self.assertEqual(self.request('/api/comisiones?por_pagina=0',method='get').status_code,400)
